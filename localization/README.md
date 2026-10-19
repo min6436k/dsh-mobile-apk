@@ -2,14 +2,14 @@
 
 이 공개 포크는 [원본 dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 최신 `main`을 자동으로 받아, 별도 브랜치에서 관리하는 한국어 `.patch` 파일을 적용한 후 **arm64 APK 하나**를 빌드합니다.
 
-- 자동 빌드 설정: 이 저장소의 기본 브랜치 `l10n/ko` → `.github/workflows/ko-upstream-apk.yml`
-- 한국어 패치 보관: 이 저장소의 **`l10n/ko` 브랜치** → `localization/patches/*.patch`
+- 자동 빌드 설정: 이 저장소의 기본 브랜치 `ko-patch` → `.github/workflows/ko-upstream-apk.yml`
+- 한국어 패치 보관: 이 저장소의 **`ko-patch` 브랜치** → `localization/patches/*.patch`
 - 빌드 대상: 원본 `kelai141/dsh-mobile-apk`의 최신 `main`
-- 원본 추적 브랜치: 이 포크의 `main`은 업스트림 `main`과 동일한 소스만 보관하고, 번역 및 자동화는 `l10n/ko`에서 관리합니다.
+- 원본 추적 브랜치: 이 포크의 `main`은 업스트림 `main`과 동일한 소스만 보관하고, 번역 및 자동화는 `ko-patch`에서 관리합니다.
 - 결과물: [Releases](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)** 안에 `dsh-ko-arm64.apk`, `KO-BUILD-SOURCES.txt`
 - 실행: 패치 추가·변경 시 자동 / 매일 03:15(KST) 원본 변경 확인 / Actions 수동 실행
 
-> **가장 중요한 원칙:** `l10n/ko`에는 번역을 완료한 소스 파일 자체가 아니라 **소스의 변경 사항을 기록한 `.patch` 파일**을 올립니다. 자동 빌드는 원본의 깨끗한 최신 소스에 패치를 덧씌웁니다. `main` 브랜치에 한국어 파일을 직접 수정해 넣지 마세요.
+> **가장 중요한 원칙:** `ko-patch`에는 번역을 완료한 소스 파일 자체가 아니라 **소스의 변경 사항을 기록한 `.patch` 파일**을 올립니다. 자동 빌드는 원본의 깨끗한 최신 소스에 패치를 덧씌웁니다. `main` 브랜치에 한국어 파일을 직접 수정해 넣지 마세요.
 
 ## 1. 어디를 번역하나요?
 
@@ -34,7 +34,7 @@ Windows에서는 **Git Bash**를 사용하세요. 아래 명령은 Git Bash·mac
 
 ~~~bash
 GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/kelai141/dsh-mobile-apk.git ko-source
-GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch l10n/ko https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch.git ko-patches
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch ko-patch https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch.git ko-patches
 ~~~
 
 - `ko-source`: **최신 원본을 번역**하기 위한 작업 폴더
@@ -113,12 +113,12 @@ cd ../ko-patches
 git status
 git add localization/patches/001-android-ko.patch
 git commit -m "l10n: add Korean Android strings patch"
-git push origin l10n/ko
+git push origin ko-patch
 ~~~
 
 푸시하면 이 포크의 **Korean arm64 Release from upstream** 워크플로가 자동 시작됩니다.
 
-GitHub 웹으로 올리고 싶다면 **`l10n/ko` 브랜치를 선택한 뒤 `localization/patches/`에 이미 만든 `.patch` 파일만** 업로드하세요. 웹에서 번역 소스 파일만 수정해 커밋하면 이 워크플로는 그 변경을 적용하지 않습니다.
+GitHub 웹으로 올리고 싶다면 **`ko-patch` 브랜치를 선택한 뒤 `localization/patches/`에 이미 만든 `.patch` 파일만** 업로드하세요. 웹에서 번역 소스 파일만 수정해 커밋하면 이 워크플로는 그 변경을 적용하지 않습니다.
 
 ## 3. 기존 한국어 패치 업데이트하기
 
@@ -128,10 +128,10 @@ GitHub 웹으로 올리고 싶다면 **`l10n/ko` 브랜치를 선택한 뒤 `loc
 2. 깨끗한 작업 폴더라면 `git pull --ff-only origin main`으로 원본을 갱신하거나, 2절의 `git clone` 명령으로 새 `ko-source`를 받습니다.
 3. 새 원본에서 해당 번역을 다시 수정한 후 `git add -A 파일경로` 및 `git diff --cached --binary HEAD -- 파일경로`를 실행합니다.
 4. 출력 대상을 기존 `001-android-ko.patch`로 지정해 **기존 패치를 교체**하세요. 같은 영역을 수정하는 패치를 끝없이 추가하면 충돌합니다.
-5. `ko-patches`에서 `git pull --ff-only origin l10n/ko`로 다른 변경을 동기화한 뒤, 수정한 `.patch`만 커밋하고 `git push origin l10n/ko`로 업로드합니다.
+5. `ko-patches`에서 `git pull --ff-only origin ko-patch`로 다른 변경을 동기화한 뒤, 수정한 `.patch`만 커밋하고 `git push origin ko-patch`로 업로드합니다.
 6. Actions 로그에서 적용 및 빌드 성공을 확인합니다.
 
-이전 패치가 더는 필요 없으면 `l10n/ko`에서 해당 `.patch`를 삭제해 커밋하면 됩니다. **`main`을 수정하거나 원본 소스를 이 포크에 복사할 필요는 없습니다.**
+이전 패치가 더는 필요 없으면 `ko-patch`에서 해당 `.patch`를 삭제해 커밋하면 됩니다. **`main`을 수정하거나 원본 소스를 이 포크에 복사할 필요는 없습니다.**
 
 ## 4. 자동 빌드, 결과와 오류 확인
 
