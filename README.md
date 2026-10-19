@@ -1,258 +1,153 @@
-# 🇰🇷 dsh-mobile-apk Ko-KR-Patch
-
-**한국어 패치/자동 빌드 전용 포크입니다.** 기본 브랜치 `ko-patch`에 한국어 패치와 GitHub Actions 워크플로를 관리하고, `main`은 원본 [kelai141/dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 코드만 보관합니다.
-
-- **[한국어 패치 만드는 법 및 업데이트 가이드](localization/README.md)**
-- [자동 빌드 실행 내역](../../actions)
-- [arm64 APK Release 초안](../../releases)
-
----
-
-# dsh-mobile-apk — DeepSeek Harness 安卓壳 APK
+# Ko-KR-Patch: 한국어 패치 제작 가이드
 
-[🌐 English README](README.en.md)
+이 공개 포크는 [원본 dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 최신 `main`을 자동으로 받아, 별도 브랜치에서 관리하는 한국어 `.patch` 파일을 적용한 후 **arm64 APK 하나**를 빌드합니다.
 
-[![QQ群](https://img.shields.io/badge/QQ群-dsh--mobile用户群-12B7F5?logo=tencentqq)](https://qun.qq.com/universal-share/share?ac=1&authKey=C2NW5eWXsV%2FYu5DEkV9Ac%2FqYcXhGCY8C3Lga40KNCfE4AOjzlSeAaRGvWZqc3ADV&busi_data=eyJncm91cENvZGUiOiIxMTA5NDkzOTkyIiwidG9rZW4iOiJjTTRDM3pwNjRLTE8rbkZBVjRDbnFVWlBOdU04aGJaS3FaSG1xZWFXbm5ZNXphbEJBOXdGMGw2N0V3YnpabnhaIiwidWluIjoiMzc1NDY4MDE3NSJ9&data=NzUYIVyoUDsINSstug9aQ6Kf4EUx-hhDegPFaPS-1RD-p_4eE02WN773yEIujclrFYtWRDkLyDa-YDtWj2bKjg&svctype=4&tempid=h5_group_info)
-![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-blue?style=flat&logo=DeepSeek&logoSize=auto&color=%232D5F9E)
-![Android](https://img.shields.io/badge/Android-blue?style=flat&logo=Android&logoSize=auto&color=%2397CA00)
+- 자동 빌드 설정: 이 저장소의 기본 브랜치 `ko-patch` → `.github/workflows/ko-upstream-apk.yml`
+- 한국어 패치 보관: 이 저장소의 **`ko-patch` 브랜치** → `localization/patches/*.patch`
+- 빌드 대상: 원본 `kelai141/dsh-mobile-apk`의 최신 `main`
+- 원본 추적 브랜치: 이 포크의 `main`은 업스트림 `main`과 동일한 소스만 보관하고, 번역 및 자동화는 `ko-patch`에서 관리합니다.
+- 결과물: [Releases](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)** 안에 `dsh-ko-arm64.apk`, `KO-BUILD-SOURCES.txt`
+- 실행: 패치 추가·변경 시 자동 / 매일 03:15(KST) 원본 변경 확인 / Actions 수동 실행
 
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-www.cloudflare.com-F38020?logo=cloudflare&logoColor=white)](https://www.cloudflare.com)
+> **가장 중요한 원칙:** `ko-patch`에는 번역을 완료한 소스 파일 자체가 아니라 **소스의 변경 사항을 기록한 `.patch` 파일**을 올립니다. 자동 빌드는 원본의 깨끗한 최신 소스에 패치를 덧씌웁니다. `main` 브랜치에 한국어 파일을 직접 수정해 넣지 마세요.
 
-> **dsh-mobile 生态** · [dsh-shell-termux](https://github.com/kelai141/dsh-shell-termux)（shell）· [dsh-client-ui-responsive](https://github.com/kelai141/dsh-client-ui-responsive)（移动 UI）· [dsh-host-web-compat](https://github.com/kelai141/dsh-host-web-compat)（浏览器兼容）· [dsh-mobile](https://github.com/kelai141/dsh-mobile)（协调仓库，private）
-> 支持开发者：https://d1api.xin/sign-up?aff=mVa0 欢迎大家使用此聚合网站，拥有极低价的国模和不降智的GPT
+## 1. 어디를 번역하나요?
 
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的安卓壳：WebView UI 覆盖
-**内嵌 Termux 运行时快照**（解压即跑，无需 Termux app）、SAF 目录桥、保活前台服务、引擎看门狗、
-运行时在线更新。一个 APK 装完即用：完整的 dsh web agent，且能真实执行 bash。
+| 번역 대상 | 원본에 존재하는 파일 | 권장 방법 |
+| --- | --- | --- |
+| Android 앱 시작 화면·버튼·오류 문구 | `app/src/main/res/values/strings.xml` | `app/src/main/res/values-ko/strings.xml`을 새로 만들어 한국어 키 추가 |
+| 앱 내 웹 UI의 브라우저 | `dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts` | 언어별 사전 및 언어 선택 코드 확인 후 수정 |
+| 앱 내 웹 UI의 사이드바 | `dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts` | 언어별 사전 및 언어 선택 코드 확인 후 수정 |
+| 그 밖의 앱 코드 텍스트 | 해당 원본 소스 | 원본 저장소의 실제 소스만 수정 |
 
-应用名 `DeepCode`（图标文字 DeepSearch）、包名 `com.dsharnessmobile.shell`、
-当前源码版本 **`0.14.6`**（versionCode 50）、引擎 `@deepseek-ai/dsh` 0.2.0-rc.2（本地开发候选，**未发布**）。
+`values-ko` 추가만으로 WebView 내부 전체가 한국어로 바뀌지는 않습니다. **Android 문자열과 웹 UI의 언어 사전은 별도**입니다. 모델 설정창처럼 외부 엔진이나 플러그인에서 생성되는 UI라면, APK 저장소에 해당 코드가 있는지 먼저 확인해야 합니다.
 
-> **插件市场适配警示**：内置市场牵涉大量第三方插件，**绝大多数插件在手机端不一定可用、大概率有 bug**
-> （移动端与桌面端在 WebView 内核/文件系统/权限模型/运行环境差异大）；移动端适配是长期工程，
-> beta 阶段以「可用性验证与反馈」为主，暂不建议当作生产依赖。
-> 插件报错请到 [issues](https://github.com/kelai141/dsh-mobile-apk/issues) 反馈（附机型/版本/复现步骤）。
+## 2. 처음 패치 만들기 (Windows Git Bash / macOS / Linux)
 
-## 功能
+### 준비: Git과 텍스트 편집기
 
-### 运行时与生命周期
+Windows에서는 **Git Bash**를 사용하세요. 아래 명령은 Git Bash·macOS·Linux 터미널 기준입니다.
 
-- **内嵌运行时**：xz 快照内置 node + git + bash + coreutils + dsh + 插件 + pnpm + python/perl/ruby；
-  首启解压 2-4 分钟（`refreshSnapshot`），引擎监听 `127.0.0.1:3080`；完全离线。
-- **APK 自更新（0.14.6 起为用户面主路径）**：查 GitHub latest release、按设备 ABI 匹配资产、镜像链逐级回退下载，
-  下载后校验 sha256 再拉起系统安装器。入口两处、读**同一份**状态：健康态可达的「检查更新」与启动页次级按钮；
-  **不自动检查**。更新动作**不占用相位与主按钮**，任何终态必落如实文案（含超时兜底）。
-- **运行时快照更新**：manifest 驱动的快照替换（下载 → sha256 → 原子切换 → 自动重启），
-  运行时可自更新而无需更新 APK。换树是**单事务**：解压到 staging → 校验完整 → 整体换入，
-  中断可回滚，且**从不触碰用户数据**（会话/附件/设置/凭据/工作区）。
-  注：0.14.6 起用户面入口已切到 APK 更新（见上），快照链不再从引导页触发；adb 联调路径仍在但无超时兜底（见 known-gaps）。
-- **保活**：前台服务 + 5 秒看门狗（自动重拉挂死引擎）+ 3 秒 UI 轮询 + 崩溃自动回退闸门（UndoGate）。
-- **内置控制台**：独立 bash 交互终端（`assets/console.html`），引擎未运行也可排查。
+### ① 작업용 저장소 2개 받기
 
-### AI 浏览器（隔离 WebView 工作台）
+임의의 작업 폴더에서 실행하세요.
 
-- 右侧栏独立工作台，**与主 UI 完全隔离**的第二个 WebView；AI 可开页签、多网页同时管理，
-  人打开即可查看多个页签——**UI 是给人看的，AI 走工具直接读信息**。
-- **分辨率 = CSS 视口**（document-start 注入 `width=<cssW>` + 物理矩形等比 letterbox），
-  `window.innerWidth` 精确等于请求值；**PC / 手机身份**可切换（UA-CH 能力门，WebView 110 degraded 如实上报）。
-- 侧栏收起时视口**不再塌成 0x0**（可见性用 `INVISIBLE` 而非 `GONE`，保留布局 + 按上次舞台尺寸给非退化矩形）。
-- `browser_snapshot` 渲染每行 ref（不再只报计数，模型拿得到可点目标）。
-- 滚动避让、Edge 式错误页、关闭即销毁、失败渲染兜底。
+~~~bash
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/kelai141/dsh-mobile-apk.git ko-source
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch ko-patch https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch.git ko-patches
+~~~
 
-### 虚拟屏（独立屏幕运行第三方 App）
+- `ko-source`: **최신 원본을 번역**하기 위한 작업 폴더
+- `ko-patches`: 생성한 **패치 파일을 커밋·업로드**할 폴더
+- `GIT_LFS_SKIP_SMUDGE=1`: 번역에 필요 없는 대형 런타임 파일 다운로드를 생략
 
-- 经 **Shizuku 特权通道**创建虚拟屏，第三方 App 在独立屏幕运行，**不挤占用户前台**；
-  单实例上限 1 块，序号复用（`virtual-1` 恒为「没有屏时新建」的号）。
-- **跨屏拉起唯一可行路径**：壳侧 Shizuku UserService 的 `am start --display <id> -n <component>`
-  （固定 argv，先 `cmd package resolve-activity`）；其余三条路实测均不成立
-  （`monkey --display` 无此选项 / shell `am start` 不稳 / 进程内 `setLaunchDisplayId` 被 `SafeActivityOptions` 拒）。
-  模型侧用法：`android_app_launch { pkg, screenId: "virtual-N" }`。
-- **坐标输入**：虚拟屏上用绝对 `x/y` + `screenId`（经 `input -d <displayId>`，真实屏不受影响）；
-  归一化 `nx/ny` 在虚拟屏上**明确拒绝**（分母歧义会静默点到真屏）。
-- **截图认屏**：`android_screenshot { screenId }` 的**两条通道都**落到目标 displayId，
-  并把分辨率锚点换成该屏自身像素（此前 ADB 回落路径忽略 `screenId`，抓的是真实屏）。
-- 等比适配（按内容宽高比 letterbox 居中，不拉伸）、空闲 10 分钟自动回收、
-  设置页「手机控制」含强制销毁（三连点确认）。
-
-### 手机控制（无障碍 + Shizuku 双通道）
-
-- **无障碍通道**：语义树 / ref 动作 / 虚拟屏语义树；**Shizuku 特权通道**：uid 2000 执行系统命令
-  （`screencap`/`uiautomator`/`dumpsys`/`input` 等只读与输入类；系统配置写面一律拒绝）。
-- **ref 寻址**：dump 时保留节点句柄，重定位不再重走 `childPath`；建树时钉住窗口 id
-  （焦点变化不再换树）；UI 缓存 TTL 10 分钟。
-- **screenId 三件套**：`screenId`/`displayId`/`scope` 逐条回填；`guard()` 异步解析别名
-  （虚拟屏别名 → 动态 displayId 必须问壳侧注册表，同步面做不到）。
-- **设置页「手机控制」**：Shizuku 状态与引导、屏幕开放范围、虚拟屏档位、浮窗开关、无障碍入口、强制销毁。
-
-### 附件与文件
-
-- **回形针上拉菜单**（DSH 原生视觉）：点回形针出「上传附件 / 上传图片」两项，
-  **单击即出**（不再需要点两下）；两项分别走**系统文件选择器**与**系统相册**
-  （显式图片类型分流到 `PickMultipleVisualMedia`，API 33+ 系统照片选择器）。
-- **文件直达会话**：「使用其他应用打开 / 分享」→ 自动跳转本应用 → 强制新建临时工作区会话处理文件；
-  临时工作区 7 天 TTL 自动清理。
-- **SAF 桥**：`pickDirectory` 把所选目录映射为真实路径。
-
-## 下载 / 安装
-
-Release 提供双 ABI 包（另含快照归档、插件包、MANIFEST 校验清单与发布说明）：
-
-| APK | 适用 |
-|---|---|
-| `dsh-mobile-apk-v<版本>-arm64.apk` | arm64 设备（真机） |
-| `dsh-mobile-apk-v<版本>-x86_64.apk` | x86_64 模拟器 / 设备 |
-
-```sh
-adb install -r -t <apk>    # 同签名覆盖安装
-```
-
-**ABI 必须与设备匹配。** ABI 不匹配会导致引擎启动即崩——node ELF `EM_X86_64` vs `EM_AARCH64`。
-真机选 arm64 包，模拟器选 x86_64 包。
-
-> **覆盖安装后请等待首次解压完成**（快照指纹翻转），期间勿强杀应用。
-
-## 构建
-
-快照构建与打包在**协调仓库**（[dsh-mobile](https://github.com/kelai141/dsh-mobile)）完成，
-本仓库是壳子仓库。要求：JDK 17+、Android SDK（compileSdk 36）；Gradle 8.11.1 由 wrapper 提供。
-
-```powershell
-# 快照构建（Termux 源 + 依赖闭包 + pnpm + cordis 权威覆盖 + 瘦身）：
-node scripts\build-snapshot-013.mjs <arm64|x86_64>
-
-# 一键打包（快照 → 注入 → 门禁 → gradle，双 ABI）：
-pwsh scripts\build-apk-013.ps1 -Suffix ""
-
-# dev 档：单 ABI x86_64 + preset 1（产物体积增大，禁发布）
-pwsh scripts\build-apk-013.ps1 -Fast
-```
+### ② 원본 파일을 번역하기
 
-产物：`out\v<版本>\dsh-mobile-apk-v<版本>-<abi>.apk`。
+`ko-source/app/src/main/res/values-ko/strings.xml`을 새로 만들어 **UTF-8**로 저장합니다. 예:
 
-门禁由 `scripts/check-release-gates.mjs` 聚合（`--list` 现数）。任一不过即拒打包，
-严格发布档 `--run --require` 要求 SKIP=0。
+~~~xml
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ds_start_engine">엔진 시작</string>
+    <string name="ds_retry">다시 시도</string>
+    <string name="ds_safe_start">안전 모드로 시작</string>
+</resources>
+~~~
 
-## 桥协议 v1（`window.androidBridge`）
+위 세 키는 실제 원본 `values/strings.xml`에 있는 키입니다. 빠진 키는 기본 `values/strings.xml`로 대체되므로 조금씩 번역해도 됩니다.
 
-壳侧 **51 个 `@JavascriptInterface` 方法**；页面按 `androidBridge.version` 做特性检测，
-故 APK 与 dsh 版本解耦。
+**번역할 때 주의할 점**
 
-**同步返回**
+- `name` 키를 바꾸지 마세요. 원본 키와 정확히 일치해야 합니다.
+- `%1$s`, `%2$d` 같은 Android 자리표시자의 타입·순서를 지키세요.
+- 웹 UI의 `{reason}` 같은 보간 변수도 그대로 남겨야 합니다.
+- XML 특수문자 `&`는 `&amp;`로 이스케이프하고 XML 문법·중복 키를 확인하세요.
+- 앱의 언어 설정이 한국어일 때만 `values-ko`가 선택됩니다. 웹 UI의 언어 설정은 별도로 확인해야 합니다.
 
-| 方法 | 说明 |
-|---|---|
-| `version` | 应用版本号，feature-detect 用 |
-| `getSystemDark` | 系统深色模式（绕过部分厂商 WebView `matchMedia` 失效，首帧主题用） |
-| `checkEngine` | 探测 `127.0.0.1:3080`；JSON `{running, latencyMs, error?}` |
-| `hasAllFilesAccess` | 是否已授予「所有文件访问」权限 |
-| `getPickToken` | 目录选择桥的一次性会话 token（引擎侧 pick 端点校验） |
-| `copyText` | 写入系统剪贴板（WebView `clipboard.writeText` 被拒时的回退） |
-| `getDevLogEnabled` / `setDevLogEnabled` | dev 日志开关事实（拒绝乐观置位） |
-| `getImmersiveMode` / `setImmersiveMode` | 沉浸式状态栏（壳侧权威值） |
-| `getOverlayEnabled` / `setOverlayEnabled` | 悬浮层开关 |
-| `getScreenScope` / `setScreenScope` | 屏幕开放范围（virtual-only / real-only / all） |
-| `getVdisplayScale` / `setVdisplayScale` | 虚拟屏分辨率档位 |
-| `getVdisplayFloatEnabled` / `setVdisplayFloatEnabled` | 退后台自动浮窗开关 |
-| `a11yStatus` | 无障碍控制通道状态 JSON |
+### ③ 변경한 원본에서 `.patch` 파일 만들기
 
-**浏览器工作台**
+원본 폴더로 이동해 수정한 파일을 Git에 등록한 뒤 diff를 생성합니다.
 
-| 方法 | 说明 |
-|---|---|
-| `browserHostStatus` | 工作台状态 |
-| `browserHostShow` | 打开/重开（含零参重载——WebView 桥按实参个数匹配） |
-| `browserHostHide` / `browserHostClose` | 隐藏 / 关闭即销毁当前页 |
-| `browserHostReload` | 重新加载（内含 `browserHostShow` 语义） |
-| `browserHostBounds` / `browserHostViewport` | 舞台几何 / 分辨率（CSS 视口） |
-| `browserHostIdentity` | 身份档切换（PC / 手机），载荷 `{profile, ua}` |
+~~~bash
+cd ko-source
+git add -A app/src/main/res/values-ko/strings.xml
+git diff --cached --check
+git diff --cached --binary HEAD -- app/src/main/res/values-ko/strings.xml > ../ko-patches/localization/patches/001-android-ko.patch
+~~~
 
-**虚拟屏**
+이제 `ko-patches/localization/patches/001-android-ko.patch` 파일이 생깁니다. **`git diff --cached --binary HEAD`는 신규 파일과 기존 파일 수정 모두 처리**합니다.
 
-| 方法 | 说明 |
-|---|---|
-| `vdisplayStatus` / `vdisplayCreate` / `vdisplayDestroy` | 状态 / 创建（幂等）/ 销毁 |
-| `vdisplaySelect` | 选择呈现目标（仅自有虚拟别名可选） |
-| `vdisplayBounds` | 侧栏舞台几何下发（原生 CoverView 对位） |
-| `forceDestroyVdisplay` | 强制销毁全部虚拟屏（与设置页同口径） |
+웹 UI의 기존 소스 파일을 번역했다면 별도 패치로 구분할 수 있습니다. (아래는 해당 파일을 실제로 수정한 뒤 실행합니다.)
 
-**命令**
+~~~bash
+git add -A dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
+git diff --cached --binary HEAD -- dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts > ../ko-patches/localization/patches/020-browser-ko.patch
+~~~
 
-| 方法 | 说明 |
-|---|---|
-| `pickDirectory` | SAF 目录选择；结果经 `window.__dshBridge.onDirectoryPicked(callbackId, path)` 异步回传 |
-| `openPathChooser` | 路径选择（工作区/共享目录） |
-| `openNativePath` | 「使用其他应用打开」原生路径 |
-| `settingsPath` / `exportSettingsDocument` / `exportConfig` / `importConfig` | 设置文档导入导出 |
-| `keepScreenOn` / `showNotification` | 屏幕常亮 / 通知测试通道 |
-| `requestAllFilesAccess` | 打开系统「所有文件访问」授权页（特殊权限） |
-| `openA11ySettings` / `unlockRestrictedSettings` | 无障碍设置页 / Android 13+ 一键解锁受限设置 |
-| `restartEngine` / `shutdownToGuide` / `reloadWebUI` / `openConsole` | 引擎与 UI 生命周期 |
-| `incomingWorkspacePath` | 来件会话工作区路径 |
+패치 내부에는 `diff --git a/... b/...`, `--- a/...`, `+++ b/...`와 변경 줄이 기록됩니다. **패치 파일은 직접 한 줄씩 만드는 대신 Git으로 생성하는 것을 권장**합니다. 절대 경로를 사용하지 말고, 파일을 UTF-8로 보관하세요.
 
-## 工具面（模型可见能力）
+패치 파일을 여러 개 만들었다면 `001-...patch`, `020-...patch`처럼 **사전순 적용 순서**를 정하세요. 뒤 패치가 앞 패치와 충돌하지 않게 기능별로 분리하는 것이 좋습니다.
 
-**AI 可见的能力全部来自插件**，壳侧不直接注册工具。当前 45 个工具，按能力组渐进披露
-（先 `android_capabilities` 解锁，之后工具才出现在列表里）：
+### ④ 적용 가능 여부 확인하기
 
-- **phone**（14）：`android_ui_dump` / `android_ui_click` / `android_ui_input` / `android_ui_scroll` /
-  `android_ui_tree` / `android_ui_detail` / `android_ui_global` / `android_screenshot` /
-  `android_screen_list` / `android_app_launch` / `android_device_info` / `android_act_input` /
-  `android_web_dump` / `android_env_prepare`
-- **browser**（19）：`browser_open` / `browser_snapshot` / `browser_click` / `browser_type` / …（17 个）
-- **virtual-display**（3）：`android_vdisplay_create` / `android_vdisplay_destroy` / `android_vdisplay_status`
-- 另有 bridge（4）、model-capability（2）、linux-env（2）、file-open（1）
+이미 번역이 적용된 `ko-source`에서 정방향 `git apply --check`를 하면 실패할 수 있습니다. 이때는 **역방향 검사**를 사용합니다.
 
-**跨屏用法**：任何带 `screenId` 的工具传 `"virtual-N"` 即在虚拟屏上执行
-（`android_screen_list` 列出当前别名与范围）；缺省 `real` 表示真实屏。
+~~~bash
+git apply --reverse --check --binary ../ko-patches/localization/patches/001-android-ko.patch
+~~~
 
-## 权限
+정확한 정방향 검사는 **수정하지 않은 최신 원본의 별도 체크아웃**에서 실행하세요.
 
-| 权限 | 用途 |
-|---|---|
-| `INTERNET` | WebView + 引擎探测 + APK 自更新（仅手动触发） |
-| `POST_NOTIFICATIONS` | 通知通道（API 33+ 运行时请求） |
-| `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_DATA_SYNC` | 保活前台服务 |
-| `MANAGE_EXTERNAL_STORAGE` | 「所有文件访问」（外部工作区要求；特殊权限，用户手动授予） |
-| `REQUEST_INSTALL_PACKAGES` | 唤起系统安装器安装下载的更新包（须用户在系统页显式授权） |
+~~~bash
+git apply --check --binary --whitespace=error /path/to/ko-patches/localization/patches/001-android-ko.patch
+~~~
 
-SAF 目录/图片选择无需权限。虚拟屏与特权 shell 需用户安装、启动并授权 **Shizuku**。
+위 마지막 명령은 **깨끗한 원본 체크아웃에서 실행**해야 하며, 경로는 본인 환경에 맞게 바꿔야 합니다. GitHub Actions도 각 패치에 대해 `git apply --check` 후 순서대로 `git apply`를 실행합니다. 하나라도 충돌하면 빌드를 중단합니다.
 
-## 贡献
+### ⑤ 패치 브랜치에 올리기
 
-分支与提交约定、经验记录写法（`docs/contrib/<github-account>/`）、新增界面的中英双语要求、PR 证据与提交前自审，见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+중요: 이제 `ko-source`가 아니라 **`ko-patches` 폴더**로 이동합니다.
 
-## 版本历史
+~~~bash
+cd ../ko-patches
+git status
+git add localization/patches/001-android-ko.patch
+git commit -m "l10n: add Korean Android strings patch"
+git push origin ko-patch
+~~~
 
-完整版本历史见 [`docs/AGENTS/changelog-archive.md`](docs/AGENTS/changelog-archive.md)（倒序，最新在最上）。
-开发地图与坑位库见 [`AGENTS.md`](AGENTS.md) 与 [`docs/AGENTS/gotchas.md`](docs/AGENTS/gotchas.md)。
+푸시하면 이 포크의 **Korean arm64 Release from upstream** 워크플로가 자동 시작됩니다.
 
-## License
+GitHub 웹으로 올리고 싶다면 **`ko-patch` 브랜치를 선택한 뒤 `localization/patches/`에 이미 만든 `.patch` 파일만** 업로드하세요. 웹에서 번역 소스 파일만 수정해 커밋하면 이 워크플로는 그 변경을 적용하지 않습니다.
 
-MIT。第三方组件按各自许可（见依赖声明）。GPL 合规：copyleft 全文三形态在场——快照
-`usr/share/LICENSES/`、仓库 `LICENSES/`、APK `assets/licenses/`。
+## 3. 기존 한국어 패치 업데이트하기
 
-## 致谢与邀请
+**원본이 변경되거나 번역을 추가할 때는 최신 원본을 기준으로 패치를 다시 생성**해야 합니다.
 
-**感谢全体社区成员的反馈与贡献！** 特别致谢：cdwlll（环境问题反馈）、haitunlang（MIUI12 兼容）、
-TACONailoong（老 WebView 兼容方案）、X-SCI-TECH（PR 贡献）、Yangerwei（文件竞态反馈）、
-gr12-cmd（armv7l 需求）、cmyfqwq（覆盖安装兼容反馈）。
+1. `ko-source`에 아직 커밋/보관하지 않은 작업이 있다면 먼저 안전하게 보관하세요.
+2. 깨끗한 작업 폴더라면 `git pull --ff-only origin main`으로 원본을 갱신하거나, 2절의 `git clone` 명령으로 새 `ko-source`를 받습니다.
+3. 새 원본에서 해당 번역을 다시 수정한 후 `git add -A 파일경로` 및 `git diff --cached --binary HEAD -- 파일경로`를 실행합니다.
+4. 출력 대상을 기존 `001-android-ko.patch`로 지정해 **기존 패치를 교체**하세요. 같은 영역을 수정하는 패치를 끝없이 추가하면 충돌합니다.
+5. `ko-patches`에서 `git pull --ff-only origin ko-patch`로 다른 변경을 동기화한 뒤, 수정한 `.patch`만 커밋하고 `git push origin ko-patch`로 업로드합니다.
+6. Actions 로그에서 적용 및 빌드 성공을 확인합니다.
 
-**诚邀各位开发者参与**：欢迎提交 issue、PR、建议与改进。我们特别需要：Android 兼容性测试
-（华为/荣耀/小米等定制 WebView）、armv7l 等更多机型支持、Shizuku 通道完善、插件生态扩展。
-开发维护规范见各仓库 `AGENTS.md`（开发地图）。
+이전 패치가 더는 필요 없으면 `ko-patch`에서 해당 `.patch`를 삭제해 커밋하면 됩니다. **`main`을 수정하거나 원본 소스를 이 포크에 복사할 필요는 없습니다.**
 
-## 欢迎加入用户群反馈
+## 4. 자동 빌드, 결과와 오류 확인
 
-<img src="qrcode/qqcommunity-1.png" alt="dsh-mobile 用户群二维码（群号 1109493992）" width="320">
+1. [Actions 페이지](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/actions)에서 **Korean arm64 Release from upstream** 실행 내역을 엽니다.
+2. 성공하면 [Releases 페이지](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)**을 확인합니다. 초안은 일반 공개 릴리즈로 게시되기 전 상태입니다.
+3. `dsh-ko-arm64.apk`를 기기에서 테스트하세요. `KO-BUILD-SOURCES.txt`에는 원본 커밋, 패치 브랜치 커밋, ABI, 서명, APK SHA-256 해시가 기록됩니다.
+4. 정상 확인 후 원한다면 GitHub에서 **Publish release**로 초안을 수동 게시할 수 있습니다.
 
-欢迎加入 dsh-mobile 用户群反馈：使用问题、机型兼容、功能建议都可以在群里直接提。
+변경이 없고 최근에 동일한 원본·번역 조합으로 성공했다면 재빌드를 생략합니다. 지금 당장 재빌드하려면 **Actions → 해당 워크플로 → Run workflow → `force=true`**를 선택하세요.
 
+원본에 새 커밋이 생기면 매일 **03:15 KST** 예약 실행에서 다시 시도합니다. 원본 변경 때문에 패치가 깨지면 **Apply Korean patch series on top of upstream** 단계에서 실패하며, 새 원본에 맞게 3절대로 패치를 재생성해야 합니다. 충돌을 자동으로 무시하지 않습니다.
 
-## 支持我们
+## 5. 제한 사항 및 보안
 
-请在个人生活有余力且经济自主的前提下进行适当的自愿赞助
-
-微信赞赏与支付宝收款码：
-
-<img src="qrcode/support-wechat.png" alt="微信赞赏码" width="320">
-<img src="qrcode/support-alipay.png" alt="支付宝收款码" width="320">
+- 이 저장소는 **공개**입니다. 패치나 로그에 토큰·비밀번호·개인 키·비공개 정보를 넣지 마세요.
+- 현재는 **arm64 APK 하나만** 생성합니다. `x86_64` APK를 만들지 않습니다.
+- 빌드는 원본 `scripts/build-apk.mjs`를 따릅니다. 원본은 `release`/`debug` 빌드 모두 저장소의 `repoDebug` 인증서를 사용하므로, GitHub **Release 초안**이라고 해서 Android 정식 배포 키로 서명됐다는 의미는 아닙니다.
+- 앱의 UI/언어 전체가 자동으로 한국어가 되는 것은 아닙니다. **APK 소스에 포함된 기능만** 패치할 수 있습니다. 외부 플러그인이나 DSH 엔진의 화면을 변경하려면 별도 구현 확인이 필요합니다.
+- 원본의 패키징 방식이나 빌드 검증 조건이 바뀌면 이 포크의 워크플로도 업데이트해야 할 수 있습니다.
