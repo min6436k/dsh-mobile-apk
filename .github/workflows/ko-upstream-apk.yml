@@ -1,0 +1,215 @@
+name: Korean APK from upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      abi:
+        description: Android ABI to build
+        type: choice
+        options: [both, arm64, x86_64]
+        default: both
+      force:
+        description: Rebuild even if these exact inputs succeeded before
+        type: boolean
+        default: false
+  schedule:
+    # 03:15 KST, every day. Skip the expensive build if inputs are unchanged.
+    - cron: '15 18 * * *'
+  push:
+    branches: [l10n/ko]
+    paths:
+      - 'localization/patches/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ko-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.abi != 'both' && format('["{0}"]', inputs.abi) || '["arm64","x86_64"]') }}
+    env:
+      DSH_APK_DIR: ${{ github.workspace }}
+    steps:
+      - name: Checkout latest upstream APK source
+        uses: actions/checkout@v4
+        with:
+          repository: kelai141/dsh-mobile-apk
+          ref: main
+          fetch-depth: 0
+          lfs: false
+          persist-credentials: false
+
+      - name: Fetch Korean patch branch and record exact sources
+        id: sources
+        shell: bash
+        env:
+          FORK_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          upstream_sha="$(git rev-parse HEAD)"
+          git fetch --no-tags --depth=1 "https://github.com/${FORK_REPO}.git" refs/heads/l10n/ko
+          locale_sha="$(git rev-parse FETCH_HEAD)"
+          echo "upstream_sha=$upstream_sha" >> "$GITHUB_OUTPUT"
+          echo "locale_sha=$locale_sha" >> "$GITHUB_OUTPUT"
+          echo "week=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
+          printf 'Upstream: %s\nKorean patches: %s\n' "$upstream_sha" "$locale_sha" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check for an already successful build of these inputs
+        id: cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .deploy-tmp/ko-success-marker
+          # Rebuild at least weekly so the 30-day APK artifacts don't all expire.
+          key: ko-v1-${{ matrix.abi }}-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
+
+      - name: Decide whether a build is needed
+        id: decision
+        shell: bash
+        env:
+          CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+          FORCE_BUILD: ${{ inputs.force }}
+        run: |
+          if [ "$CACHE_HIT" = true ] && [ "$FORCE_BUILD" != true ]; then
+            echo 'build=false' >> "$GITHUB_OUTPUT"
+            echo 'No source or translation change for this ABI; last successful build remains available.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'build=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Apply Korean patch series on top of upstream
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .deploy-tmp/ko-patches
+          git archive "${{ steps.sources.outputs.locale_sha }}" localization/patches \
+            | tar -x -C .deploy-tmp/ko-patches
+          patch_dir="$PWD/.deploy-tmp/ko-patches/localization/patches"
+          mapfile -d '' patches < <(find "$patch_dir" -type f -name '*.patch' -print0 | sort -z)
+          echo "Found ${#patches[@]} Korean patch(es)."
+          for patch in "${patches[@]}"; do
+            echo "Applying $(basename "$patch")"
+            git apply --check --binary --whitespace=error "$patch"
+            git apply --binary --whitespace=error "$patch"
+          done
+          git diff --check
+          git diff --stat
+
+      - name: Cache upstream base archives
+        if: steps.decision.outputs.build == 'true'
+        id: base-cache
+        uses: actions/cache@v4
+        with:
+          path: base
+          key: ko-lfsbase-${{ matrix.abi }}-${{ hashFiles('base/base-dsh.tar.xz', format('base/base-usr-{0}.tar.xz', matrix.abi)) }}
+
+      - name: Download only the needed upstream Git LFS archives
+        if: steps.decision.outputs.build == 'true' && steps.base-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git lfs install --local
+          git lfs pull --include="base/base-usr-${{ matrix.abi }}.tar.xz,base/base-dsh.tar.xz"
+
+      - name: Verify LFS files are real archives
+        if: steps.decision.outputs.build == 'true'
+        run: node scripts/require-lfs-materialized.mjs "base/base-usr-${{ matrix.abi }}.tar.xz" base/base-dsh.tar.xz
+
+      - name: Set up Node.js 24
+        if: steps.decision.outputs.build == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Set up Java 17
+        if: steps.decision.outputs.build == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Ensure Python CLI is present
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y python3 python-is-python3
+
+      - name: Build bundled Android plugins
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t plugin_dirs < <(node -e "const fs=require('node:fs'); const {dirs}=require('./scripts/plugin-dirs.json'); console.log(dirs.filter(d=>JSON.parse(fs.readFileSync(d+'/package.json','utf8')).scripts?.build).join('\\n'))")
+          test "${#plugin_dirs[@]}" -gt 0
+          for dir in "${plugin_dirs[@]}"; do
+            node scripts/source-build/install-project-dependencies.mjs "$dir" .deploy-tmp/source-build/plugin-lock-resolution-build.json
+            (cd "$dir" && npm run build)
+          done
+
+      - name: Stage runtime archives
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ '${{ matrix.abi }}' = arm64 ]; then base_dir=arm64-base; else base_dir=x64-base; fi
+          mkdir -p ".deploy-tmp/${base_dir}"
+          cp "base/base-usr-${{ matrix.abi }}.tar.xz" ".deploy-tmp/${base_dir}/base-usr.tar.xz"
+          cp base/base-dsh.tar.xz ".deploy-tmp/${base_dir}/base-dsh.tar.xz"
+
+      - name: Assemble fresh Termux runtime snapshot
+        if: steps.decision.outputs.build == 'true'
+        run: node scripts/build-snapshot-013.mjs "${{ matrix.abi }}"
+
+      - name: Build Korean APK
+        if: steps.decision.outputs.build == 'true'
+        run: node scripts/build-apk.mjs --abi "${{ matrix.abi }}" --suffix '-ko'
+
+      - name: Verify APK signature and write provenance
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/check-apk-signatures.mjs --self-test
+          mapfile -t apks < <(find out -type f -name '*.apk' | sort)
+          test "${#apks[@]}" -eq 1
+          node scripts/check-apk-signatures.mjs --apk "${apks[0]}" --keystore keystore/debug.keystore
+          printf 'Upstream commit: %s\nKorean patch commit: %s\nABI: %s\n' \
+            '${{ steps.sources.outputs.upstream_sha }}' \
+            '${{ steps.sources.outputs.locale_sha }}' \
+            '${{ matrix.abi }}' > out/KO-BUILD-SOURCES.txt
+          sha256sum "${apks[0]}" >> out/KO-BUILD-SOURCES.txt
+
+      - name: Upload APK and provenance (not a GitHub Release)
+        if: steps.decision.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsh-ko-${{ matrix.abi }}-${{ github.run_number }}
+          path: |
+            out/v*/*.apk
+            out/KO-BUILD-SOURCES.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Mark this exact input set as successfully built
+        if: steps.decision.outputs.build == 'true' && steps.cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir -p .deploy-tmp/ko-success-marker
+          printf '%s\n' '${{ steps.sources.outputs.upstream_sha }}' '${{ steps.sources.outputs.locale_sha }}' > .deploy-tmp/ko-success-marker/success
+
+      - name: Cache the successful build marker
+        if: steps.decision.outputs.build == 'true' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .deploy-tmp/ko-success-marker
+          key: ko-v1-${{ matrix.abi }}-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
