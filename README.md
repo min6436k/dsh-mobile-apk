@@ -1,3 +1,13 @@
+# 🇰🇷 dsh-mobile-apk Ko-KR-Patch
+
+**한국어 패치/자동 빌드 전용 포크입니다.** 기본 브랜치 `l10n/ko`에 한국어 패치와 GitHub Actions 워크플로를 관리하고, `main`은 원본 [kelai141/dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 코드만 보관합니다.
+
+- **[한국어 패치 만드는 법 및 업데이트 가이드](localization/README.md)**
+- [자동 빌드 실행 내역](../../actions)
+- [arm64 APK Release 초안](../../releases)
+
+---
+
 # dsh-mobile-apk — DeepSeek Harness 安卓壳 APK
 
 [🌐 English README](README.en.md)
