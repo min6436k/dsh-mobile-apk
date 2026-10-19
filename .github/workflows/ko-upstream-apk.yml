@@ -179,6 +179,35 @@ jobs:
         if: steps.decision.outputs.build == 'true'
         run: node scripts/build-snapshot-013.mjs "arm64"
 
+      # Upstream 0.14.8 retired undo-savepoint from the injected runtime but its
+      # generic completeness gate still expects every historical manifest entry.
+      # Filter ONLY that retired package in the gate, leaving other checks intact.
+      - name: Align upstream check with retired undo-savepoint plugin
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const builder = readFileSync('scripts/build-apk.mjs', 'utf8')
+          const gatePath = 'scripts/check-inject-completeness.mjs'
+          const source = readFileSync(gatePath, 'utf8')
+          const before = 'const dirs = manifest.dirs.concat(manifest.externals).map((d) => join(ROOT, d))'
+          const after = "const dirs = manifest.dirs.concat(manifest.externals.filter((d) => d !== 'vendor/dsh-undo-savepoint')).map((d) => join(ROOT, d))"
+          const retired = builder.includes('dsh-undo-savepoint 已从新快照装配面退役')
+            && builder.includes("'--external', marketDeg,")
+          if (!retired) {
+            console.log('Upstream injection policy has changed; no compatibility edit made.')
+          } else if (source.includes(before)) {
+            writeFileSync(gatePath, source.replace(before, after))
+            console.log('Gate updated: retired undo-savepoint is not expected in injected profiles.')
+          } else if (source.includes(after)) {
+            console.log('Upstream completeness gate already excludes retired undo-savepoint.')
+          } else {
+            throw new Error('Unexpected upstream completeness gate change; review before building.')
+          }
+          NODE
+
       - name: Build Korean APK
         if: steps.decision.outputs.build == 'true'
         run: node scripts/build-apk.mjs --abi "arm64" --suffix '-ko'
