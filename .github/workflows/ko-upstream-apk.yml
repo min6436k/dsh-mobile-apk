@@ -1,13 +1,8 @@
-name: Korean APK from upstream
+name: Korean arm64 Release from upstream
 
 on:
   workflow_dispatch:
     inputs:
-      abi:
-        description: Android ABI to build
-        type: choice
-        options: [both, arm64, x86_64]
-        default: both
       force:
         description: Rebuild even if these exact inputs succeeded before
         type: boolean
@@ -21,20 +16,16 @@ on:
       - 'localization/patches/**'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: ko-apk-${{ github.ref }}
+  group: ko-apk-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 360
-    strategy:
-      fail-fast: false
-      matrix:
-        abi: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.abi != 'both' && format('["{0}"]', inputs.abi) || '["arm64","x86_64"]') }}
     env:
       DSH_APK_DIR: ${{ github.workspace }}
     steps:
@@ -67,8 +58,8 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .deploy-tmp/ko-success-marker
-          # Rebuild at least weekly so the 30-day APK artifacts don't all expire.
-          key: ko-v1-${{ matrix.abi }}-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
+          # Recheck unchanged inputs weekly so the source packaging does not go untested.
+          key: ko-v1-arm64-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
 
       - name: Decide whether a build is needed
         id: decision
@@ -109,7 +100,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: base
-          key: ko-lfsbase-${{ matrix.abi }}-${{ hashFiles('base/base-dsh.tar.xz', format('base/base-usr-{0}.tar.xz', matrix.abi)) }}
+          key: ko-lfsbase-arm64-${{ hashFiles('base/base-dsh.tar.xz', 'base/base-usr-arm64.tar.xz') }}
 
       - name: Download only the needed upstream Git LFS archives
         if: steps.decision.outputs.build == 'true' && steps.base-cache.outputs.cache-hit != 'true'
@@ -117,11 +108,11 @@ jobs:
         run: |
           set -euo pipefail
           git lfs install --local
-          git lfs pull --include="base/base-usr-${{ matrix.abi }}.tar.xz,base/base-dsh.tar.xz"
+          git lfs pull --include="base/base-usr-arm64.tar.xz,base/base-dsh.tar.xz"
 
       - name: Verify LFS files are real archives
         if: steps.decision.outputs.build == 'true'
-        run: node scripts/require-lfs-materialized.mjs "base/base-usr-${{ matrix.abi }}.tar.xz" base/base-dsh.tar.xz
+        run: node scripts/require-lfs-materialized.mjs "base/base-usr-arm64.tar.xz" base/base-dsh.tar.xz
 
       - name: Set up Node.js 24
         if: steps.decision.outputs.build == 'true'
@@ -144,6 +135,15 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y python3 python-is-python3
 
+      - name: Run Kotlin unit tests before APK gates
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          yes | sudo "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null 2>&1 || true
+          ./gradlew :app:testDebugUnitTest --no-daemon --console=plain
+
       - name: Build bundled Android plugins
         if: steps.decision.outputs.build == 'true'
         shell: bash
@@ -156,25 +156,34 @@ jobs:
             (cd "$dir" && npm run build)
           done
 
+      - name: Fetch pinned official engine for provenance gates
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          pinned="$(node -p 'require("./scripts/contract.json").upstream.commit')"
+          git clone --filter=blob:none --no-checkout https://github.com/deepseek-ai/deepseek-harness.git .deploy-tmp/deepseek-harness
+          git -C .deploy-tmp/deepseek-harness checkout --detach "$pinned"
+
       - name: Stage runtime archives
         if: steps.decision.outputs.build == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          if [ '${{ matrix.abi }}' = arm64 ]; then base_dir=arm64-base; else base_dir=x64-base; fi
+          base_dir=arm64-base
           mkdir -p ".deploy-tmp/${base_dir}"
-          cp "base/base-usr-${{ matrix.abi }}.tar.xz" ".deploy-tmp/${base_dir}/base-usr.tar.xz"
+          cp "base/base-usr-arm64.tar.xz" ".deploy-tmp/${base_dir}/base-usr.tar.xz"
           cp base/base-dsh.tar.xz ".deploy-tmp/${base_dir}/base-dsh.tar.xz"
 
       - name: Assemble fresh Termux runtime snapshot
         if: steps.decision.outputs.build == 'true'
-        run: node scripts/build-snapshot-013.mjs "${{ matrix.abi }}"
+        run: node scripts/build-snapshot-013.mjs "arm64"
 
       - name: Build Korean APK
         if: steps.decision.outputs.build == 'true'
-        run: node scripts/build-apk.mjs --abi "${{ matrix.abi }}" --suffix '-ko'
+        run: node scripts/build-apk.mjs --abi "arm64" --suffix '-ko'
 
-      - name: Verify APK signature and write provenance
+      - name: Verify arm64 APK signature and record exact inputs
         if: steps.decision.outputs.build == 'true'
         shell: bash
         run: |
@@ -183,22 +192,35 @@ jobs:
           mapfile -t apks < <(find out -type f -name '*.apk' | sort)
           test "${#apks[@]}" -eq 1
           node scripts/check-apk-signatures.mjs --apk "${apks[0]}" --keystore keystore/debug.keystore
-          printf 'Upstream commit: %s\nKorean patch commit: %s\nABI: %s\n' \
-            '${{ steps.sources.outputs.upstream_sha }}' \
-            '${{ steps.sources.outputs.locale_sha }}' \
-            '${{ matrix.abi }}' > out/KO-BUILD-SOURCES.txt
-          sha256sum "${apks[0]}" >> out/KO-BUILD-SOURCES.txt
+          mkdir -p release-out
+          cp "${apks[0]}" release-out/dsh-ko-arm64.apk
+          printf 'Upstream: %s\nKorean patches: %s\nABI: arm64\nSigner: upstream repoDebug certificate\n' \
+            '${{ steps.sources.outputs.upstream_sha }}' '${{ steps.sources.outputs.locale_sha }}' \
+            > release-out/KO-BUILD-SOURCES.txt
+          sha256sum release-out/dsh-ko-arm64.apk >> release-out/KO-BUILD-SOURCES.txt
 
-      - name: Upload APK and provenance (not a GitHub Release)
+      - name: Upload arm64 APK to draft GitHub Release
         if: steps.decision.outputs.build == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: dsh-ko-${{ matrix.abi }}-${{ github.run_number }}
-          path: |
-            out/v*/*.apk
-            out/KO-BUILD-SOURCES.txt
-          if-no-files-found: error
-          retention-days: 30
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          UPSTREAM: ${{ steps.sources.outputs.upstream_sha }}
+          PATCHES: ${{ steps.sources.outputs.locale_sha }}
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)"
+          tag="ko-v${version}-u${UPSTREAM:0:12}-p${PATCHES:0:12}"
+          if gh release view "$tag" --repo "$REPO" >/dev/null 2>&1; then
+            draft="$(gh release view "$tag" --repo "$REPO" --json isDraft --jq .isDraft)"
+            [ "$draft" = true ] || { echo 'Published release will not be overwritten' >&2; exit 1; }
+          else
+            gh release create "$tag" --repo "$REPO" --draft --target main \
+              --title "Korean arm64 v${version} ($tag)" \
+              --notes "Unverified Korean arm64 APK. Check on a device before publishing. Source SHAs and signature are in KO-BUILD-SOURCES.txt."
+          fi
+          gh release upload "$tag" release-out/dsh-ko-arm64.apk release-out/KO-BUILD-SOURCES.txt --repo "$REPO" --clobber
+          echo "Draft Release: https://github.com/${REPO}/releases/tag/${tag}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Mark this exact input set as successfully built
         if: steps.decision.outputs.build == 'true' && steps.cache.outputs.cache-hit != 'true'
@@ -212,4 +234,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .deploy-tmp/ko-success-marker
-          key: ko-v1-${{ matrix.abi }}-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
+          key: ko-v1-arm64-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
