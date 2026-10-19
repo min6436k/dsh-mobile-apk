@@ -12,7 +12,7 @@ index 8499ffb..f4c7fcb 100644
        </div>
      </div>
 diff --git a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx b/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
-index 538813c..9a1d68c 100644
+index 538813c..432e913 100644
 --- a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
 +++ b/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
 @@ -44,20 +44,20 @@ function readOverlayEnabled(): boolean {
@@ -237,11 +237,13 @@ index 538813c..9a1d68c 100644
  
        {/* 0.14.6（用户指令「更新不应该是只更新快照，应该是下载 apk 然后更新」）：应用自更新入口。
            此前该状态机与入口只存在于引导页渲染器里，而健康态 showWeb() 把引导页藏起来
-@@ -357,13 +357,13 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+@@ -356,14 +356,14 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+       <ApkUpdateRow />
  
        {/* 0.14.1 批 3（P3-5）：通知设置已从开发者选项**提级**为设置页一级分区「通知」。
-           这里只留指路（同功能双实现是审查档 §5 的结构性根因，故不重复渲染同一组开关）。 */}
+-          这里只留指路（同功能双实现是审查档 §5 的结构性根因，故不重复渲染同一组开关）。 */}
 -      <p className="dsh-dev-hint">通知的提醒方式（含「关掉提问提醒会发生什么」）在「设置 → 通知」里。</p>
++          这里只留指路（设置 → 通知；同功能双实现是审查档 §5 的结构性根因，故不重复渲染同一组开关）。 */}
 +      <p className="dsh-dev-hint">알림 방식(「질문 알림을 끄면 어떻게 되나요?」 포함)은 「설정 → 알림」에 있습니다.</p>
  
        {/* F5.1/D15：文件直达临时工作区（占用展示 + 一键清理；PRD R16 手动清理 + 占用展示） */}
