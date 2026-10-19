@@ -1,0 +1,146 @@
+diff --git a/dsh-host-web-compat/lib/index.js b/dsh-host-web-compat/lib/index.js
+index 0973bd4..071f3ee 100644
+--- a/dsh-host-web-compat/lib/index.js
++++ b/dsh-host-web-compat/lib/index.js
+@@ -421,22 +421,22 @@ function show(report){
+     // 摘要只说发生了什么与能做什么，机器细节收进折叠块（反馈时仍可截图），且不自动跳转。
+     var head=document.createElement('div');
+     head.style.cssText='font-size:15px;font-weight:600;margin-bottom:10px';
+-    head.textContent='DeepCode 启动没有完成';
++    head.textContent='DeepCode 시작이 완료되지 않았습니다';
+     var summary=document.createElement('div');
+     summary.style.cssText='margin-bottom:6px';
+-    summary.textContent='已经等待 '+Math.round(report.tookMs/1000)+' 秒，界面仍未显示出来。'
+-      +'可以点下面的按钮重新加载；若反复出现，请展开详细信息截图反馈。';
++    summary.textContent=Math.round(report.tookMs/1000)+'초 동안 대기했으나 화면이 표시되지 않았습니다. '
++      +'아래 버튼을 눌러 다시 로드할 수 있습니다. 문제가 지속되면 상세 정보를 펼쳐 스크린샷과 함께 문의해 주세요.';
+     var hint=document.createElement('div');
+     hint.style.cssText='opacity:.75;margin-bottom:14px';
+-    hint.textContent='先确认网络可用；仍失败可在「设置 → 开发者选项 → 打开控制台」查看日志。';
++    hint.textContent='먼저 네트워크 연결을 확인하세요. 계속 실패하는 경우 [설정 → 개발자 옵션 → 콘솔 열기]에서 로그를 확인할 수 있습니다.';
+     var b=document.createElement('button');
+-    b.textContent='重新加载';
++    b.textContent='다시 로드';
+     b.style.cssText='display:block;margin:0 0 16px;padding:10px 20px;border:1px solid #999;border-radius:8px;background:#222;color:#fff;font-size:14px;cursor:pointer';
+     b.onclick=function(){try{location.reload()}catch(e){}};
+     var det=document.createElement('details');
+     var detSum=document.createElement('summary');
+     detSum.style.cssText='cursor:pointer;opacity:.85';
+-    detSum.textContent='详细信息（反馈时请展开并截图）';
++    detSum.textContent='상세 정보 (문의 시 펼쳐서 캡처해 주세요)';
+     var pre=document.createElement('pre');
+     pre.style.cssText='white-space:pre-wrap;word-break:break-all;background:#111;border:1px solid #333;border-radius:8px;padding:10px;margin-top:8px;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace';
+     pre.textContent=JSON.stringify(report,null,2);
+@@ -692,12 +692,12 @@ function isPathText(text){
+ // 症状是引擎启动时报 SyntaxError: Unexpected identifier）——本轮踩过一次，别再踩。
+ // 表外的码走兜底句，**绝不把码印给用户**（正文）。新增码时此处与页面侧表同批补。
+ var OPEN_PATH_ERROR_TEXT={
+-'empty-path':'没有拿到文件路径——请重新点一次文件名',
+-'not-found':'这个文件不存在（可能已被删除或移动）——请刷新会话后重试',
+-'not-found-in-session':'该会话的工作区里没有这个文件（可能已被删除或移动）',
+-'session-unknown':'找不到该文件所属的会话——请先在会话里打开一次再试',
+-'no-session':'页面没有提供会话身份——请更新应用后再试',
+-'unsupported':'这种路径不支持直接打开——请在文件管理器里打开'
++'empty-path':'파일 경로를 가져오지 못했습니다 - 파일명을 다시 한 번 클릭해 주세요',
++'not-found':'파일이 존재하지 않습니다 (삭제되었거나 이동되었을 수 있음) - 세션을 새로고침한 후 다시 시도해 주세요',
++'not-found-in-session':'해당 세션의 작업 공간에 이 파일이 없습니다 (삭제되었거나 이동되었을 수 있음)',
++'session-unknown':'해당 파일이 속한 세션을 찾을 수 없습니다 - 세션에서 먼저 파일을 연 후 다시 시도해 주세요',
++'no-session':'화면에서 세션 식별자를 제공하지 않았습니다 - 앱을 업데이트한 후 다시 시도해 주세요',
++'unsupported':'이러한 경로는 직접 열 수 없습니다 - 파일 관리자에서 열어주세요'
+ };
+ function openViaReader(text){
+   if(text.charAt(0)==='/'){
+@@ -721,8 +721,8 @@ function openViaReader(text){
+         //  3) 会话 id 与 HTTP 状态码只进 console（壳侧 LogCollector 会收走），不上屏。
+         var code=j&&(j.reason||j.error)?String(j.reason||j.error):'';
+         var known=j&&j.reason?String(j.reason):OPEN_PATH_ERROR_TEXT[code];
+-        var text=known||('无法打开该文件（'+(code?'原因未在本版登记':'应用没有返回可读的原因')+'）——请重试；仍失败可复制日志反馈');
+-        showOpenPathNotice('无法打开该文件：'+text);
++        var text=known||('해당 파일을 열 수 없습니다 ('+(code?'이유가 현재 버전에 등록되지 않음':'앱에서 읽을 수 있는 이유를 반환하지 않음')+') — 다시 시도하세요. 반복 실패 시 로그를 복사해 문의해 주세요');
++        showOpenPathNotice('해당 파일을 열 수 없습니다: '+text);
+         try{
+           if(window.console&&console.warn){
+             console.warn('[dsh-open-path] detail code='+code+' status='+result.status
+@@ -730,8 +730,8 @@ function openViaReader(text){
+           }
+         }catch(e){}
+       })
+-      .catch(function(){showOpenPathNotice('无法打开该文件：本机端点不可达')});
+-  }catch(e){showOpenPathNotice('无法打开该文件：'+((e&&e.message)||'未知错误'))}
++      .catch(function(){showOpenPathNotice('해당 파일을 열 수 없습니다: 로컬 엔드포인트에 연결할 수 없음')});
++  }catch(e){showOpenPathNotice('해당 파일을 열 수 없습니다: '+((e&&e.message)||'알 수 없는 오류'))}
+ }
+ document.addEventListener('click',function(e){
+   var el=e.target;
+@@ -825,7 +825,7 @@ function failed(){
+     var el=document.createElement('div')
+     el.id='dsh-clipboard-failed'
+     el.setAttribute('role','status')
+-    el.textContent='复制失败——请长按选中文字后手动复制'
++    el.textContent='복사 실패 - 텍스트를 길게 눌러 직접 복사해 주세요'
+     el.style.cssText='position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);z-index:2147483647;max-width:86vw;padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.86);color:#fff;font-size:13px;line-height:1.4;text-align:center'
+     document.body.appendChild(el)
+     setTimeout(function(){try{el.remove()}catch(e){}},3000)
+@@ -895,7 +895,7 @@ const POLYFILL_SCRIPT =
+  * `[dsh-boot-stall]` 前缀的行），不吞异常、不改控制流；壳侧 `onConsoleMessage` 会把它落进
+  * `boot-diag.log`（§2.3 的壳侧半边），于是「纯白下台」变成可诊断下台。
+  */
+-const STATIC_FALLBACK_SCRIPT = `<div id="dsh-static-fallback" style="visibility:hidden;position:fixed;z-index:2147483646;left:0;right:0;top:0;padding:12px 14px;background:#1e1e1e;color:#e8e8e8;font:13px/1.5 sans-serif">正在启动引擎界面…<br>若长时间停留在此页，请下拉退出后重新打开；仍失败请到「设置 → 开发者选项 → 打开控制台」查看日志。</div>
++const STATIC_FALLBACK_SCRIPT = `<div id="dsh-static-fallback" style="visibility:hidden;position:fixed;z-index:2147483646;left:0;right:0;top:0;padding:12px 14px;background:#1e1e1e;color:#e8e8e8;font:13px/1.5 sans-serif">엔진 인터페이스 시작 중…<br>이 페이지에서 오래 머무르는 경우 아래로 당겨서 종료 후 다시 열어주세요. 계속 실패하면 [설정 → 개발자 옵션 → 콘솔 열기]에서 로그를 확인하세요.</div>
+ <script>(function(){
+ if(window.__dshStaticFallback){return}window.__dshStaticFallback=true;
+ window.__dshStaticErrors=[];
+@@ -1047,10 +1047,10 @@ class AndroidDirectoryPicker extends Service {
+     if (typeof path === 'string' && path.startsWith(REFUSED)) {
+       const reason = path.slice(REFUSED.length)
+       const message = reason === 'permission-denied'
+-        ? '外部工作区需要存储权限，请在系统设置中允许后重试'
++        ? '외부 작업 공간을 사용하려면 저장소 권한이 필요합니다. 시스템 설정에서 권한을 허용한 후 다시 시도해 주세요'
+         : reason === 'android-10'
+-          ? '当前系统（Android 10）不支持选择外部目录：请升级到 Android 11+，或使用 Android 8/9 设备'
+-          : '无法选择外部目录（' + reason + '）'
++          ? '현재 시스템(Android 10)에서는 외부 디렉터리 선택을 지원하지 않습니다. Android 11 이상으로 업데이트하거나 Android 8/9 기기를 사용해 주세요'
++          : '외부 디렉터리를 선택할 수 없습니다(' + reason + ')'
+       entry.settle?.(new Error(message)) ?? entry.resolve(null)
+       return true
+     }
+@@ -1224,13 +1224,13 @@ export function apply(ctx) {
+  * @returns `{ abs }` on success, `{ error }` when nothing resolves.
+  */
+ function resolveSessionPath(rel, ctx, sessionId) {
+-  if (typeof rel !== 'string' || rel === '') return { error: 'empty-path', reason: '路径为空' }
++  if (typeof rel !== 'string' || rel === '') return { error: 'empty-path', reason: '경로가 비어 있습니다' }
+   if (rel.startsWith('/')) {
+-    return existsSync(rel) ? { abs: rel } : { error: 'not-found', reason: '该绝对路径不存在' }
++    return existsSync(rel) ? { abs: rel } : { error: 'not-found', reason: '해당 절대 경로가 존재하지 않습니다' }
+   }
+   if (rel.startsWith('~/')) {
+     const abs = resolvePath(homedir(), rel.slice(2))
+-    return existsSync(abs) ? { abs } : { error: 'not-found', reason: '家目录下不存在该文件' }
++    return existsSync(abs) ? { abs } : { error: 'not-found', reason: '홈 디렉터리에 해당 파일이 존재하지 않습니다' }
+   }
+   let sessions
+   try { sessions = ctx.get('sessions') } catch { sessions = undefined }
+@@ -1250,13 +1250,13 @@ function resolveSessionPath(rel, ctx, sessionId) {
+       }
+     }
+     if (typeof cwd !== 'string' || cwd === '') {
+-      return { error: 'session-unknown', reason: '会话不存在或没有工作区', sessionId }
++      return { error: 'session-unknown', reason: '세션이 존재하지 않거나 작업 공간이 없습니다', sessionId }
+     }
+     const abs = resolvePath(cwd, rel)
+     try {
+       if (existsSync(abs)) return { abs, sessionId }
+     } catch { /* permission/race: report as not found in that session */ }
+-    return { error: 'not-found-in-session', reason: '该会话工作区内不存在此文件', sessionId }
++    return { error: 'not-found-in-session', reason: '해당 세션 작업 공간 내에 파일이 존재하지 않습니다', sessionId }
+   }
+   // 兼容旧页面（无 sessionId）：保留存在性消歧，但显式标记 guessed——不静默把猜解当权威。
+   let list = []
+@@ -1267,5 +1267,5 @@ function resolveSessionPath(rel, ctx, sessionId) {
+     const abs = resolvePath(cwd, rel)
+     try { if (existsSync(abs)) return { abs, guessed: true } } catch { /* permission/race: try next */ }
+   }
+-  return { error: 'not-found', reason: '未提供会话且无法在活动会话中命中' }
++  return { error: 'not-found', reason: '세션이 제공되지 않았으며 활성 세션에서 찾을 수 없습니다' }
+ }

@@ -1,0 +1,54 @@
+diff --git a/plugins/dsh-android-browser/src/contract.ts b/plugins/dsh-android-browser/src/contract.ts
+index 201173b..7c550ab 100644
+--- a/plugins/dsh-android-browser/src/contract.ts
++++ b/plugins/dsh-android-browser/src/contract.ts
+@@ -73,14 +73,14 @@ export interface ViewportPreset {
+ }
+ 
+ export const VIEWPORT_PRESETS: readonly ViewportPreset[] = [
+-  { id: 'device', width: 0, height: 0, label: '跟随工位（默认）', mobile: true },
+-  { id: 'phone-portrait', width: 390, height: 844, label: '手机竖屏 390×844', mobile: true },
+-  { id: 'portrait-720', width: 720, height: 1280, label: '手机竖屏 720×1280', mobile: true },
+-  { id: 'portrait-1080', width: 1080, height: 1920, label: '手机竖屏 1080×1920', mobile: true },
+-  { id: 'tablet', width: 768, height: 1024, label: '平板 768×1024', mobile: true },
+-  { id: 'tablet-landscape', width: 1024, height: 768, label: '平板横屏 1024×768', mobile: false },
+-  { id: 'desktop-720', width: 1280, height: 720, label: '桌面 1280×720', mobile: false },
+-  { id: 'desktop-1080', width: 1920, height: 1080, label: '桌面 1920×1080', mobile: false },
++  { id: 'device', width: 0, height: 0, label: '기기 화면 기준 (기본)', mobile: true },
++  { id: 'phone-portrait', width: 390, height: 844, label: '스마트폰 세로 390×844', mobile: true },
++  { id: 'portrait-720', width: 720, height: 1280, label: '스마트폰 세로 720×1280', mobile: true },
++  { id: 'portrait-1080', width: 1080, height: 1920, label: '스마트폰 세로 1080×1920', mobile: true },
++  { id: 'tablet', width: 768, height: 1024, label: '태블릿 768×1024', mobile: true },
++  { id: 'tablet-landscape', width: 1024, height: 768, label: '태블릿 가로 1024×768', mobile: false },
++  { id: 'desktop-720', width: 1280, height: 720, label: '데스크톱 1280×720', mobile: false },
++  { id: 'desktop-1080', width: 1920, height: 1080, label: '데스크톱 1920×1080', mobile: false },
+ ] as const
+ 
+ /** 身份档位（默认真实手机；伪装档需额外确认与风险文案，方案 §3.5）。 */
+@@ -96,7 +96,7 @@ export interface IdentityProfile {
+ export const IDENTITY_PROFILES: readonly IdentityProfile[] = [
+   {
+     id: 'android-real',
+-    label: '真实手机（默认）',
++    label: '실제 스마트폰 (기본)',
+     ua: '',
+     platform: '',
+     mobile: true,
+@@ -104,7 +104,7 @@ export const IDENTITY_PROFILES: readonly IdentityProfile[] = [
+   },
+   {
+     id: 'linux-desktop',
+-    label: 'Linux 桌面 Chrome',
++    label: 'Linux 데스크톱 Chrome',
+     ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+     platform: 'Linux x86_64',
+     mobile: false,
+@@ -112,7 +112,7 @@ export const IDENTITY_PROFILES: readonly IdentityProfile[] = [
+   },
+   {
+     id: 'windows-desktop',
+-    label: 'Windows 桌面 Chrome',
++    label: 'Windows 데스크톱 Chrome',
+     ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+     platform: 'Win32',
+     mobile: false,

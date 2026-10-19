@@ -1,0 +1,3752 @@
+diff --git a/dsh-client-ui-responsive/src/client/ExportResultDialog.tsx b/dsh-client-ui-responsive/src/client/ExportResultDialog.tsx
+index 8499ffb..f4c7fcb 100644
+--- a/dsh-client-ui-responsive/src/client/ExportResultDialog.tsx
++++ b/dsh-client-ui-responsive/src/client/ExportResultDialog.tsx
+@@ -45,7 +45,7 @@ export function ExportResultDialog({ useExportResult, close }: ExportResultDialo
+         <h2 id="dsh-export-result-title" className={css.title}>{state.title}</h2>
+         <p className={css.detail} data-status={state.ok ? 'success' : 'error'}>{state.detail}</p>
+         <div className={css.actions}>
+-          <button type="button" className={css.button} onClick={() => close()}>关闭</button>
++          <button type="button" className={css.button} onClick={() => close()}>닫기</button>
+         </div>
+       </div>
+     </div>
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx b/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
+index 538813c..9a1d68c 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
++++ b/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
+@@ -44,20 +44,20 @@ function readOverlayEnabled(): boolean {
+  */
+ const CONFIRM_TEXT: Record<'restart' | 'close' | 'clean', { title: string; desc: string; ok: string }> = {
+   restart: {
+-    title: '重启 DeepCode？',
+-    desc: '将终止并自动重新启动本地引擎与页面（约数秒）。未发送的内容会保留在输入框。',
+-    ok: '重启',
++    title: 'DeepCode를 다시 시작하시겠습니까?',
++    desc: '로컬 엔진과 화면을 종료하고 자동으로 다시 시작합니다 (수 초 소요). 전송되지 않은 내용은 입력창에 유지됩니다.',
++    ok: '다시 시작',
+   },
+   close: {
+-    title: '关闭并回退到初始化界面？',
+-    desc: '将停止本地引擎并退出到初始化界面；引擎不会自动重启，需手动再次启动。',
+-    ok: '关闭',
++    title: '종료하고 초기화 화면으로 돌아가시겠습니까?',
++    desc: '로컬 엔진을 중지하고 초기화 화면으로 나갑니다. 엔진은 자동 재시작되지 않으며, 수동으로 다시 시작해야 합니다.',
++    ok: '종료',
+   },
+   clean: {
+-    title: '清理临时工作区？',
+-    desc: '将删除文件直达（分享进来）的临时文件；相关会话中的文件引用会失效，无法恢复。'
+-      + '会话本身、附件、配置与凭据不受影响。',
+-    ok: '清理',
++    title: '임시 작업 공간을 정리하시겠습니까?',
++    desc: '파일 바로 전달(공유)로 들어온 임시 파일을 삭제합니다. 관련 대화의 파일 참조가 무효화되며 복구할 수 없습니다. '
++      + '대화 자체, 첨부 파일, 설정 및 인증 정보는 영향을 받지 않습니다.',
++    ok: '정리',
+   },
+ }
+ 
+@@ -102,7 +102,7 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+       // FX-205.6：端点带插件侧鉴权——浏览器面凭据是 same-origin 会话 cookie，必须显式声明。
+       const r = await fetch('/api/android/file-incoming', { credentials: 'same-origin', cache: 'no-store' })
+       if (!r.ok) {
+-        setIncomingMsg({ text: describeHttpFailure('读取来件占用', r.status), http: r.status })
++        setIncomingMsg({ text: describeHttpFailure('임시 작업 공간 사용량 확인', r.status), http: r.status })
+         return
+       }
+       if (r.ok) {
+@@ -138,16 +138,16 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+     try {
+       const r = await fetch('/api/android/file-incoming/clean', { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
+       if (!r.ok) {
+-        setIncomingMsg({ text: describeHttpFailure('清理临时工作区', r.status), http: r.status })
++        setIncomingMsg({ text: describeHttpFailure('임시 작업 공간 정리', r.status), http: r.status })
+         return
+       }
+       const j = (await r.json().catch(() => null)) as { ok?: boolean; removed?: number; reason?: string } | null
+       // FX-205.5：清理范围收敛为「本工具自有临时项」，用户放入工作区的文件不再被删。
+       setIncomingMsg(j?.ok
+-        ? { text: `已清理本工具临时项（${j.removed ?? 0} 项）——相关会话中的文件引用将失效` }
+-        : { text: '清理未完成——请重试；仍失败可复制日志反馈', ...(j?.reason === undefined ? {} : { code: j.reason }) })
++        ? { text: `도구 임시 항목을 정리했습니다 (${j.removed ?? 0}개 항목) — 관련 대화의 파일 참조가 무효화됩니다` }
++        : { text: '정리가 완료되지 않았습니다 — 다시 시도해 주세요. 계속 실패하면 로그를 복사하여 문의하세요', ...(j?.reason === undefined ? {} : { code: j.reason }) })
+     } catch {
+-      setIncomingMsg({ text: '清理请求失败（仅安卓应用内有此能力）——请确认在本机应用内操作' })
++      setIncomingMsg({ text: '정리 요청 실패 (Android 앱 내에서만 지원됨) — 기기 내부 앱에서 실행 중인지 확인하세요' })
+     } finally {
+       setCleaning(false)
+       void refreshIncoming()
+@@ -176,7 +176,7 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+       started = false
+     }
+     if (!started) {
+-      setActionMsg({ text: '重启没有发起：应用与页面的连接不可用，或已在重启中——请稍等几秒；仍无效请关闭并重新打开应用' })
++      setActionMsg({ text: '다시 시작하지 못했습니다: 앱과 웹 화면 간 연결을 사용할 수 없거나 이미 다시 시작 중입니다 — 몇 초 후 다시 시도하세요. 계속 실패 시 앱을 완전히 닫고 다시 여세요' })
+       return
+     }
+     setRestarting(true)
+@@ -196,12 +196,12 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+     setActionMsg(null)
+     try {
+       if (window.androidBridge?.reloadWebUI === undefined) {
+-        setActionMsg({ text: '刷新界面不可用：应用与页面的连接未装配——请关闭并重新打开应用' })
++        setActionMsg({ text: '화면 새로고침을 사용할 수 없습니다: 앱과 웹 화면 간 연결이 구성되지 않았습니다 — 앱을 완전히 닫고 다시 여세요' })
+         return
+       }
+       window.androidBridge.reloadWebUI()
+     } catch {
+-      setActionMsg({ text: '刷新界面失败：应用与页面的连接不可用——请关闭并重新打开应用' })
++      setActionMsg({ text: '화면 새로고침 실패: 앱과 웹 화면 간 연결을 사용할 수 없습니다 — 앱을 완전히 닫고 다시 여세요' })
+     }
+   }, [])
+ 
+@@ -209,12 +209,12 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+     setActionMsg(null)
+     try {
+       if (window.androidBridge?.openConsole === undefined) {
+-        setActionMsg({ text: '控制台不可用：应用与页面的连接未装配——请关闭并重新打开应用' })
++        setActionMsg({ text: '콘솔을 사용할 수 없습니다: 앱과 웹 화면 간 연결이 구성되지 않았습니다 — 앱을 완전히 닫고 다시 여세요' })
+         return
+       }
+       window.androidBridge.openConsole()
+     } catch {
+-      setActionMsg({ text: '控制台打开失败：应用与页面的连接不可用——请关闭并重新打开应用' })
++      setActionMsg({ text: '콘솔 열기 실패: 앱과 웹 화면 간 연결을 사용할 수 없습니다 — 앱을 완전히 닫고 다시 여세요' })
+     }
+   }, [])
+ 
+@@ -238,14 +238,14 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+       // 「返回后自动生效」因此不再成立——必须回前台重读 + 用户重新打开开关。
+       refreshOverlay()
+       if (enabled && !started) {
+-        setOverlayMsg('已打开系统授权页；授予后请重新打开本开关')
++        setOverlayMsg('시스템 권한 설정 창을 열었습니다. 권한 허용 후 이 스위치를 다시 켜주세요')
+       } else if (enabled) {
+-        setOverlayMsg('悬浮球已开启：任意界面可拖拽；点开面板实时查看工具调用，可一键停止')
++        setOverlayMsg('플로팅 버튼 활성화됨: 모든 화면에서 드래그 가능하며, 패널을 열어 실시간 도구 호출 확인 및 원클릭 중지가 가능합니다')
+       } else {
+-        setOverlayMsg('悬浮球已关闭')
++        setOverlayMsg('플로팅 버튼 비활성화됨')
+       }
+     } catch {
+-      setOverlayMsg('应用内连接不可用（悬浮球仅安卓应用内支持）——请重新打开应用后重试')
++      setOverlayMsg('앱 내부 연결을 사용할 수 없습니다 (플로팅 버튼은 Android 앱 내에서만 지원됨) — 앱을 다시 연 후 시도하세요')
+     }
+   }, [refreshOverlay])
+ 
+@@ -256,9 +256,9 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+     try {
+       const raw = window.androidBridge?.exportConfig?.()
+       const j = JSON.parse(raw ?? '{}') as { ok?: boolean; path?: string; error?: string }
+-      setConfigMsg(j.ok ? `已导出到 ${j.path ?? 'exports/config/settings.yaml'}` : `导出失败：${j.error ?? '未知错误'}`)
++      setConfigMsg(j.ok ? `다음 경로로 내보냈습니다: ${j.path ?? 'exports/config/settings.yaml'}` : `내보내기 실패: ${j.error ?? '알 수 없는 오류'}`)
+     } catch {
+-      setConfigMsg('导出失败：应用内连接不可用（仅安卓应用内可用）——请重新打开应用后重试')
++      setConfigMsg('내보내기 실패: 앱 내부 연결을 사용할 수 없습니다 (Android 앱 내에서만 지원됨) — 앱을 다시 연 후 시도하세요')
+     }
+   }, [])
+ 
+@@ -266,9 +266,9 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+     try {
+       const raw = window.androidBridge?.importConfig?.()
+       const j = JSON.parse(raw ?? '{}') as { ok?: boolean; hint?: string; error?: string }
+-      setConfigMsg(j.ok ? `已导入并生效（原配置备份为 settings.yaml.import-backup）。${j.hint ?? ''}` : `导入失败：${j.error ?? '未知错误'}`)
++      setConfigMsg(j.ok ? `가져와서 적용했습니다 (기존 설정은 settings.yaml.import-backup 으로 백업됨). ${j.hint ?? ''}` : `가져오기 실패: ${j.error ?? '알 수 없는 오류'}`)
+     } catch {
+-      setConfigMsg('导入失败：应用内连接不可用（仅安卓应用内可用）——请重新打开应用后重试')
++      setConfigMsg('가져오기 실패: 앱 내부 연결을 사용할 수 없습니다 (Android 앱 내에서만 지원됨) — 앱을 다시 연 후 시도하세요')
+     }
+   }, [])
+ 
+@@ -280,14 +280,14 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+   )
+ 
+   const logPathHint = allFiles === false
+-    ? '未授予「所有文件访问」：日志将写入应用私有目录，授权后自动切换公共目录。'
+-    : '开启后按天写入 Documents/dshdata/log/dsh-<日期>.log。'
++    ? '「모든 파일에 접근」 권한 미부여: 로그가 앱 전용 디렉터리에 기록됩니다. 권한 허용 시 자동으로 공용 디렉터리로 전환됩니다.'
++    : '활성화 시 날짜별로 Documents/dshdata/log/dsh-<날짜>.log 에 기록됩니다.'
+ 
+   return (
+     <div data-plugin="dev-section" onKeyDown={onKeyDown}>
+       {/* 分区名已由设置中心的二级页标题条承担（竖屏 settings-nav；横屏上游 nav 行），
+           这里不再重复一遍「开发者选项」，只留这一页真正独有的一句说明。 */}
+-      <p className="dsh-dev-note">控制台是运行时内嵌命令行；日志默认关闭。</p>
++      <p className="dsh-dev-note">콘솔은 런타임 내장 명령줄 환경입니다. 로그는 기본적으로 꺼져 있습니다.</p>
+ 
+       {/* 0.14.0：屏幕/Shizuku/虚拟屏/浮窗/无障碍/强制销毁已迁到独立「手机控制」设置页。 */}
+ 
+@@ -297,11 +297,11 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+ 
+       <div className="dsh-dev-row">
+         <button type="button" className="dsh-dev-btn" onClick={askRestart} disabled={restarting}>
+-          {restarting ? '重启中…' : '重启'}
++          {restarting ? '다시 시작 중…' : '다시 시작'}
+         </button>
+-        <button type="button" className="dsh-dev-btn dsh-dev-danger" onClick={askClose}>关闭</button>
+-        <button type="button" className="dsh-dev-btn" onClick={reload}>刷新界面</button>
+-        <button type="button" className="dsh-dev-btn" onClick={openConsole}>打开控制台</button>
++        <button type="button" className="dsh-dev-btn dsh-dev-danger" onClick={askClose}>종료</button>
++        <button type="button" className="dsh-dev-btn" onClick={reload}>화면 새로고침</button>
++        <button type="button" className="dsh-dev-btn" onClick={openConsole}>콘솔 열기</button>
+       </div>
+ 
+       {actionMsg !== null && <p className="dsh-dev-warn" {...noticeDataAttrs(actionMsg)}>{actionMsg.text}</p>}
+@@ -312,7 +312,7 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+           checked={devLog}
+           onChange={(e) => toggleLog(e.target.checked)}
+         />
+-        <span>开发者调试日志</span>
++        <span>개발자 디버그 로그</span>
+       </label>
+ 
+       {/* 0.13.2 W7：悬浮球（实时工具流 + 停止）。
+@@ -324,21 +324,21 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+           checked={overlayOn}
+           onChange={(e) => toggleOverlay(e.target.checked)}
+         />
+-        <span>悬浮球（任意界面可见的任务面板入口）</span>
++        <span>플로팅 버튼 (모든 화면에서 표시되는 작업 패널 진입점)</span>
+       </label>
+       {/* P5-6 只要求「点名的两处不是同一个东西」，不再复述另一页的完整语义（那由该页自己说）。 */}
+-      <p className="dsh-dev-hint">点开可看实时工具调用、可一键停止；与「手机控制」页的「虚拟屏浮窗」不是同一个东西。</p>
++      <p className="dsh-dev-hint">열어서 실시간 도구 호출을 확인하고 즉시 중지할 수 있습니다. 「기기 제어」 페이지의 「가상 디스플레이 오버레이 창」과는 다른 기능입니다.</p>
+       {overlayMsg !== null && <p className="dsh-dev-hint">{overlayMsg}</p>}
+ 
+       {/* 0.13.1 W4：配置导入/导出（安全手改通道；引擎读私有目录，改共享目录副本无效） */}
+       <div className="dsh-dev-row">
+-        <button type="button" className="dsh-dev-btn" onClick={exportConfig}>导出配置</button>
+-        <button type="button" className="dsh-dev-btn" onClick={importConfig}>导入配置</button>
++        <button type="button" className="dsh-dev-btn" onClick={exportConfig}>설정 내보내기</button>
++        <button type="button" className="dsh-dev-btn" onClick={importConfig}>설정 가져오기</button>
+       </div>
+       {configMsg !== null && <p className="dsh-dev-hint">{configMsg}</p>}
+       {/* 数据安全说明必须保留（配置不含密钥）；路径保留（用户要拿它去改）。 */}
+       <p className="dsh-dev-hint">
+-        导出到 Documents/dshdata/exports/config/settings.yaml，改完点「导入配置」生效。导出不含 API 密钥。
++        Documents/dshdata/exports/config/settings.yaml 경로로 내보내며, 수정 후 「설정 가져오기」를 누르면 적용됩니다. 내보내기에 API 키는 포함되지 않습니다.
+       </p>
+ 
+       {/* 0.14.1 块 E（详档 §4.3）：运行时缓存清理——白名单制、先给可回收体积再执行、逐项落审计。 */}
+@@ -347,7 +347,7 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+       {/* 0.14.8 提级：模型能力补齐已从开发者选项**提级**为设置页一级分区「模型能力」。
+           用户反馈在设置页找不到它（入口原先只在这里，而真实用户不走开发者选项）。
+           同一功能双实现是审查档 §5 的结构性根因，故这里只留指路、不再渲染同一组控件。 */}
+-      <p className="dsh-dev-hint">补齐第三方模型的思考档位等能力在「设置 → 模型能力」里。</p>
++      <p className="dsh-dev-hint">타사 모델의 사고(Thinking) 모드 등 모델 관련 기능 보완은 「설정 → 모델 기능」에 있습니다.</p>
+ 
+       {/* 0.14.6（用户指令「更新不应该是只更新快照，应该是下载 apk 然后更新」）：应用自更新入口。
+           此前该状态机与入口只存在于引导页渲染器里，而健康态 showWeb() 把引导页藏起来
+@@ -357,13 +357,13 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+ 
+       {/* 0.14.1 批 3（P3-5）：通知设置已从开发者选项**提级**为设置页一级分区「通知」。
+           这里只留指路（同功能双实现是审查档 §5 的结构性根因，故不重复渲染同一组开关）。 */}
+-      <p className="dsh-dev-hint">通知的提醒方式（含「关掉提问提醒会发生什么」）在「设置 → 通知」里。</p>
++      <p className="dsh-dev-hint">알림 방식(「질문 알림을 끄면 어떻게 되나요?」 포함)은 「설정 → 알림」에 있습니다.</p>
+ 
+       {/* F5.1/D15：文件直达临时工作区（占用展示 + 一键清理；PRD R16 手动清理 + 占用展示） */}
+       {incomingBytes !== null && (
+         <div className="dsh-dev-row">
+           <span>
+-            文件直达临时工作区占用：{fmtBytes(incomingBytes)}
++            파일 바로 전달 임시 작업 공간 사용량: {fmtBytes(incomingBytes)}
+           </span>
+           {/* S3-14：破坏性操作一律先确认（旧实现单击即删，与同页「运行时缓存清理」的二次确认不一致）。 */}
+           <button
+@@ -372,14 +372,14 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+             disabled={cleaning || incomingBytes === 0}
+             onClick={() => { setConfirm('clean') }}
+           >
+-            {cleaning ? '清理中…' : '一键清理'}
++            {cleaning ? '정리 중…' : '원클릭 정리'}
+           </button>
+         </div>
+       )}
+       {incomingMsg !== null && <p className="dsh-dev-hint" {...noticeDataAttrs(incomingMsg)}>{incomingMsg.text}</p>}
+-      <p className="dsh-dev-hint">清理会删除临时工作区内的外部文件；相关会话中的文件引用将失效（D15：纯手动清理，无自动清理）。</p>
++      <p className="dsh-dev-hint">정리 시 임시 작업 공간의 외부 파일이 삭제되며, 관련 대화의 파일 참조가 무효화됩니다 (수동 정리만 지원되며 자동 정리는 지원하지 않음).</p>
+       <p className="dsh-dev-hint">{logPathHint}</p>
+-      <p className="dsh-dev-warn">日志包含命令与模型内容，仅用于排查，请及时清理。</p>
++      <p className="dsh-dev-warn">로그에는 명령어와 모델 응답 내용이 포함되므로 문제 해결용으로만 사용하시고, 주기적으로 정리해 주세요.</p>
+ 
+       {confirm !== null && (
+         <div
+@@ -402,7 +402,7 @@ export function DevSection({ renderSlot }: DevSectionProps) {
+                 className="dsh-dev-btn"
+                 autoFocus
+                 onClick={cancelConfirm}
+-              >取消</button>
++              >취소</button>
+               <button
+                 type="button"
+                 className={confirm === 'restart' ? 'dsh-dev-btn' : 'dsh-dev-btn dsh-dev-danger'}
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/apk-update.tsx b/dsh-client-ui-responsive/src/client/dev-section/apk-update.tsx
+index 0e9d94f..c37c86e 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/apk-update.tsx
++++ b/dsh-client-ui-responsive/src/client/dev-section/apk-update.tsx
+@@ -137,12 +137,12 @@ export function ApkUpdateRow() {
+     setMessage(null)
+     const accepted = invoke(action)
+     if (accepted === null) {
+-      setMessage({ text: '更新通道不可用（仅安卓应用内有此能力）——请确认在本机应用内操作' })
++      setMessage({ text: '업데이트 통로를 사용할 수 없습니다 (Android 앱 내에서만 지원됨) — 기기 내부 앱에서 실행 중인지 확인하세요' })
+       return
+     }
+     // ok 只表达受理；真正的进展由轮询读回。busy 时壳侧会回 ok:false + code:busy，如实说。
+     if (accepted.ok !== true) {
+-      setMessage({ text: accepted.code === 'busy' ? '上一次更新动作仍在进行中，请稍候（进度见下方）' : '这次请求未被受理——' + (accepted.reason ?? '可稍后重试') })
++      setMessage({ text: accepted.code === 'busy' ? '이전 업데이트 작업이 아직 진행 중입니다. 잠시 기다려 주세요 (진행 상황은 아래 참조)' : '요청이 접수되지 않았습니다 — ' + (accepted.reason ?? '잠시 후 다시 시도하세요') })
+     }
+     setBusy(true)
+     refresh()
+@@ -150,43 +150,43 @@ export function ApkUpdateRow() {
+   }, [refresh])
+ 
+   /** 主行文案与按钮（八态；终态停止轮询）。 */
+-  let label = '检查更新'
++  let label = '업데이트 확인'
+   let disabled = false
+-  let text = '运行时与安装包状态未检查'
++  let text = '런타임 및 설치 패키지 상태 미확인'
+   switch (state) {
+     case 'checking':
+-      label = '检查中…'; disabled = true; text = '正在查询最新版本…'
++      label = '확인 중…'; disabled = true; text = '최신 버전을 확인하는 중…'
+       break
+     case 'up-to-date':
+-      label = '重新检查'; text = 'APK 已是最新 ' + (status?.version ?? '')
++      label = '다시 확인'; text = 'APK가 이미 최신 버전입니다 ' + (status?.version ?? '')
+       break
+     case 'available':
+-      label = '下载并安装 ' + (status?.tag ?? '')
+-      text = '发现新版 ' + (status?.tag ?? '') + (status?.current === undefined ? '' : '（当前 v' + status.current + '，' + fmtBytes(status?.sizeBytes ?? 0) + '）')
+-        + '——资产 ' + (status?.name ?? '') + '，再点即开始下载并安装'
++      label = '다운로드 및 설치 ' + (status?.tag ?? '')
++      text = '새 버전 발견 ' + (status?.tag ?? '') + (status?.current === undefined ? '' : ' (현재 v' + status.current + ', ' + fmtBytes(status?.sizeBytes ?? 0) + ')')
++        + ' — 에셋 ' + (status?.name ?? '') + ', 다시 누르면 다운로드 및 설치 시작'
+       break
+     case 'downloading':
+-      label = '下载中 ' + String(status?.percent ?? 0) + '%'; disabled = true
+-      text = '正在从镜像链下载 ' + (status?.name ?? '') + (status?.sizeBytes === undefined ? '' : '（' + fmtBytes(status.sizeBytes) + '）') + '——请保持应用在前台'
++      label = '다운로드 중 ' + String(status?.percent ?? 0) + '%'; disabled = true
++      text = '미러에서 다운로드 중 ' + (status?.name ?? '') + (status?.sizeBytes === undefined ? '' : ' (' + fmtBytes(status.sizeBytes) + ')') + ' — 앱을 화면에 유지해 주세요'
+       break
+     case 'installing':
+-      label = '重新检查'
+-      text = '已拉起系统安装器——安装完成后重新打开应用即生效'
+-        + (status?.reused === true ? '（本次复用了上次已下载并校验通过的安装包，未重复下载）' : '')
++      label = '다시 확인'
++      text = '시스템 설치 관리자를 실행했습니다 — 설치 완료 후 앱을 다시 열면 적용됩니다'
++        + (status?.reused === true ? ' (이전에 다운로드하여 검증을 통과한 설치 패키지를 재사용함)' : '')
+       break
+     case 'need-permission':
+-      label = '授权后继续安装'; text = '需要「安装未知应用」权限（壳侧已打开授权页）——开启后返回应用即可续继安装'
++      label = '권한 허용 후 설치 계속'; text = '「출처를 알 수 없는 앱 설치」 권한이 필요합니다 (권한 설정 화면이 열림) — 권한을 켠 후 앱으로 돌아오면 설치가 계속됩니다'
+       break
+     case 'failed':
+-      label = '重试'; text = status?.reason ?? '更新未完成（壳侧未给出原因，可复制日志反馈）'
++      label = '다시 시도'; text = status?.reason ?? '업데이트 미완료 (앱에서 원인을 제공하지 않음. 로그를 복사하여 문의하세요)'
+       break
+     default:
+       // idle 或读不到：区分「合法空闲」与「通道不可用」，绝不把后者渲染成前者。
+       if (status === null) {
+         // 措辞纪律：不得在同一行里同时出现「读不到」与「已是最新」——那会让 PASS/失败
+         // 判读自相矛盾（本行实测被自己的用例拦下）。这里只说清「无法判断」，不引任何终态词。
+-        text = '更新状态：读不到——无法判断是否有新版本（应用内的更新通道不可用或返回异常）'
+-        label = '检查更新'
++        text = '업데이트 상태: 확인 불가 — 새 버전 유무를 확인할 수 없습니다 (앱 내 업데이트 통로를 사용할 수 없거나 비정상 응답)'
++        label = '업데이트 확인'
+       }
+       break
+   }
+@@ -210,9 +210,7 @@ export function ApkUpdateRow() {
+       {/* 精简（0.14.7-B D5）：保留「更新的是什么、怎么校验、何时发起」「权限缺失怎么办」
+           这些用户真要拿来做决定的信息；去掉与本行按钮状态逐字重复的流程复述。 */}
+       <p className="dsh-dev-hint">
+-        更新的是应用安装包（APK）：从 GitHub 发布页按本机 ABI 选包，下载走镜像链并校验体积与 sha256，
+-        再拉起系统安装器。全程只在你点击时发起，不自动检查或下载；缺「安装未知应用」权限会先打开授权页。
+-        安装包落在 Documents/dshdata/updates。
++        앱 설치 패키지(APK)를 업데이트합니다: GitHub 릴리스 페이지에서 기기 ABI에 맞는 패키지를 선택하고, 미러를 통해 다운로드한 후 파일 크기 및 sha256을 검증하여 시스템 설치 관리자를 실행합니다. 전 과정은 사용자가 직접 클릭할 때만 실행되며 자동으로 확인하거나 다운로드하지 않습니다. 「출처를 알 수 없는 앱 설치」 권한이 없으면 설정 화면이 먼저 열립니다. 설치 패키지는 Documents/dshdata/updates 에 저장됩니다.
+       </p>
+     </div>
+   )
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx b/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx
+index 28306f2..8cc7b18 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx
++++ b/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx
+@@ -49,11 +49,11 @@ interface NotifySnapshot {
+  * 否则用户仍在按旧语义做决定。
+  */
+ const CATEGORY_LABELS: ReadonlyArray<readonly [string, string, string]> = [
+-  ['report', '工作汇报', '关闭后不再提醒；任务本身不受影响'],
+-  ['question', '提问', '关闭 = 不弹窗、不响铃；提问仍会出现在通知栏、可直接作答（AI 在等你的回答）'],
+-  ['approval', '授权请求', '关闭 = 不弹窗、不响铃；仍需你在通知栏或应用内批准，工具不会自动放行'],
+-  ['todo', '待办进度', '关闭后不再显示步骤进度；任务本身不受影响'],
+-  ['silent', '后台动态', '关闭后不再显示看门狗与引擎状态；只影响提示，不影响引擎'],
++  ['report', '작업 보고', '해제 시 더 이상 알림을 보내지 않으며 작업 자체에는 영향을 주지 않습니다'],
++  ['question', '질문', '해제 = 팝업 및 벨소리 없음; 질문은 알림창에 계속 표시되어 직접 답변할 수 있습니다 (AI가 답변을 기다리는 중)'],
++  ['approval', '권한 요청', '해제 = 팝업 및 벨소리 없음; 알림창이나 앱 내에서 승인이 필요하며 도구가 자동으로 실행되지 않습니다'],
++  ['todo', '할 일 진행률', '해제 시 단계별 진행률을 더 이상 표시하지 않으며 작업 자체에는 영향을 주지 않습니다'],
++  ['silent', '백그라운드 상태', '해제 시 워치독 및 엔진 상태를 더 이상 표시하지 않으며 안내에만 영향을 주고 엔진에는 영향을 주지 않습니다'],
+ ]
+ 
+ /**
+@@ -153,7 +153,7 @@ export function NotifySettingsRow() {
+       reply = null
+     }
+     if (reply === null) {
+-      setMessage({ text: '写入失败：应用内连接不可用（仅安卓应用内可用）——请重新打开应用后重试' })
++      setMessage({ text: '기록 실패: 앱 내부 연결을 사용할 수 없습니다 (Android 앱 내에서만 지원됨) — 앱을 다시 열고 시도하세요' })
+       refresh()
+       return
+     }
+@@ -173,7 +173,7 @@ export function NotifySettingsRow() {
+   if (snapshot === null) {
+     return (
+       <div className="dsh-dev-notify" data-plugin="dev-notify-settings">
+-        <p className="dsh-dev-hint">通知设置不可用（桥未装配或壳侧上下文未绑定）。</p>
++        <p className="dsh-dev-hint">알림 설정을 사용할 수 없습니다 (브리지가 연결되지 않았거나 앱 컨텍스트가 바인딩되지 않음).</p>
+       </div>
+     )
+   }
+@@ -195,19 +195,19 @@ export function NotifySettingsRow() {
+         <input
+           type="checkbox"
+           role="switch"
+-          aria-label="前台抑制通知"
++          aria-label="포그라운드 알림 제한"
+           checked={suppress}
+           onChange={(event) => { write('suppressForeground', event.target.checked) }}
+         />
+-        <span>应用在前台时不弹工作汇报（改为延后，回后台补投）</span>
++        <span>앱이 화면에 열려 있을 때 작업 보고 팝업 끄기 (백그라운드 전환 시 일괄 표시)</span>
+       </label>
+       {/* 精简（0.14.7-B D5）：两段合成一段——开关行已经说明「开启 = 前台不弹」，这里只补
+           「延后到哪、什么时候补投、哪些分类永不受影响」。 */}
+       <p className="dsh-dev-hint">
+-        当前：{suppress ? '前台抑制开启（工作汇报延后）' : '前台照常推送'}
+-        {isDefault ? '；等于本版默认值' : '；已偏离本版默认值'}
+-        。开启后命中的工作汇报进入待投队列，回后台或再次关闭抑制时补投（队列有 TTL 与容量上限）；
+-        提问与授权请求永不受此项影响。
++        현재: {suppress ? '포그라운드 제한 켜짐 (작업 보고 지연)' : '포그라운드 정상 전송'}
++        {isDefault ? '; 이번 버전 기본값과 동일' : '; 이번 버전 기본값에서 변경됨'}
++        . 활성화 시 해당 작업 보고가 대기 큐로 들어가며, 백그라운드로 전환되거나 제한을 다시 끌 때 전송됩니다 (큐에 TTL 및 용량 한도가 있음).
++        질문 및 권한 요청은 이 설정의 영향을 받지 않습니다.
+       </p>
+ 
+       <div className="dsh-dev-notify-cats">
+@@ -236,7 +236,7 @@ export function NotifySettingsRow() {
+             setSelfCheck(readSelfCheck())
+           }}
+         >
+-          通知自检
++          알림 자체 진단
+         </button>
+         <button
+           type="button"
+@@ -248,10 +248,10 @@ export function NotifySettingsRow() {
+             } catch {
+               ok = false
+             }
+-            if (!ok) setMessage({ text: '该系统没有「应用通知设置」页——请在系统设置里手动找到本应用的通知项' })
++            if (!ok) setMessage({ text: '해당 시스템에 「앱 알림 설정」 페이지가 없습니다 — 시스템 설정에서 이 앱의 알림 항목을 직접 찾아주세요' })
+           }}
+         >
+-          系统通知设置
++          시스템 알림 설정
+         </button>
+       </div>
+       {/* S3-26：自证「哪几类真的能到达」。渠道状态看上面的自检，这里看**实际到达效果**——
+@@ -269,42 +269,42 @@ export function NotifySettingsRow() {
+             }
+             setMessage(
+               posted > 0
+-                ? { text: '已发送 ' + String(posted) + ' 条测试通知（五类各一条）——请到通知栏看哪几条真的到了、哪几条是静默的' }
+-                : { text: '一条也没发出去：通知权限未授予或渠道不可用——请先在上面的自检里看渠道状态，并到系统设置里允许通知' },
++                ? { text: '테스트 알림 ' + String(posted) + '개를 보냈습니다 (5개 분류별 각 1개) — 알림창에서 어떤 알림이 도착하고 무음 처리되었는지 확인하세요' }
++                : { text: '알림이 전송되지 않았습니다: 알림 권한이 없거나 채널을 사용할 수 없습니다 — 위의 자체 진단에서 채널 상태를 확인하고 시스템 설정에서 알림을 허용하세요' },
+             )
+           }}
+         >
+-          发送测试通知
++          테스트 알림 전송
+         </button>
+       </div>
+       {selfCheckTried && selfCheck === null && (
+-        <p className="dsh-dev-warn">自检不可用（桥未装配或壳侧上下文未绑定）。</p>
++        <p className="dsh-dev-warn">자체 진단을 사용할 수 없습니다 (브리지가 연결되지 않았거나 앱 컨텍스트가 바인딩되지 않음).</p>
+       )}
+       {selfCheck !== null && (
+         <div className="dsh-dev-notify-check">
+           {/* 总开关与权限：任务完成却不提醒时，用户至少能在这里看到是哪一层被关了。 */}
+           <p className="dsh-dev-hint">
+-            应用通知总开关：{selfCheck.notificationsEnabled === false ? '系统已关闭' : '已开启'}
+-            {'；'}通知权限：{selfCheck.permissionLabel ?? (selfCheck.permissionGranted === true ? '已授予' : '未授予（任务完成不会提醒）')}
++            앱 알림 전체 스위치: {selfCheck.notificationsEnabled === false ? '시스템에서 꺼짐' : '켜짐'}
++            {'; '}알림 권한: {selfCheck.permissionLabel ?? (selfCheck.permissionGranted === true ? '허용됨' : '미허용 (작업 완료 시 알림 없음)')}
+           </p>
+           {degradedRows.length > 0 ? (
+             <p className="dsh-dev-warn">
+-              系统已降级以下通知：「{degradedRows.map((row) => row.label ?? row.category ?? '未知渠道').join('、')}」——
+-              应用无法调回，需在系统设置里恢复（可从右侧按钮进入）。
++              시스템에서 다음 알림을 제한(다운그레이드)했습니다: 「{degradedRows.map((row) => row.label ?? row.category ?? '알 수 없는 채널').join(', ')}」 —
++              앱에서 복원할 수 없으므로 시스템 설정에서 복원해야 합니다 (오른쪽 버튼으로 이동 가능).
+             </p>
+           ) : (
+-            <p className="dsh-dev-hint">系统未降级任何通知渠道。</p>
++            <p className="dsh-dev-hint">시스템에서 다운그레이드된 알림 채널이 없습니다.</p>
+           )}
+           {channelRows.map((c) => (
+             <div key={String(c.selected ?? c.category)} className="dsh-dev-row dsh-dev-check-row">
+               <span>
+-                {(c.label ?? c.category ?? '未知渠道')}
+-                {'：'}
++                {(c.label ?? c.category ?? '알 수 없는 채널')}
++                {': '}
+                 {c.degraded === true
+-                  ? '系统已降级'
+-                  : (c.exists === false ? '渠道不存在' : '正常')}
++                  ? '시스템에서 다운그레이드됨'
++                  : (c.exists === false ? '채널이 존재하지 않음' : '정상')}
+                 {/* 档位口径优先取壳侧人话（P3-1：两侧同源，不各自翻译一遍）。 */}
+-                {importanceTextOf(c) === '' ? '' : '（' + importanceTextOf(c) + '）'}
++                {importanceTextOf(c) === '' ? '' : ' (' + importanceTextOf(c) + ')'}
+               </span>
+               <button
+                 type="button"
+@@ -317,10 +317,10 @@ export function NotifySettingsRow() {
+                   } catch {
+                     ok = false
+                   }
+-                  if (!ok) setMessage({ text: '无法打开该渠道的系统设置页——请在系统设置里手动查找' })
++                  if (!ok) setMessage({ text: '해당 채널의 시스템 설정 페이지를 열 수 없습니다 — 시스템 설정에서 직접 찾아주세요' })
+                 }}
+               >
+-                打开该渠道设置
++                해당 채널 설정 열기
+               </button>
+             </div>
+           ))}
+@@ -351,8 +351,8 @@ export function NotifySettingsSection(_props: PropsRuntime<'settings.section'>)
+     <section className="dsh-screen-control-card" aria-labelledby="dsh-notify-title">
+       <header className="dsh-screen-control-header">
+         <span>
+-          <strong id="dsh-notify-title">通知</strong>
+-          <small>任务汇报、提问与授权请求的提醒方式；模型改不了这里的设置。</small>
++          <strong id="dsh-notify-title">알림</strong>
++          <small>작업 보고, 질문 및 권한 요청의 알림 방식입니다. 모델은 이 설정을 수정할 수 없습니다.</small>
+         </span>
+       </header>
+       <NotifySettingsRow />
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx b/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
+index 951673c..91f6906 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
++++ b/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
+@@ -119,10 +119,10 @@ interface RootAccessStatus {
+ }
+ 
+ const STATUS_LABEL: Record<VdisplayState, string> = {
+-  disabled: '已关闭',
+-  blocked: '需要准备',
+-  ready: '可创建',
+-  active: '已激活',
++  disabled: '꺼짐',
++  blocked: '준비 필요',
++  ready: '생성 가능',
++  active: '활성화됨',
+ }
+ 
+ const A11Y_UNREADABLE: A11yStatus = {
+@@ -173,24 +173,24 @@ function readOwnershipState(value: unknown): RootOwnershipStatus {
+ export function describeOwnershipRepair(state: RootOwnershipStatus): { ok: boolean | undefined; text: string } | undefined {
+   if (!state.readable || state.startedAt === 0) return undefined
+   if (state.running) return { ok: state.overdue ? false : undefined,
+-    text: state.overdue ? '特权工作结果仍不明，已暂停新派发和维护；不要重复操作。无法确认 helper 结算时请重启设备（仅重启应用不算结算）。'
++    text: state.overdue ? '특권 작업 결과를 여전히 알 수 없어 새 작업 할당 및 유지보수를 일시 중단했습니다. 반복 조작하지 마세요. helper 정산을 확인할 수 없는 경우 기기를 재부팅하세요 (앱 재시작만으로는 정산되지 않음).'
+       : state.operation !== undefined && !state.operation.includes('ownership')
+-        ? '正在等待已有特权工作结算，尚未开始文件属主维护。'
+-        : '属主维护进行中，正在有界检查本应用数据目录；结果会自动刷新。' }
++        ? '기존 특권 작업 정산을 기다리는 중이며, 파일 소유자 유지보수를 아직 시작하지 않았습니다.'
++        : '소유자 유지보수 진행 중: 본 앱 데이터 디렉터리를 제한 검사하고 있습니다. 결과는 자동으로 새로고침됩니다.' }
+   const result = state.result
+-  if (result === undefined) return { ok: false, text: '属主维护结果不可读，不能确认修复完成；请复制诊断日志。' }
+-  if (result.skipped === 'no-root-path') return { ok: true, text: '当前没有可用 root 修复路径，未执行属主变更。' }
++  if (result === undefined) return { ok: false, text: '소유자 유지보수 결과를 읽을 수 없어 복구 완료를 확인할 수 없습니다. 진단 로그를 복사하세요.' }
++  if (result.skipped === 'no-root-path') return { ok: true, text: '현재 사용 가능한 root 복구 경로가 없어 소유자 변경을 실행하지 않았습니다.' }
+   const count = (key: string): string => typeof result[key] === 'number' && Number.isFinite(result[key])
+-    && (result[key] as number) >= 0 ? String(result[key]) : '未知'
+-  const counts = '检查 ' + count('checked') + ' 项 / 修复 ' + count('healed') + ' 项 / 失败 ' + count('failures') + ' 项'
++    && (result[key] as number) >= 0 ? String(result[key]) : '알 수 없음'
++  const counts = '검사 ' + count('checked') + '개 / 복구 ' + count('healed') + '개 / 실패 ' + count('failures') + '개'
+   const completeCounts = ['checked', 'healed'].every(key => typeof result[key] === 'number'
+     && Number.isSafeInteger(result[key]) && (result[key] as number) >= 0)
+   if (result.ok === true && completeCounts && result.truncated === false && result.deadlineExceeded === false
+     && result.remaining === 0 && result.unverifiedMutations === 0 && result.failures === 0) {
+-    return { ok: true, text: '文件属主维护完成（' + counts + '）；未进行 SELinux 重标记。' }
++    return { ok: true, text: '파일 소유자 유지보수 완료(' + counts + '); SELinux 재레이블은 수행하지 않았습니다.' }
+   }
+   const reason = typeof result.reason === 'string' ? result.reason : typeof result.code === 'string' ? result.code : undefined
+-  return { ok: false, text: '文件属主维护未完成（' + counts + '）：' + describeCallReason(reason) }
++  return { ok: false, text: '파일 소유자 유지보수 미완료(' + counts + '): ' + describeCallReason(reason) }
+ }
+ 
+ const ROOT_ACCESS_UNREADABLE: RootAccessStatus = {
+@@ -206,7 +206,7 @@ const ROOT_ACCESS_UNREADABLE: RootAccessStatus = {
+ }
+ 
+ /** issue #262 用户指定文案（**逐字保留**，未 root 通道下的红字）。 */
+-export const ROOT_GRANT_NOT_ROOT_TEXT = '无法在未 root 的设备上赋予该权限'
++export const ROOT_GRANT_NOT_ROOT_TEXT = 'root 권한이 없는 기기에는 이 권한을 부여할 수 없습니다'
+ 
+ /**
+  * 外链/拉起失败原因的中文口径在**唯一真源** `../user-copy.ts`（0.14.1 批 3 / P3-1）。
+@@ -222,22 +222,22 @@ export const ROOT_GRANT_NOT_ROOT_TEXT = '无法在未 root 的设备上赋予该
+  * （未安装 → 未启动 → 未授权 → 未绑定 → 就绪），用户据此知道自己在第几步。
+  */
+ export function shizukuStateLabel(status: ShizukuStatus): string {
+-  if (!status.readable) return '状态不可读'
+-  if (!status.installed) return '未安装'
+-  if (!status.running) return '已安装，Shizuku 未启动'
+-  if (!status.granted) return '已启动，尚未授权'
+-  if (!status.bound) return status.binding ? '已授权，通道建立中' : '已授权，通道未建立'
+-  return '通道就绪'
++  if (!status.readable) return '상태를 읽을 수 없음'
++  if (!status.installed) return '미설치'
++  if (!status.running) return '설치됨, Shizuku 미실행'
++  if (!status.granted) return '실행됨, 미승인'
++  if (!status.bound) return status.binding ? '승인됨, 채널 연결 중' : '승인됨, 채널 미연결'
++  return '채널 준비됨'
+ }
+ 
+ /** 壳侧 guidance 缺失时的兜底说明（每态都能说清「下一步做什么」）。 */
+ export function shizukuStepHint(status: ShizukuStatus): string {
+-  if (!status.readable) return '读不到 Shizuku 状态：壳侧桥未装配或解析失败。'
+-  if (!status.installed) return '点「下载 Shizuku」到发布页装好，再回来点「打开 Shizuku」。'
+-  if (!status.running) return '点「打开 Shizuku」，在应用内按提示用无线调试启动它（重启设备后需要重做一次）。'
+-  if (!status.granted) return '点「打开 Shizuku」，在里面允许本应用使用 Shizuku——授权只能由你亲手完成。'
+-  if (!status.bound) return '状态每 2 秒自动刷新，稍等即可；一直停在这里可以点「打开 Shizuku」重进一次。'
+-  return '特权通道已就绪，虚拟屏与特权 shell 可以用了。'
++  if (!status.readable) return 'Shizuku 상태를 읽을 수 없습니다: 앱 내부 브리지가 연결되지 않았거나 파싱에 실패했습니다.'
++  if (!status.installed) return '「Shizuku 다운로드」를 눌러 릴리스 페이지에서 설치한 뒤 돌아와서 「Shizuku 열기」를 누르세요.'
++  if (!status.running) return '「Shizuku 열기」를 누르고 앱 내 안내에 따라 무선 디버깅으로 시작하세요 (기기 재부팅 후 다시 실행 필요).'
++  if (!status.granted) return '「Shizuku 열기」를 누르고 앱 내에서 이 앱의 Shizuku 사용을 허용하세요 — 승인은 직접 수행해야 합니다.'
++  if (!status.bound) return '상태가 2초마다 자동 새로고침되니 잠시 기다리세요; 계속 멈춰 있다면 「Shizuku 열기」를 눌러 다시 진입하세요.'
++  return '특권 채널이 준비되었습니다. 가상 화면과 특권 shell을 사용할 수 있습니다.'
+ }
+ 
+ export function parseRootReply(raw: string | undefined): Record<string, unknown> | undefined {
+@@ -279,11 +279,11 @@ export function settleLinkCall(
+ export function settleUnlockCall(raw: string | undefined): { ok: boolean; text: string } {
+   const answer = parseAnswer(raw)
+   if (answer?.ok === true) {
+-    return { ok: true, text: answer.message ?? '已解锁受限设置，现在可以回系统页开启无障碍服务。' }
++    return { ok: true, text: answer.message ?? '제한된 설정을 해제했습니다. 이제 시스템 설정으로 돌아가 접근성 서비스를 켤 수 있습니다.' }
+   }
+   return {
+     ok: false,
+-    text: '解锁失败：' + (answer?.message ?? describeCallReason(answer?.reason)),
++    text: '해제 실패: ' + (answer?.message ?? describeCallReason(answer?.reason)),
+   }
+ }
+ 
+@@ -305,13 +305,13 @@ function readVdisplay(): VdisplayStatus {
+     return {
+       state: state === 'disabled' || state === 'blocked' || state === 'ready' || state === 'active' ? state : 'blocked',
+       code: typeof parsed?.code === 'string' ? parsed.code : 'vdisplay-status-unavailable',
+-      guidance: typeof parsed?.guidance === 'string' ? parsed.guidance : '虚拟屏状态暂不可读；不会把虚拟屏请求回退到真实屏幕。',
++      guidance: typeof parsed?.guidance === 'string' ? parsed.guidance : '가상 화면 상태를 임시로 읽을 수 없습니다; 가상 화면 요청을 실제 화면으로 대체하지 않습니다.',
+       ...(typeof parsed?.displayId === 'number' ? { displayId: parsed.displayId } : {}),
+     }
+   } catch {
+     // P3-6：旧文案是「虚拟屏状态读取失败（fail-closed）。」——`fail-closed` 是内部策略词，
+     // 对用户没有意义；这里说清「读不到 + 不会做什么 + 能做什么」，策略词只留在 code 里。
+-    return { state: 'blocked', code: 'vdisplay-status-unavailable', guidance: '读不到虚拟屏状态：应用内桥未接好或解析失败。重新打开应用再试；读不到时不会把虚拟屏请求回退到真实屏幕。' }
++    return { state: 'blocked', code: 'vdisplay-status-unavailable', guidance: '가상 화면 상태를 읽을 수 없습니다: 앱 내부 브리지가 연결되지 않았거나 파싱에 실패했습니다. 앱을 다시 열고 시도하세요; 읽을 수 없을 때는 가상 화면 요청을 실제 화면으로 대체하지 않습니다.' }
+   }
+ }
+ 
+@@ -415,14 +415,14 @@ export function readRootAccess(): RootAccessStatus {
+ 
+ /** 应用级 root 授权状态 → 中文状态词（与壳侧 RootAccess 的状态常量一一对应）。 */
+ export function rootAccessStateLabel(status: RootAccessStatus): string {
+-  if (!status.readable) return '状态不可读'
++  if (!status.readable) return '상태를 읽을 수 없음'
+   switch (status.state) {
+-    case 'granted': return '已授权（uid 0）'
+-    case 'requesting': return '正在检测授权…'
+-    case 'denied': return '已拒绝'
+-    case 'timeout': return '检测超时，请在管理器确认后重试'
+-    case 'no-su': return '本机没有可用的 su'
+-    default: return '未检测'
++    case 'granted': return '승인됨 (uid 0)'
++    case 'requesting': return '권한 확인 중…'
++    case 'denied': return '거부됨'
++    case 'timeout': return '확인 시간 초과: 관리자에서 확인 후 다시 시도하세요'
++    case 'no-su': return '기기에 사용 가능한 su가 없습니다'
++    default: return '미확인'
+   }
+ }
+ 
+@@ -437,10 +437,10 @@ export function canRequestRoot(status: RootAccessStatus): boolean {
+  * 顺序即真实判据顺序：读不到 → 通道非 root（置灰）→ 未授权 → 已授权。
+  */
+ export function rootGrantStateLabel(status: RootGrantStatus): string {
+-  if (!status.readable) return '状态不可读'
+-  if (!status.channelRoot && !status.rootGranted) return '没有可用 root 通道'
+-  if (!status.granted) return '未授权'
+-  return '已授权（AI 可用 root）'
++  if (!status.readable) return '상태를 읽을 수 없음'
++  if (!status.channelRoot && !status.rootGranted) return '사용 가능한 root 채널 없음'
++  if (!status.granted) return '미승인'
++  return '승인됨 (AI가 root 사용 가능)'
+ }
+ 
+ /** 开关可否点击：只有**通道身份确为 root**才可点（读不到/非 root 一律不可点）。 */
+@@ -464,7 +464,7 @@ export function rootGrantChannelHint(status: RootGrantStatus): { text: string; k
+   if (status.channelRoot) return { text: '', kind: 'none' }
+   if (status.channelUid === SHIZUKU_SHELL_UID) {
+     return {
+-      text: 'Shizuku 当前以 shell（uid 2000）身份运行——请在 Shizuku 内以 root 启动它，再回到本页开启。',
++      text: 'Shizuku가 현재 shell(uid 2000) 권한으로 실행 중입니다 — Shizuku 내에서 root로 실행한 뒤 본 페이지로 돌아와 켜주세요.',
+       kind: 'shell-identity',
+     }
+   }
+@@ -571,8 +571,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.openExternalLink
+         ? () => window.androidBridge!.openExternalLink!(LINK_DOWNLOAD)
+         : undefined,
+-      '已打开 Shizuku 发布页——下载 release 版 APK 装好后回到这里。',
+-      '打开下载页失败',
++      'Shizuku 릴리스 페이지를 열었습니다 — 릴리스 APK를 다운로드하여 설치한 후 여기로 돌아오세요.',
++      '다운로드 페이지 열기 실패',
+     )
+   }, [runShizukuAction])
+ 
+@@ -581,8 +581,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.openExternalLink
+         ? () => window.androidBridge!.openExternalLink!(LINK_TUTORIAL)
+         : undefined,
+-      '已用浏览器打开视频教程。',
+-      '打开教程失败',
++      '브라우저에서 튜토리얼 동영상을 열었습니다.',
++      '튜토리얼 열기 실패',
+     )
+   }, [runShizukuAction])
+ 
+@@ -591,8 +591,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.openShizukuManager
+         ? () => window.androidBridge!.openShizukuManager!()
+         : undefined,
+-      '已打开 Shizuku——在那里启动并授权后，回到本页状态会自动刷新。',
+-      '打开 Shizuku 失败',
++      'Shizuku를 열었습니다 — 실행 및 권한을 허용한 후 이 페이지로 돌아오면 상태가 자동으로 새로고침됩니다.',
++      'Shizuku 열기 실패',
+     )
+   }, [runShizukuAction])
+ 
+@@ -609,8 +609,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.requestShizukuPermission
+         ? () => window.androidBridge!.requestShizukuPermission!()
+         : undefined,
+-      '已发起 Shizuku 授权请求——请在弹窗上点「允许」（本页每 2 秒自动刷新）。',
+-      '请求 Shizuku 授权失败',
++      'Shizuku 권한 요청을 보냈습니다 — 팝업에서 「허용」을 누르세요 (이 페이지는 2초마다 자동 새로고침됩니다).',
++      'Shizuku 권한 요청 실패',
+     )
+   }, [runShizukuAction])
+ 
+@@ -629,8 +629,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.resetShizukuConnection
+         ? () => window.androidBridge!.resetShizukuConnection!()
+         : undefined,
+-      '已重置 Shizuku 连接，正在重新建立通道（本页每 2 秒自动重扫）。',
+-      '重置 Shizuku 连接失败',
++      'Shizuku 연결을 재설정했습니다. 채널을 다시 연결하는 중입니다 (이 페이지는 2초마다 자동 재스캔).',
++      'Shizuku 연결 재설정 실패',
+     )
+   }, [runShizukuAction])
+ 
+@@ -671,7 +671,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+     if (next && parsed?.code === 'request-started') {
+       setPendingEnable(true)
+       setRootOk(true)
+-      setRootMsg('正在检测 root 授权。若没有弹窗，请在你使用的 Root 管理器中允许本应用；授权后会继续本次开启操作。')
++      setRootMsg('root 권한을 확인하는 중입니다. 팝업이 뜨지 않는 경우 사용하는 Root 관리자에서 이 앱을 허용하세요; 권한이 부여되면 활성화 작업이 계속 진행됩니다.')
+       refreshRootGrant()
+       refreshRootAccess()
+       return
+@@ -679,9 +679,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+     runRootAction(
+       undefined,
+       next
+-        ? '已开启 AI root 权限：特权通道按 root 身份执行，请在需要时使用、用完即关。'
+-        : '已关闭 AI root 权限：特权通道已恢复整体拒绝。',
+-      next ? '开启 AI root 权限失败' : '关闭 AI root 权限失败',
++        ? 'AI root 권한을 켰습니다: 특권 채널이 root 권한으로 실행됩니다. 필요할 때만 사용하고 사용 후에는 바로 꺼주세요.'
++        : 'AI root 권한을 껐습니다: 특권 채널이 전체 거부 상태로 복원되었습니다.',
++      next ? 'AI root 권한 켜기 실패' : 'AI root 권한 끄기 실패',
+       raw,
+     )
+   }, [runRootAction, refreshRootGrant, refreshRootAccess])
+@@ -697,8 +697,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.requestRootAccess
+         ? () => window.androidBridge!.requestRootAccess!()
+         : undefined,
+-      '已发起 root 授权检测，结果会自动刷新；检测成功不代表 AI root 开关已开启。',
+-      '检测 root 授权未通过',
++      'root 권한 확인을 요청했습니다. 결과는 자동으로 새로고침됩니다; 확인 성공이 AI root 스위치가 켜졌음을 의미하지는 않습니다.',
++      'root 권한 확인 미통과',
+     )
+     refreshRootAccess()
+   }, [runRootAction, refreshRootAccess])
+@@ -722,7 +722,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       setRepairReply(observed)
+       setRepairFailure(undefined)
+     } else {
+-      setRepairFailure('启动文件属主维护失败：' + describeCallReason(typeof parsed?.reason === 'string' ? parsed.reason : undefined))
++      setRepairFailure('파일 소유자 유지보수 시작 실패: ' + describeCallReason(typeof parsed?.reason === 'string' ? parsed.reason : undefined))
+     }
+     refreshRootGrant()
+   }, [refreshRootGrant])
+@@ -754,9 +754,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+         ? () => window.androidBridge!.setRootConsent!(next)
+         : undefined,
+       next
+-        ? '已记录「已阅读」——与免责声明版本绑定，应用升级不需重新确认；免责声明内容更新后才需再确认。'
+-        : '已撤销同意，并同时关闭了 AI root 权限。',
+-      next ? '记录「已阅读」失败' : '撤销同意失败',
++        ? '「면책 조항을 읽었음」을 기록했습니다 — 면책 조항 버전과 연결되어 앱 업그레이드 시 다시 확인할 필요가 없습니다 (면책 조항 내용 업데이트 시 재확인 필요).'
++        : '동의를 철회했으며, AI root 권한도 함께 꺼졌습니다.',
++      next ? '「면책 조항을 읽었음」 기록 실패' : '동의 철회 실패',
+     )
+   }, [runRootAction])
+ 
+@@ -765,8 +765,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       window.androidBridge?.openRootDisclaimer
+         ? () => window.androidBridge!.openRootDisclaimer!()
+         : undefined,
+-      '已打开免责声明（APK 内置文档，离线可读）。',
+-      '打开免责声明失败',
++      '면책 조항을 열었습니다 (APK 내장 문서, 오프라인 읽기 가능).',
++      '면책 조항 열기 실패',
+     )
+   }, [runRootAction])
+ 
+@@ -783,17 +783,17 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       const parsed = raw ? JSON.parse(raw) as { ok?: boolean; code?: string } : undefined
+       const ok = parsed?.ok === true
+       setForceMsg(ok
+-        ? { ok: true, text: '已强制销毁全部虚拟屏。' }
+-        : { ok: false, text: '销毁失败：' + describeCallReason(parsed?.code), code: String(parsed?.code ?? 'unknown') })
++        ? { ok: true, text: '모든 가상 화면을 강제 종료했습니다.' }
++        : { ok: false, text: '종료 실패: ' + describeCallReason(parsed?.code), code: String(parsed?.code ?? 'unknown') })
+     } catch {
+-      setForceMsg({ ok: false, text: '销毁调用失败（应用内桥不可用）——请重新打开应用后重试。', code: 'bridge-threw' })
++      setForceMsg({ ok: false, text: '종료 호출 실패 (앱 내부 브리지를 사용할 수 없음) — 앱을 다시 연 뒤 시도하세요.', code: 'bridge-threw' })
+     }
+     refreshVdisplay()
+   }, [confirmStage, refreshVdisplay])
+ 
+   const forceLabel = confirmStage === 0
+-    ? '强制销毁虚拟屏'
+-    : '再次点击确认（' + confirmStage + '/3）'
++    ? '가상 화면 강제 종료'
++    : '다시 눌러 확인 (' + confirmStage + '/3)'
+   // P5-5：进入确认态后必须给**取消途径**。旧实现没有任何退出通道——误点一下就只能
+   // 「再点两下把它执行掉」或者等 4 秒超时（超时不可见，用户并不知道自己还能等）。
+   const forceArmed = confirmStage > 0
+@@ -813,8 +813,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+     >
+       <header className="dsh-screen-control-header">
+         <span>
+-          <strong id="dsh-phone-control-title">手机控制</strong>
+-          <small>屏幕与特权通道的授权设置；模型改不了这里的设置。</small>
++          <strong id="dsh-phone-control-title">휴대폰 제어</strong>
++          <small>화면 및 특권 채널의 권한 설정입니다; 모델은 여기 설정을 변경할 수 없습니다.</small>
+         </span>
+         <span className="dsh-screen-control-state" data-state={vdisplay.state}>{STATUS_LABEL[vdisplay.state]}</span>
+       </header>
+@@ -827,7 +827,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       ) : null}
+ 
+       <div className="dsh-screen-control-detail">
+-        <strong>Shizuku 特权通道</strong>
++        <strong>Shizuku 특권 채널</strong>
+         <span data-code={shizuku.readable ? undefined : 'shizuku-status-unreadable'}>
+           {shizukuStateLabel(shizuku)}
+         </span>
+@@ -836,23 +836,23 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+         {shizuku.guidance !== '' ? shizuku.guidance : shizukuStepHint(shizuku)}
+       </p>
+       <div className="dsh-dev-row dsh-dev-split">
+-        <button type="button" className="dsh-dev-btn" onClick={downloadShizuku}>下载 Shizuku</button>
++        <button type="button" className="dsh-dev-btn" onClick={downloadShizuku}>Shizuku 다운로드</button>
+         <button
+           type="button"
+           className="dsh-dev-btn"
+           disabled={!canOpenShizuku}
+           onClick={openShizuku}
+         >
+-          打开 Shizuku
++          Shizuku 열기
+         </button>
+       </div>
+       {/* 精简（0.14.7-B D5）：保留「两个入口都会跳出去」「授权只能由你亲手完成」；状态自动刷新
+           这句已由上方状态行与本页 2 秒轮询承担，不再复述。 */}
+-      <p className="dsh-dev-hint">两个入口都会跳到应用外（系统浏览器 / Shizuku 应用）；装好并授权后回本页即可，授权只能在 Shizuku 内由你亲手完成。</p>
++      <p className="dsh-dev-hint">두 항목 모두 앱 외부(시스템 브라우저 / Shizuku 앱)로 이동합니다; 설치 및 권한 부여 후 이 페이지로 돌아오면 되며, 권한 부여는 Shizuku 내에서 직접 수행해야 합니다.</p>
+       <div className="dsh-dev-row">
+-        <button type="button" className="dsh-dev-link" onClick={tutorialShizuku}>点击查看教程</button>
+-        <button type="button" className="dsh-dev-btn" onClick={refreshShizuku}>刷新状态</button>
+-        <button type="button" className="dsh-dev-btn" onClick={resetShizuku}>重置链接</button>
++        <button type="button" className="dsh-dev-link" onClick={tutorialShizuku}>클릭하여 튜토리얼 보기</button>
++        <button type="button" className="dsh-dev-btn" onClick={refreshShizuku}>상태 새로고침</button>
++        <button type="button" className="dsh-dev-btn" onClick={resetShizuku}>연결 재설정</button>
+       </div>
+       {shizuku.granted ? null : (
+         <div className="dsh-dev-row">
+@@ -862,71 +862,71 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+             disabled={!shizuku.readable || !shizuku.running}
+             onClick={requestShizukuPermission}
+           >
+-            请求 Shizuku 授权
++            Shizuku 권한 요청
+           </button>
+           {/* 失败机理保留（用户据此判断「为什么点了没反应」），只压掉重复的前提句。 */}
+-          <span className="dsh-dev-hint">授权框需要前台界面才会弹出，后台自动请求会静默失败。</span>
++          <span className="dsh-dev-hint">권한 팝업은 포그라운드 화면에서만 표시되며, 백그라운드 자동 요청 시 알림 없이 실패합니다.</span>
+         </div>
+       )}
+       {shizukuMsg === null ? null : (
+         <p className={shizukuOk === true ? 'dsh-dev-hint' : 'dsh-dev-error'}>{shizukuMsg}</p>
+       )}
+ 
+-      <section className="dsh-root-access-card" aria-label="Root 权限设置">
++      <section className="dsh-root-access-card" aria-label="Root 권한 설정">
+         <div className="dsh-screen-control-header">
+-          <span><strong>Root 权限</strong><small>先确认可用通道，再决定是否允许 AI 使用。</small></span>
++          <span><strong>Root 권한</strong><small>사용 가능한 채널을 먼저 확인한 뒤 AI 사용 허용 여부를 결정하세요.</small></span>
+           <span className="dsh-screen-control-state" data-state={rootGrant.granted ? 'active' : 'disabled'}>
+-            {rootGrant.granted ? 'AI 已开启' : 'AI 未开启'}
++            {rootGrant.granted ? 'AI 켜짐' : 'AI 꺼짐'}
+           </span>
+         </div>
+ 
+         <div className="dsh-root-step">
+           <div className="dsh-screen-control-detail">
+-            <strong>1. 应用 root 授权</strong>
++            <strong>1. 앱 root 권한</strong>
+             <span data-code={rootAccess.readable ? rootAccess.state : 'root-access-unreadable'}>
+               {rootAccessStateLabel(rootAccess)}
+             </span>
+           </div>
+           <p className="dsh-dev-hint">
+-            {rootAccess.guidance || '检测应用的 su 授权；Shizuku 已以 root 启动时，也可直接使用该通道。'}
++            {rootAccess.guidance || '앱의 su 권한을 확인합니다; Shizuku가 이미 root로 실행된 경우 해당 채널을 직접 사용할 수도 있습니다.'}
+           </p>
+           <button type="button" className="dsh-dev-btn" disabled={!canRequestRoot(rootAccess)} onClick={requestRoot}>
+-            {rootAccess.requesting ? '正在检测…' : '检测 root 授权'}
++            {rootAccess.requesting ? '확인 중…' : 'root 권한 확인'}
+           </button>
+           {rootAccess.managerInstalled ? (
+-            <p className="dsh-dev-hint">Root 管理器：{rootAccess.managerLabel}——在管理器中允许本应用，再回这里检测。</p>
++            <p className="dsh-dev-hint">Root 관리자: {rootAccess.managerLabel} — 관리자에서 이 앱을 허용한 뒤 여기로 돌아와 다시 확인하세요.</p>
+           ) : null}
+         </div>
+ 
+         <div className="dsh-root-step">
+           <div className="dsh-screen-control-detail">
+-            <strong>2. AI root 权限</strong>
++            <strong>2. AI root 권한</strong>
+             <span data-code={rootGrant.readable ? undefined : 'root-grant-unreadable'}>{rootGrantStateLabel(rootGrant)}</span>
+           </div>
+           {!rootGrant.readable ? (
+-            <p className="dsh-dev-error">授权状态不可读。重新打开应用再试；读不到时不会允许 AI 使用 root。</p>
++            <p className="dsh-dev-error">권한 상태를 읽을 수 없습니다. 앱을 다시 열고 시도하세요; 읽을 수 없을 때는 AI의 root 사용이 허용되지 않습니다.</p>
+           ) : !rootGrant.channelRoot && !rootGrant.rootGranted ? (
+             <p className={rootGrantChannelHint(rootGrant).kind === 'shell-identity' ? 'dsh-dev-hint' : 'dsh-dev-error'}
+               data-code={rootGrantChannelHint(rootGrant).kind === 'shell-identity' ? 'shizuku-shell-identity' : 'not-root-channel'}>
+               {rootGrantChannelHint(rootGrant).text}
+             </p>
+           ) : (
+-            <p className="dsh-dev-hint">可用通道：{rootGrant.channelRoot ? 'Shizuku root' : '应用 su root'}。应用获得授权不等于已允许 AI 使用。</p>
++            <p className="dsh-dev-hint">사용 가능한 채널: {rootGrant.channelRoot ? 'Shizuku root' : '앱 su root'}. 앱 권한 획득이 AI 사용 허용을 의미하지는 않습니다.</p>
+           )}
+-          <button type="button" className="dsh-dev-link" onClick={openRootDisclaimer}>阅读《AI root 权限免责声明》</button>
++          <button type="button" className="dsh-dev-link" onClick={openRootDisclaimer}>《AI root 권한 면책 조항》 읽기</button>
+           <label className="dsh-screen-scope-row dsh-root-toggle-row">
+-            <span><strong>已阅读免责声明</strong><small>理解 root 操作可能修改或删除系统与个人数据，并承担相应风险。应用升级不需重新确认（免责声明内容更新时才需）；撤销同意会同时关闭 AI 开关。</small></span>
+-            <input type="checkbox" aria-label="已阅读免责声明" checked={rootGrant.consentValid}
++            <span><strong>면책 조항을 읽었음</strong><small>root 작업이 시스템 및 개인 데이터를 수정 또는 삭제할 수 있음을 이해하고 관련 위험을 감수합니다. 앱 업그레이드 시 다시 확인할 필요가 없습니다 (면책 조항 내용 업데이트 시 재확인 필요); 동의를 철회하면 AI 스위치도 꺼집니다.</small></span>
++            <input type="checkbox" aria-label="면책 조항을 읽었음" checked={rootGrant.consentValid}
+               disabled={!rootGrant.readable} onChange={(event) => toggleRootConsent(event.target.checked)} />
+           </label>
+           <label className="dsh-screen-scope-row dsh-root-toggle-row">
+-            <span><strong>授权 AI 使用 root</strong><small>{rootGrant.honesty || '这是策略与知情同意开关，不是技术沙箱。关闭后 AI 的 root 执行路径会被拒绝。'}</small></span>
+-            <input type="checkbox" role="switch" aria-label="授权 AI 使用 root" checked={rootGrant.granted}
++            <span><strong>AI의 root 사용 허용</strong><small>{rootGrant.honesty || '이것은 정책 및 사전 동의 스위치이며 기술적 샌드박스가 아닙니다. 끄면 AI의 root 실행 경로가 거부됩니다.'}</small></span>
++            <input type="checkbox" role="switch" aria-label="AI의 root 사용 허용" checked={rootGrant.granted}
+               disabled={!rootGrant.readable || (!rootGrant.granted && (!canToggleRootGrant(rootGrant) || !rootGrant.consentValid))}
+               onChange={(event) => toggleRootGrant(event.target.checked)} />
+           </label>
+           {rootGrant.readable && canToggleRootGrant(rootGrant) && !rootGrant.consentValid ? (
+-            <p className="dsh-dev-hint">请先阅读并确认免责声明，才能开启 AI root 权限。</p>
++            <p className="dsh-dev-hint">AI root 권한을 켜려면 먼저 면책 조항을 읽고 확인하세요.</p>
+           ) : null}
+           {rootMsg === null ? null : (
+             <p role="status" aria-live="polite" className={rootOk === true ? 'dsh-dev-hint' : 'dsh-dev-error'}>{rootMsg}</p>
+@@ -934,10 +934,10 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+         </div>
+ 
+         <details className="dsh-root-maintenance">
+-          <summary>文件属主维护</summary>
+-          <p className="dsh-dev-hint">root 写盘后应用无法读取文件时使用。仅修复本应用数据目录，不改变 AI 授权。</p>
++          <summary>파일 소유자 유지보수</summary>
++          <p className="dsh-dev-hint">root 디스크 쓰기 후 앱에서 파일을 읽을 수 없을 때 사용합니다. 본 앱 데이터 디렉터리만 복구하며 AI 권한은 변경하지 않습니다.</p>
+           <button type="button" className="dsh-dev-btn" disabled={repairState.running || (!rootAccess.granted && !rootGrant.channelRoot)} onClick={repairOwnership}>
+-            {repairState.running ? '属主维护进行中' : '修复文件属主'}
++            {repairState.running ? '소유자 유지보수 진행 중' : '파일 소유자 복구'}
+           </button>
+           {repairFeedback === undefined ? null : (
+             <p role="status" aria-live="polite" className={repairFeedback.ok === false ? 'dsh-dev-error' : 'dsh-dev-hint'}>{repairFeedback.text}</p>
+@@ -947,25 +947,25 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+ 
+       <label className="dsh-screen-scope-row">
+         <span>
+-          <strong>开放屏幕范围</strong>
+-          <small>默认仅虚拟屏幕；真实屏幕、截图与控制都受此范围约束。</small>
++          <strong>화면 공유 범위</strong>
++          <small>기본값은 가상 화면 전용입니다; 실제 화면, 스크린샷 및 제어 모두 이 범위의 제한을 받습니다.</small>
+         </span>
+-        <select aria-label="开放屏幕范围" value={scope} onChange={(event) => setScope(event.target.value as ScreenScope)}>
+-          <option value="virtual-only">仅虚拟屏幕</option>
+-          <option value="real-only">仅真实屏幕</option>
+-          <option value="all">全部开放</option>
++        <select aria-label="화면 공유 범위" value={scope} onChange={(event) => setScope(event.target.value as ScreenScope)}>
++          <option value="virtual-only">가상 화면 전용</option>
++          <option value="real-only">실제 화면 전용</option>
++          <option value="all">전체 허용</option>
+         </select>
+       </label>
+ 
+       <label className="dsh-screen-scope-row">
+         <span>
+-          <strong>虚拟屏分辨率档位</strong>
+-          <small>跟随真机比例缩放（下次建屏生效；默认 0.75）。</small>
++          <strong>가상 화면 해상도 배율</strong>
++          <small>실제 기기 비율을 기준으로 크기를 조절합니다 (다음 화면 생성 시 적용; 기본값 0.75).</small>
+         </span>
+-        <select aria-label="虚拟屏分辨率档位" value={String(scale)} onChange={(event) => setScale(Number(event.target.value))}>
++        <select aria-label="가상 화면 해상도 배율" value={String(scale)} onChange={(event) => setScale(Number(event.target.value))}>
+           {SCALE_OPTIONS.map((option) => (
+             <option key={option} value={String(option)}>
+-              {option === 1 ? '原生' : String(Math.round(option * 100)) + '%'}
++              {option === 1 ? '원본 크기' : String(Math.round(option * 100)) + '%'}
+             </option>
+           ))}
+         </select>
+@@ -973,13 +973,13 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+ 
+       <label className="dsh-screen-scope-row">
+         <span>
+-          <strong>虚拟屏浮窗（退后台自动显示）</strong>
++          <strong>가상 화면 플로팅 뷰 (백그라운드 진입 시 자동 표시)</strong>
+           {/* P5-6：与开发者选项里的「悬浮球」去混淆。两者都叫「浮」，但一个是**虚拟屏只读画面**，
+               一个是**任务面板入口**——旧文案各说各的，用户在两页之间对不上号。 */}
+-          <small>只读浮窗：退后台时显示虚拟屏画面，前台只在侧栏可见。不是开发者选项里的「悬浮球」（那个是任务面板入口）。</small>
++          <small>읽기 전용 플로팅 뷰: 백그라운드로 전환될 때 가상 화면을 표시하며, 포그라운드에서는 사이드바에서만 표시됩니다. 개발자 옵션의 「플로팅 버튼」(작업 패널 진입점)과는 다릅니다.</small>
+         </span>
+         <input
+-          aria-label="虚拟屏浮窗（退后台自动显示）"
++          aria-label="가상 화면 플로팅 뷰 (백그라운드 진입 시 자동 표시)"
+           type="checkbox"
+           checked={floatOn}
+           onChange={(event) => setFloat(event.target.checked)}
+@@ -987,25 +987,25 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       </label>
+ 
+       <div className="dsh-screen-control-detail">
+-        <strong>无障碍通道</strong>
++        <strong>접근성 채널</strong>
+         <span>
+           {!a11y.readable
+-            ? '状态不可读'
+-            : (a11y.enabled ? '已开启（语义读取/点击/输入）' : '未开启（推荐开启）')}
++            ? '상태를 읽을 수 없음'
++            : (a11y.enabled ? '켜짐 (화면 읽기/클릭/입력)' : '꺼짐 (사용 권장)')}
+         </span>
+         {a11y.hint !== '' ? <span>{a11y.hint}</span> : null}
+       </div>
+       {/* 权限引导必须保留：说明为什么系统页开关是灰的、以及解锁只影响本应用这一项。 */}
+       {a11y.readable && !a11y.enabled && a11y.restrictedSettingsApplies ? (
+         <p className="dsh-dev-hint">
+-          Android 13 及以上对侧载应用默认开启「受限设置」，系统页里本应用的开关是灰的：
+-          先点「解锁受限设置」（经 Shizuku 特权通道，只影响本应用这一项），再回去开启。
++          Android 13 이상에서는 사이드로로드된 앱에 대해 「제한된 설정」이 기본 적용되어 시스템 페이지에서 본 앱 스위치가 비활성화됩니다:
++          먼저 「제한된 설정 해제」(Shizuku 특권 채널을 통해 이 앱 항목에만 적용됨)를 누른 후 다시 켜세요.
+         </p>
+       ) : null}
+       <div className="dsh-dev-row">
+-        <button type="button" className="dsh-dev-btn" onClick={openA11y}>去开启无障碍服务</button>
++        <button type="button" className="dsh-dev-btn" onClick={openA11y}>접근성 서비스 설정으로 이동</button>
+         {a11y.readable && !a11y.enabled && a11y.restrictedSettingsApplies ? (
+-          <button type="button" className="dsh-dev-btn" onClick={unlockA11y}>解锁受限设置</button>
++          <button type="button" className="dsh-dev-btn" onClick={unlockA11y}>제한된 설정 해제</button>
+         ) : null}
+       </div>
+       {a11yMsg === null ? null : (
+@@ -1013,8 +1013,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       )}
+ 
+       <div className="dsh-screen-control-detail">
+-        <strong>强制销毁虚拟屏</strong>
+-        <span>销毁全部虚拟屏与其上的任务（无视会话归属）；需连续点击三次确认，点错可取消。</span>
++        <strong>가상 화면 강제 종료</strong>
++        <span>모든 가상 화면과 그 위의 작업을 종료합니다 (세션 소유권 무시); 3회 연속 클릭하여 확인해야 하며, 실수로 누른 경우 취소할 수 있습니다.</span>
+       </div>
+       {/* P5-5：破坏性按钮必须与同页的普通按钮**看得出区别**（dsh-dev-danger），
+           并在确认态给「取消」。此前它长得和「刷新状态」一模一样，还紧邻其它按钮。 */}
+@@ -1029,7 +1029,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+           {forceLabel}
+         </button>
+         {forceArmed ? (
+-          <button type="button" className="dsh-dev-link" onClick={cancelForce}>取消</button>
++          <button type="button" className="dsh-dev-link" onClick={cancelForce}>취소</button>
+         ) : null}
+       </div>
+       {forceMsg === null ? null : (
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx b/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx
+index d0732ee..107dbf6 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx
++++ b/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx
+@@ -66,17 +66,17 @@ function fmtBytes(n: number): string {
+  * 未登记的原因落到 [describeSkipReason] 的兜底句，原始串只进 `data-reason`。
+  */
+ const SKIP_LABEL: Record<string, string> = {
+-  'not-allowlisted': '未列入白名单（本版不清理）',
+-  absent: '不存在',
+-  unreadable: '不可读',
+-  'log-root-unresolved': '日志目录未注入（应用未提供日志目录）',
+-  'current-generation-absent': '当前引擎日志不在场（引擎未启动）',
+-  preserved: '属保留项',
+-  'scope-rejected': '越出白名单作用域（已拒绝）',
+-  vanished: '执行前已消失',
+-  aborted: '被执行中断跳过',
++  'not-allowlisted': '허용 목록에 없음 (이번 버전에서 정리하지 않음)',
++  absent: '존재하지 않음',
++  unreadable: '읽을 수 없음',
++  'log-root-unresolved': '로그 디렉터리가 주입되지 않음 (앱에서 로그 디렉터리를 제공하지 않음)',
++  'current-generation-absent': '현재 엔진 로그가 없음 (엔진이 시작되지 않음)',
++  preserved: '보존 항목',
++  'scope-rejected': '허용 목록 범위를 벗어남 (거부됨)',
++  vanished: '실행 전 이미 삭제됨',
++  aborted: '실행 중단으로 건너뜀',
+   // 执行期失败：原因是稳定码，OS 错误串在 `detail` 里（只进 data-detail）。
+-  'remove-failed': '删除失败（文件被占用、只读或权限不足）',
++  'remove-failed': '삭제 실패 (파일이 사용 중이거나 읽기 전용 또는 권한 부족)',
+ }
+ 
+ /**
+@@ -86,8 +86,8 @@ const SKIP_LABEL: Record<string, string> = {
+  */
+ function describe(item: CacheItem): string {
+   const reason = item.reason ?? ''
+-  if (reason === '') return '原因未记录'
+-  return SKIP_LABEL[reason] ?? '原因未在本版登记（可复制日志反馈）'
++  if (reason === '') return '원인 미기록'
++  return SKIP_LABEL[reason] ?? '원인이 등록되지 않았습니다 (로그를 복사하여 문의하세요)'
+ }
+ 
+ /**
+@@ -112,7 +112,7 @@ export function RuntimeCacheRow() {
+       if (!response.ok) {
+         // P3-1/P3-6：状态码只作分档依据，进正文的是「发生了什么 + 能做什么」。
+         setScanState('failed')
+-        setMessage({ text: describeHttpFailure('读取运行时缓存', response.status), http: response.status })
++        setMessage({ text: describeHttpFailure('런타임 캐시 확인', response.status), http: response.status })
+         return
+       }
+       const payload = (await response.json()) as CacheScan
+@@ -140,16 +140,16 @@ export function RuntimeCacheRow() {
+         cache: 'no-store',
+       })
+       if (!response.ok) {
+-        setMessage({ text: describeHttpFailure('清理运行时缓存', response.status), http: response.status })
++        setMessage({ text: describeHttpFailure('런타임 캐시 정리', response.status), http: response.status })
+         return
+       }
+       const payload = (await response.json().catch(() => null)) as CacheReport | null
+       setReport(payload)
+       if (payload === null) {
+-        setMessage({ text: '清理结果无法解析（响应不是预期的数据）——请重试；仍失败可复制日志反馈' })
++        setMessage({ text: '정리 결과를 파싱할 수 없습니다 (예상된 데이터 형식이 아님) — 다시 시도하세요. 계속 실패 시 로그를 복사하여 문의하세요' })
+       }
+     } catch {
+-      setMessage({ text: '清理请求失败（仅安卓应用内有此能力）——请确认在本机应用内操作' })
++      setMessage({ text: '정리 요청 실패 (Android 앱 내에서만 지원됨) — 기기 내부 앱에서 실행 중인지 확인하세요' })
+     } finally {
+       setBusy(false)
+       void refresh()
+@@ -168,23 +168,23 @@ export function RuntimeCacheRow() {
+           {scanState === 'ok'
+             ? (reclaimable > 0
+               // 真值：读到了，且有可回收体积。
+-              ? '运行时缓存可回收：' + fmtBytes(reclaimable) + '（' + String(targets.length) + ' 项）'
++              ? '런타임 캐시 정리 가능: ' + fmtBytes(reclaimable) + ' (' + String(targets.length) + '개 항목)'
+               // 真值：读到了，确实没有可清理项（这才是合法的空态）。
+-              : '运行时缓存：暂无可清理项（本版白名单内没有残留）')
+-            : '运行时缓存可回收：读不到（不是 0——应用内的读取通道不可用或返回异常）'}
++              : '런타임 캐시: 정리할 항목 없음 (이번 버전 허용 목록 내 잔여 항목 없음)')
++            : '런타임 캐시 정리 가능: 확인 불가 (0이 아님 — 앱 내 읽기 통로를 사용할 수 없거나 비정상 응답)'}
+         </span>
+         <button
+           type="button"
+           className="dsh-dev-btn"
+           disabled={busy}
+           onClick={() => { void refresh() }}
+-        >重新扫描</button>
++        >다시 스캔</button>
+         <button
+           type="button"
+           className="dsh-dev-btn dsh-dev-danger"
+           disabled={busy || scanState !== 'ok' || reclaimable === 0}
+           onClick={() => { setConfirming(true) }}
+-        >{busy ? '清理中…' : '清理'}</button>
++        >{busy ? '정리 중…' : '정리'}</button>
+       </div>
+ 
+       {/* S3-16（设备实测补正）：读不到时**不得**继续展示上一次的清单——那会让「读不到」的头部
+@@ -194,7 +194,7 @@ export function RuntimeCacheRow() {
+           {targets.map((item) => (
+             <li key={item.label ?? item.id}>
+               {item.label ?? item.id} — {fmtBytes(typeof item.bytes === 'number' ? item.bytes : 0)}
+-              {typeof item.files === 'number' ? '（' + String(item.files) + ' 项）' : ''}
++              {typeof item.files === 'number' ? ' (' + String(item.files) + '개 항목)' : ''}
+             </li>
+           ))}
+         </ul>
+@@ -202,16 +202,16 @@ export function RuntimeCacheRow() {
+       {/* 精简（0.14.7-B D5）：白名单制与「哪些不碰」是数据安全说明，必须保留；此处只去掉
+           「本版未纳入任何子目录」这类与上方跳过清单逐条重复的实现口径。 */}
+       <p className="dsh-dev-hint">
+-        白名单制：只清理本版已知安全的引擎运行时残留（引擎日志历史代 + 有据可查的缓存目录）。
+-        当前引擎日志、会话与附件、凭据、用户设置、已装插件一律不触碰；白名单外的路径逐项跳过并如实列出。
++        허용 목록 기준: 이번 버전에서 안전한 것으로 확인된 엔진 런타임 잔여 항목만 정리합니다 (과거 엔진 로그 + 확인된 캐시 디렉터리).
++        현재 엔진 로그, 대화 및 첨부 파일, 인증 정보, 사용자 설정, 설치된 플러그인은 절대 건드리지 않으며, 허용 목록 외의 경로는 건너뛰고 상세히 표시합니다.
+       </p>
+ 
+       {skipped.length > 0 && (
+         <details className="dsh-dev-hint">
+-          <summary>跳过 {skipped.length} 项（未识别/保留）</summary>
++          <summary>{skipped.length}개 항목 건너뜀 (미인식/보존 항목)</summary>
+           <ul className="dsh-dev-cache-list">
+             {skipped.map((item) => (
+-              <li key={item.label ?? item.id}>{item.label ?? item.id}：{describe(item)}</li>
++              <li key={item.label ?? item.id}>{item.label ?? item.id}: {describe(item)}</li>
+             ))}
+           </ul>
+         </details>
+@@ -224,9 +224,9 @@ export function RuntimeCacheRow() {
+       {report !== null && (
+         <div>
+           <p className="dsh-dev-hint">
+-            已清理 {String(report.removed ?? 0)} 项，释放 {fmtBytes(typeof report.removedBytes === 'number' ? report.removedBytes : 0)}
+-            （扫描值 {fmtBytes(typeof report.plannedBytes === 'number' ? report.plannedBytes : 0)}）
+-            {typeof report.failed === 'number' && report.failed > 0 ? '；' + String(report.failed) + ' 项失败' : ''}
++            {String(report.removed ?? 0)}개 항목을 정리하여 {fmtBytes(typeof report.removedBytes === 'number' ? report.removedBytes : 0)} 확보
++            (스캔 예상치 {fmtBytes(typeof report.plannedBytes === 'number' ? report.plannedBytes : 0)})
++            {typeof report.failed === 'number' && report.failed > 0 ? '; ' + String(report.failed) + '개 항목 실패' : ''}
+           </p>
+           <ul className="dsh-dev-cache-list">
+             {items.map((item) => (
+@@ -235,9 +235,9 @@ export function RuntimeCacheRow() {
+                 {...(item.reason === undefined || item.reason === '' ? {} : { 'data-reason': item.reason })}
+                 {...(item.detail === undefined || item.detail === '' ? {} : { 'data-detail': item.detail })}
+               >
+-                {item.label ?? item.id} — {item.status === 'removed' ? '已删除 ' + fmtBytes(typeof item.bytes === 'number' ? item.bytes : 0)
+-                  : item.status === 'failed' ? '失败：' + describe(item)
+-                    : '跳过：' + describe(item)}
++                {item.label ?? item.id} — {item.status === 'removed' ? '삭제됨 ' + fmtBytes(typeof item.bytes === 'number' ? item.bytes : 0)
++                  : item.status === 'failed' ? '실패: ' + describe(item)
++                    : '건너뜀: ' + describe(item)}
+               </li>
+             ))}
+           </ul>
+@@ -249,15 +249,15 @@ export function RuntimeCacheRow() {
+           className="dsh-dev-modal-overlay"
+           role="dialog"
+           aria-modal="true"
+-          aria-label="确认清除运行时缓存"
++          aria-label="런타임 캐시 정리 확인"
+           onClick={() => { setConfirming(false) }}
+         >
+           <div className="dsh-dev-modal" role="document" onClick={(event) => { event.stopPropagation() }}>
+-            <p className="dsh-dev-modal-title">确认清除运行时缓存？</p>
++            <p className="dsh-dev-modal-title">런타임 캐시를 정리하시겠습니까?</p>
+             {/* 不可逆操作的后果说明必须保留：删哪几项、哪些不受影响、失败项如何处理。 */}
+             <p className="dsh-dev-modal-desc">
+-              删除以下 {targets.length} 项，共 {fmtBytes(reclaimable)}，无法恢复。会话、附件、凭据、
+-              设置、已装插件与当前引擎日志不受影响；失败项会如实列出。
++              다음 {targets.length}개 항목(총 {fmtBytes(reclaimable)})을 삭제하며 복구할 수 없습니다. 대화, 첨부 파일, 인증 정보,
++              설정, 설치된 플러그인 및 현재 엔진 로그는 영향을 받지 않으며, 실패한 항목은 명확히 표시됩니다.
+             </p>
+             <ul className="dsh-dev-cache-list">
+               {targets.map((item) => (
+@@ -265,8 +265,8 @@ export function RuntimeCacheRow() {
+               ))}
+             </ul>
+             <div className="dsh-dev-modal-actions">
+-              <button type="button" className="dsh-dev-btn" autoFocus onClick={() => { setConfirming(false) }}>取消</button>
+-              <button type="button" className="dsh-dev-btn dsh-dev-danger" onClick={() => { void run() }}>清理</button>
++              <button type="button" className="dsh-dev-btn" autoFocus onClick={() => { setConfirming(false) }}>취소</button>
++              <button type="button" className="dsh-dev-btn dsh-dev-danger" onClick={() => { void run() }}>정리</button>
+             </div>
+           </div>
+         </div>
+diff --git a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
+index 19f7808..b01de22 100644
+--- a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
++++ b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
+@@ -68,7 +68,7 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+ 
+   const toggleSidebarSwipe = useCallback((side: 'left' | 'right', enabled: boolean) => {
+     if (!setSidebarSwipeEnabled(side, enabled)) {
+-      setNotice('滑动设置没有保存：浏览器存储不可用。')
++      setNotice('제스처 설정이 저장되지 않았습니다: 브라우저 스토리지를 사용할 수 없습니다.')
+       return
+     }
+     setNotice(null)
+@@ -91,7 +91,7 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+     try {
+       window.androidBridge.setImmersiveMode(enabled)
+     } catch {
+-      setNotice('设置没有生效：应用与页面的连接不可用——请重新打开应用后再试。')
++      setNotice('설정이 적용되지 않았습니다: 앱과 웹 페이지 간 연결을 사용할 수 없습니다. 앱을 다시 열어주세요.')
+       refreshImmersive()
+       return
+     }
+@@ -101,8 +101,8 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+     if (readImmersive() !== enabled) {
+       setNotice(
+         enabled
+-          ? '沉浸式状态栏没有开启：系统或应用未接受本次设置——可到系统设置里检查本应用的显示权限。'
+-          : '沉浸式状态栏没有关闭：系统或应用未接受本次设置——请重试，或重新打开应用。',
++          ? '몰입형 상태표시줄을 켜지 못했습니다: 시스템 또는 앱에서 설정을 허용하지 않았습니다. 시스템 설정에서 앱 표시 권한을 확인하세요.'
++          : '몰입형 상태표시줄을 끄지 못했습니다: 시스템 또는 앱에서 설정을 허용하지 않았습니다. 다시 시도하거나 앱을 다시 열어주세요.',
+       )
+     }
+   }, [refreshImmersive])
+@@ -115,19 +115,19 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+           checked={immersive}
+           onChange={(e) => toggleImmersive(e.target.checked)}
+         />
+-        <span>沉浸式状态栏</span>
++        <span>몰입형 상태표시줄</span>
+       </label>
+-      <p className="dsh-dev-hint">常态隐藏系统状态栏，边缘滑动临时呼出；关闭后常驻显示。</p>
++      <p className="dsh-dev-hint">평소에는 시스템 상태표시줄을 숨기고 가장자리를 스와이프하면 임시로 표시합니다. 끄면 항상 표시됩니다.</p>
+       <label className="dsh-dev-row dsh-dev-switch" data-dsh-sidebar-swipe="left">
+         <input type="checkbox" checked={leftSwipe} onChange={(e) => toggleSidebarSwipe('left', e.target.checked)} />
+-        <span>左侧栏滑动</span>
++        <span>왼쪽 사이드바 제스처</span>
+       </label>
+       <label className="dsh-dev-row dsh-dev-switch" data-dsh-sidebar-swipe="right">
+         <input type="checkbox" checked={rightSwipe} onChange={(e) => toggleSidebarSwipe('right', e.target.checked)} />
+-        <span>右侧栏滑动</span>
++        <span>오른쪽 사이드바 제스처</span>
+       </label>
+       {/* 两侧栏各一行说明会把「屏幕外侧窄边保留给系统手势」逐字重复两遍；合成一行说清同一件事。 */}
+-      <p className="dsh-dev-hint">手机内容区左右滑动开合两侧栏；屏幕外侧窄边保留给系统手势。</p>
++      <p className="dsh-dev-hint">화면 본문을 좌우로 밀어 양쪽 사이드바를 열고 닫습니다. 화면 바깥쪽 가장자리는 시스템 제스처 영역으로 유지됩니다.</p>
+       {notice !== null && <p className="dsh-dev-warn">{notice}</p>}
+     </div>
+   )
+diff --git a/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx b/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx
+index 3a74a62..4ea50ca 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx
++++ b/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx
+@@ -16,7 +16,7 @@ import { describeCallReason } from '../user-copy.ts'
+ import css from './OpenInFileManagerAction.module.css'
+ 
+ /** Label used for both the accessible name and the tooltip. */
+-const LABEL = '在文件中打开'
++const LABEL = '파일 관리자에서 열기'
+ 
+ /**
+  * The header button.
+@@ -39,7 +39,7 @@ export function OpenInFileManagerAction({ sessionId, useSessions }: PropsRuntime
+           // 用户看到的正文一律由唯一真源翻译（旧文案把码直接印在括号里）。
+           reportUserFacingResult({
+             ok: false,
+-            title: '无法打开文件管理器',
++            title: '파일 관리자를 열 수 없습니다',
+             detail: describeCallReason(result.reason),
+           })
+         }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx b/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
+index f69b2ce..fa8e645 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
++++ b/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
+@@ -18,8 +18,8 @@ import { BROWSER_PENDING_ATTR } from './browser-auto-place.ts'
+ import css from './MobileChrome.module.css'
+ 
+ /** Copy (the Android layer's product strings are Chinese; see DevSection/ExportResultDialog). */
+-const TOGGLE_OPEN = '打开导航'
+-const TOGGLE_CLOSE = '关闭导航'
++const TOGGLE_OPEN = '네비게이션 열기'
++const TOGGLE_CLOSE = '네비게이션 닫기'
+ 
+ /** The apply-world callbacks this entry may use. */
+ export interface SidebarToggleInjected {
+diff --git a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx b/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
+index d86d288..85f5936 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
++++ b/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
+@@ -45,8 +45,8 @@ export function ExternalOpenTab({ sessionId, useSessions, useTabInfo }: PropsRun
+       return
+     }
+     const next: Failure = result.reason === 'no-handler'
+-      ? { title: '没有可用的文件管理器', detail: '设备上没有能打开该路径的应用，可先安装 MT 管理器。' }
+-      : { title: '打开失败', detail: `调用系统选择器失败（${result.reason ?? 'unknown'}）。` }
++      ? { title: '사용 가능한 파일 관리자 없음', detail: '기기에 해당 경로를 열 수 있는 앱이 없습니다. 파일 관리자 앱을 먼저 설치해 주세요.' }
++      : { title: '열기 실패', detail: `시스템 선택기 호출 실패 (${result.reason ?? 'unknown'}).` }
+     setFailure(next)
+     reportUserFacingResult({ ok: false, ...next })
+   }
+@@ -55,20 +55,20 @@ export function ExternalOpenTab({ sessionId, useSessions, useTabInfo }: PropsRun
+     <div className={css.card}>
+       <p className={css.name}>{basenameOf(address)}</p>
+       <p className={css.path}>{absolute ?? address}</p>
+-      <p className={css.hint}>该格式没有内置预览，可交给设备上的应用打开。</p>
++      <p className={css.hint}>이 형식은 내장 미리보기를 지원하지 않으므로 기기의 다른 앱으로 열 수 있습니다.</p>
+       {chooserAvailable() && absolute !== undefined
+         ? (
+           <div className={css.actions}>
+             <button type="button" className={css.primary} onClick={() => { hand(parentDirectory(absolute), 'folder') }}>
+-              打开所在文件夹
++              해당 폴더 열기
+             </button>
+             <button type="button" className={css.secondary} onClick={() => { hand(absolute, 'view') }}>
+-              用其它应用打开
++              다른 앱으로 열기
+             </button>
+           </div>
+         )
+         : (
+-          <p className={css.hint}>{absolute === undefined ? '无法确定该文件的设备路径。' : '当前环境不支持调用系统应用（请在安卓应用内打开）。'}</p>
++          <p className={css.hint}>{absolute === undefined ? '해당 파일의 기기 경로를 확인할 수 없습니다.' : '현재 환경에서는 시스템 앱 호출을 지원하지 않습니다 (Android 앱 내에서 열어주세요).'}</p>
+         )}
+       {failure !== null && <p className={css.failure}>{failure.title}：{failure.detail}</p>}
+     </div>
+diff --git a/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts b/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts
+index ba227fd..649fe3c 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts
+@@ -121,7 +121,7 @@ export class IncomingDraftConsumer {
+       const sessionId = item.sessionId ?? this.createdSessions.get(item.entryId)
+       const scope = sessionId === undefined ? undefined : this.runtime.sessionScope(sessionId)
+       if (scope !== undefined) {
+-        this.runtime.notify(scope, '外部附件草稿多次载入失败，已停止自动重试；请重新使用系统打开方式分享文件。')
++        this.runtime.notify(scope, '외부 첨부 파일 초안 로드에 반복 실패하여 자동 재시도를 중지했습니다. 시스템 공유 기능을 통해 파일을 다시 공유해 주세요.')
+       }
+     }
+     return true
+@@ -142,9 +142,8 @@ export class IncomingDraftConsumer {
+     // ——那正是「静默丢弃」的成因。改走全局的用户可见结果通道（与导出结果、原生动作失败同一通道）。
+     reportUserFacingResult({
+       ok: false,
+-      title: '分享进来的文件还没放进来',
+-      detail: '应用正在准备临时工作区（或壳侧连接未就绪），所以这次分享还没有落地。'
+-        + '请稍后重新分享一次，或改用应用内的附件按钮添加文件。',
++      title: '공유된 파일이 아직 추가되지 않았습니다',
++      detail: '앱이 임시 작업 공간을 준비 중이거나 연결이 준비되지 않아 파일 공유가 완료되지 않았습니다. 잠시 후 다시 공유하거나 앱 내 첨부 버튼을 사용해 주세요.',
+     })
+   }
+ 
+@@ -220,10 +219,10 @@ export class IncomingDraftConsumer {
+         document.documentElement.setAttribute('data-dsh-incoming-draft-poll', 'attached:' + String(attached))
+         await this.finish(ticket, attached ? 'draft-ready' : 'removed')
+         ticket = ''
+-        if (!attached) this.runtime.notify(scope, '外部附件草稿当前无法加入编辑框，请重新使用系统打开方式。')
++        if (!attached) this.runtime.notify(scope, '외부 첨부 파일 초안을 현재 입력창에 추가할 수 없습니다. 시스템 공유 기능을 다시 사용해 주세요.')
+       } catch {
+         if (ticket !== '') await this.finish(ticket, 'removed')
+-        this.runtime.notify(scope, '外部附件草稿载入失败；文件没有自动发送，请重新使用系统打开方式。')
++        this.runtime.notify(scope, '외부 첨부 파일 초안 로드에 실패했습니다. 파일이 자동으로 전송되지 않았으니 시스템 공유 기능을 다시 사용해 주세요.')
+       }
+     } finally {
+       this.hydrating.delete(item.entryId)
+diff --git a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts b/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts
+index 0f669d8..28531fd 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts
+@@ -1,29 +1,19 @@
+ /** Copy for the narrow right-panel navigation. */
+-export const zh = {
+-  tabs: '打开的工作面板',
+-  toggle: '展开或收起工作面板标签',
+-  close: '关闭标签：{title}',
+-  reorder: '长按拖动排序；键盘可按 Alt 加上下方向键排序',
+-  moved: '已调整标签顺序',
+-  conversation: '对话',
+-  browser: '浏览器',
+-  terminal: '终端',
+-  vdisplay: '虚拟屏',
+-  tool: '工具面板',
++export const ko = {
++  tabs: '열린 작업 패널',
++  toggle: '작업 패널 탭 펼치기/접기',
++  close: '탭 닫기: {title}',
++  reorder: '길게 눌러 드래그하여 순서 변경; 키보드는 Alt+방향키로 정렬',
++  moved: '탭 순서가 변경되었습니다',
++  conversation: '대화',
++  browser: '브라우저',
++  terminal: '터미널',
++  vdisplay: '가상 화면',
++  tool: '도구 패널',
+ }
+-export const en: typeof zh = {
+-  tabs: 'Open work panels',
+-  toggle: 'Expand or collapse work panel tabs',
+-  close: 'Close tab: {title}',
+-  reorder: 'Hold and drag to reorder; use Alt and arrow keys on a keyboard',
+-  moved: 'Tab order updated',
+-  conversation: 'Conversation',
+-  browser: 'Browser',
+-  terminal: 'Terminal',
+-  vdisplay: 'Virtual display',
+-  tool: 'Tool panel',
+-}
+-export type BubbleKey = keyof typeof zh
++export const zh: typeof ko = ko
++export const en: typeof ko = ko
++export type BubbleKey = keyof typeof ko
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+   interface LocaleNamespaceMap { androidSidebarBubbles: BubbleKey }
+ }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts b/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
+index f8766f6..3f9c3ef 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
+@@ -1,85 +1,48 @@
+ /** Locale-owned Browser tab copy. */
+-export const zh = {
++export const ko = {
+   'native.desktop': 'PC',
+-  'native.mobile': '手机',
+-  'native.viewport': '浏览器视口分辨率',
+-  'native.viewport.apply': '应用分辨率',
+-  'native.viewport.invalid': '请输入 240–4096 范围的宽 × 高。',
+-  'native.unavailable': 'Android 浏览器不可用：{reason}',
+-  'native.profile.unavailable': '浏览器身份档不可用：{reason}',
+-  'native.close': '关闭原生浏览器标签页',
+-  'native.retry': '重新读取浏览器状态',
+-  'native.operation.failed': '浏览器操作未完成：{reason}',
+-  'type.label': '浏览器',
+-  'guide.title': '浏览器',
+-  'guide.description': '浏览网页',
+-  'shortcut.noSession': '请先打开一个会话',
+-  'address.placeholder': '输入 HTTP(S) 地址',
+-  'address.changed': 'URL 已变化',
+-  back: '后退',
+-  forward: '前进',
+-  reload: '刷新',
+-  go: '前往',
+-  external: '在系统浏览器中打开',
+-  'sandbox.disable': '关闭沙箱限制',
+-  'sandbox.enable': '恢复沙箱限制',
+-  'sandbox.warning': '沙箱限制已关闭；页面可以导航顶层应用，并使用下载、模态对话框与输入锁定。',
+-  start: '输入 HTTP(S) 地址开始浏览',
+-  loading: '正在打开…',
+-  'restore.previous': '上次打开',
+-  'restore.action': '恢复页面',
+-  'error.empty': '请输入地址。',
+-  'error.invalid': '这个地址无效或过长。',
+-  'error.protocol': '只支持 HTTP 和 HTTPS 地址；本地文件请使用文档预览。',
+-  'error.credentials': '地址不能包含用户名或密码。',
+-  'error.application-origin': '不能在嵌入浏览器中打开 DSH 应用自身。',
+-  'load.failed': '页面加载失败；请刷新重试或在系统浏览器中打开。',
+-  'load.failed.detail': '页面加载失败 ({code}): {description}',
+-  'address.unknown': '页面已跳转；当前载体无法读取新的 URL。',
++  'native.mobile': '모바일',
++  'native.viewport': '브라우저 뷰포트 해상도',
++  'native.viewport.apply': '해상도 적용',
++  'native.viewport.invalid': '240~4096 범위 내의 가로 × 세로를 입력하세요.',
++  'native.unavailable': 'Android 브라우저를 사용할 수 없음: {reason}',
++  'native.profile.unavailable': '브라우저 프로필을 사용할 수 없음: {reason}',
++  'native.close': '네이티브 브라우저 탭 닫기',
++  'native.retry': '브라우저 상태 다시 읽기',
++  'native.operation.failed': '브라우저 작업 미완료: {reason}',
++  'type.label': '브라우저',
++  'guide.title': '브라우저',
++  'guide.description': '웹페이지 탐색',
++  'shortcut.noSession': '먼저 세션을 열어주세요',
++  'address.placeholder': 'HTTP(S) 주소 입력',
++  'address.changed': 'URL이 변경되었습니다',
++  back: '뒤로',
++  forward: '앞으로',
++  reload: '새로고침',
++  go: '이동',
++  external: '시스템 브라우저에서 열기',
++  'sandbox.disable': '샌드박스 제한 해제',
++  'sandbox.enable': '샌드박스 제한 복원',
++  'sandbox.warning': '샌드박스 제한이 해제되었습니다. 페이지가 최상위 앱을 탐색하고 다운로드, 모달 대화상자 및 입력 잠금을 사용할 수 있습니다.',
++  start: 'HTTP(S) 주소를 입력하여 탐색 시작',
++  loading: '여는 중…',
++  'restore.previous': '마지막으로 연 페이지',
++  'restore.action': '페이지 복원',
++  'error.empty': '주소를 입력하세요.',
++  'error.invalid': '유효하지 않거나 너무 긴 주소입니다.',
++  'error.protocol': 'HTTP 및 HTTPS 주소만 지원됩니다. 로컬 파일은 문서 미리보기를 이용하세요.',
++  'error.credentials': '주소에 사용자 이름이나 비밀번호를 포함할 수 없습니다.',
++  'error.application-origin': '임베디드 브라우저 내에서 DSH 앱 자체를 열 수 없습니다.',
++  'load.failed': '페이지 로드 실패: 새로고침하거나 시스템 브라우저에서 열어보세요.',
++  'load.failed.detail': '페이지 로드 실패 ({code}): {description}',
++  'address.unknown': '페이지가 이동되었습니다. 현재 런타임에서 새 URL을 읽을 수 없습니다.',
+ } satisfies Record<string, string>
+ 
+ /** Browser dictionary key union. */
+-export type SidebarBrowserKey = keyof typeof zh
++export type SidebarBrowserKey = keyof typeof ko
+ 
+-/** English dictionary with the same keys. */
+-export const en = {
+-  'native.desktop': 'PC',
+-  'native.mobile': 'Mobile',
+-  'native.viewport': 'Browser viewport resolution',
+-  'native.viewport.apply': 'Apply resolution',
+-  'native.viewport.invalid': 'Enter width × height within 240–4096.',
+-  'native.unavailable': 'Android browser unavailable: {reason}',
+-  'native.profile.unavailable': 'Browser profile unavailable: {reason}',
+-  'native.close': 'Close native browser tab',
+-  'native.retry': 'Refresh browser status',
+-  'native.operation.failed': 'Browser operation did not complete: {reason}',
+-  'type.label': 'Browser',
+-  'guide.title': 'Browser',
+-  'guide.description': 'Browse web pages',
+-  'shortcut.noSession': 'Open a session first',
+-  'address.placeholder': 'Enter an HTTP(S) address',
+-  'address.changed': 'URL changed',
+-  back: 'Back',
+-  forward: 'Forward',
+-  reload: 'Reload',
+-  go: 'Go',
+-  external: 'Open in system browser',
+-  'sandbox.disable': 'Disable sandbox restrictions',
+-  'sandbox.enable': 'Restore sandbox restrictions',
+-  'sandbox.warning': 'Sandbox restrictions are disabled; the page can navigate the top-level app and use downloads, modal dialogs, and input locks.',
+-  start: 'Enter an HTTP(S) address to start browsing',
+-  loading: 'Opening…',
+-  'restore.previous': 'Previously opened',
+-  'restore.action': 'Restore page',
+-  'error.empty': 'Enter an address.',
+-  'error.invalid': 'That address is invalid or too long.',
+-  'error.protocol': 'Only HTTP and HTTPS addresses are supported; use Document Preview for local files.',
+-  'error.credentials': 'Addresses cannot contain a username or password.',
+-  'error.application-origin': 'The embedded browser cannot open the DSH application itself.',
+-  'load.failed': 'The page could not load; reload or open it in the system browser.',
+-  'load.failed.detail': 'Page load failed ({code}): {description}',
+-  'address.unknown': 'The page navigated; this carrier cannot read its new URL.',
+-} satisfies Record<SidebarBrowserKey, string>
++export const zh: Record<SidebarBrowserKey, string> = ko
++export const en: Record<SidebarBrowserKey, string> = ko
+ 
+ declare module '@deepseek-ai/dsh-client-ui-slots' {
+   interface LocaleNamespaceMap {
+diff --git a/dsh-client-ui-responsive/src/client/user-copy.ts b/dsh-client-ui-responsive/src/client/user-copy.ts
+index f270825..94f42e0 100644
+--- a/dsh-client-ui-responsive/src/client/user-copy.ts
++++ b/dsh-client-ui-responsive/src/client/user-copy.ts
+@@ -1,135 +1,111 @@
+ /**
+- * 用户面文案唯一真源（**页面侧**，0.14.1 批 3 / P3-1）。
+- *
+- * 规则（`docs/0.14.1-COPY-STANDARD.md`）：
+- *  1. **机器码不上屏**。壳侧 `reason` / HTTP 状态码 / 内部 key 只允许进 `data-*` 属性与日志；
+- *     用户看到的必须是这里给出的「发生了什么 + 你现在能做什么」。
+- *  2. **映射表落一处**。页面侧所有「码 → 中文」都在本文件；任何组件里再写一张局部表
+- *     （副本）都算回归——两张表必然漂移，这正是本批要收的形态。
+- *  3. 表里查不到的码**也要给人话**：回一句可反馈的兜底，而不是把码原样抛给用户。
+- *     兜底句里不带原码，原码由调用方放进 `data-*`（可截图/可 grep，但不打断阅读）。
+- *
+- * 为什么页面侧与壳侧各有一张表：两侧是**两种语言的两个渲染面**（WebView 页面 / 原生 UI），
+- * 不存在共享的常量载体。故约定「每个渲染面一张表、各一张」，并在规范文档里登记这两张表的
+- * 位置与覆盖的码集合；壳侧那张是 `UserCopy.kt`。
++ * 사용자 화면 문구 단일 진실 공급원 (화면 측, 0.14.1 배치 3 / P3-1).
+  */
+ 
+ /**
+- * 调用失败原因 → 人话。
+- *
+- * 码集合来自壳侧（`AndroidBridge` / `ExternalLinks` / `PathOpen` / `ControlCarrier` /
+- * `BrowserHost`）与页面侧自查（`open-path.ts`）。两侧都可能新增码，**新增时必须在这里补一行**：
+- * `user-copy.spec.ts` 有一条断言把页面侧自查码集合钉住（缺行即判红）。
++ * 호출 실패 원인 → 사용자 친화적 문구.
+  */
+ const CALL_REASON: Readonly<Record<string, string>> = {
+-  // ── 页面侧自查（open-path.ts）──────────────────────────────────────────
+-  unavailable: '这个功能需要安卓应用内打开（浏览器里不可用）',
+-  refused: '系统选择器拒绝了这次打开请求（可能是该目录不允许外部应用访问）',
+-  'empty-answer': '系统选择器没有返回结果（可能是系统组件异常）——请重试，或直接在文件管理器里打开',
+-  'bridge-error': '应用内调用出错——请重试；多次失败可复制日志反馈',
++  // ── 화면 측 자체 점검 (open-path.ts) ──────────────────────────────────────────
++  unavailable: '이 기능은 Android 앱 내에서 열어야 합니다 (브라우저에서는 사용할 수 없음)',
++  refused: '시스템 선택기가 열기 요청을 거부했습니다 (해당 디렉터리가 외부 앱의 접근을 허용하지 않을 수 있습니다)',
++  'empty-answer': '시스템 선택기에서 결과를 반환하지 않았습니다 (시스템 구성 요소 이상일 수 있음) — 다시 시도하거나 파일 관리자에서 직접 열어주세요',
++  'bridge-error': '앱 내부 호출 오류 — 다시 시도하세요. 반복 실패 시 로그를 복사해 문의해 주세요',
+ 
+-  // ── 壳侧：链路未装配（安装包不完整 / 非安卓宿主）────────────────────────
+-  'bridge not wired': '应用与页面的连接未接好（安装包不完整）——请重新安装应用',
+-  'no-shell-context': '应用上下文尚未就绪（刚启动或正在重启）——请稍后重试',
+-  'browser-host-not-wired': '内置浏览器组件未接好（安装包不完整）——请重新安装应用',
+-  'carrier-not-started': '设备控制服务尚未启动——请到「手机控制」开启无障碍服务后重试',
+-  'a11y-unavailable': '无障碍服务未开启——该操作需要「无障碍」通道；浏览器与虚拟屏操作不受影响',
+-  'unknown-op': '本版不认识这个浏览器操作——请更新应用后再试',
++  // ── 셸 측: 연결 미구성 (설치 패키지 불완전 / 비 Android 호스트) ───────────────
++  'bridge not wired': '앱과 웹페이지 간의 연결이 구성되지 않았습니다 (설치 패키지 불완전) — 앱을 다시 설치해 주세요',
++  'no-shell-context': '앱 컨텍스트가 아직 준비되지 않았습니다 (방금 시작되었거나 재시작 중) — 잠시 후 다시 시도해 주세요',
++  'browser-host-not-wired': '내장 브라우저 구성 요소가 연결되지 않았습니다 (설치 패키지 불완전) — 앱을 다시 설치해 주세요',
++  'carrier-not-started': '기기 제어 서비스가 아직 시작되지 않았습니다 — 「스마트폰 제어」에서 접근성 서비스를 켠 후 다시 시도해 주세요',
++  'a11y-unavailable': '접근성 서비스가 켜져 있지 않습니다 — 해당 작업에는 「접근성」 채널이 필요합니다. 브라우저 및 가상 화면 작업은 영향받지 않습니다',
++  'unknown-op': '현재 버전에서 지원하지 않는 브라우저 작업입니다 — 앱을 업데이트한 후 다시 시도해 주세요',
+ 
+-  // ── 壳侧：外链与服务拉起（ExternalLinks）──────────────────────────────
+-  'unknown-key': '这个链接没有在本版登记——请更新应用后再试',
+-  'insecure-url': '链接不是 https，出于安全已拒绝打开',
+-  'no-handler': '设备上没有能打开它的应用——请先安装浏览器或文件管理器',
+-  'not-installed': '还没安装 Shizuku——请先点「下载 Shizuku」',
++  // ── 셸 측: 외부 링크 및 서비스 실행 (ExternalLinks) ───────────────────────────
++  'unknown-key': '현재 버전에 등록되지 않은 링크입니다 — 앱을 업데이트한 후 다시 시도해 주세요',
++  'insecure-url': '보안상의 이유로 HTTPS가 아닌 링크는 열기가 거부되었습니다',
++  'no-handler': '기기에 해당 경로를 열 수 있는 앱이 없습니다 — 브라우저 또는 파일 관리자를 먼저 설치해 주세요',
++  'not-installed': 'Shizuku가 설치되어 있지 않습니다 — 먼저 「Shizuku 다운로드」를 눌러 설치해 주세요',
+ 
+-  // ── 壳侧：AI root 权限授权门（RootGrant，issue #262 / 0.14.2-fx-2-root.1）──
+-  'consent-required': '先勾选「已阅读」并查看《AI root 权限免责声明》，才能开启 AI root 权限（免责声明内容更新后需重新确认）',
+-  'not-root-channel': 'Shizuku 通道不是 root 身份（无法在未 root 的设备上赋予该权限）——请让 Shizuku 以 root 启动后再来开启',
+-  'missing-asset': '应用内文档缺失（安装包不完整）——请重新安装应用后再试',
+-  'ui-thread-timeout': '应用界面正忙——请稍后重试；多次失败可复制日志反馈',
+-  // ★2026-09-30 主人指正：**多数 Root 管理器不再自动弹授权框**（除 Magisk 外得自己打开管理器授予）✗
+-  // ⇒ 这几条一律说「在你自己使用的 Root 管理器里允许本应用」，**不承诺"会弹窗"** ✓。
+-  'root-not-granted': '尚未获得 root 授权——请在你自己使用的 Root 管理器里允许本应用使用 root（多数管理器不会自动弹授权框）',
+-  'no-su': '本机没有可用的 su（未 root 或未安装 Root 管理器）——请先在你自己使用的 Root 管理器里完成 root 后再试',
+-  'already-requesting': '正在等待 root 授权结果——若管理器没有弹出授权框，请自己打开它允许本应用',
+-  // ── 壳侧：root 执行面与属主自愈（RootAccess / ShizukuTransport）────────────
+-  'request-started': '已开始检测 root 授权——若管理器没有弹出授权框，请自己打开它允许本应用；授权后本页会自动续开开关',
+-  requesting: '正在等待 root 授权结果——若管理器没有弹出授权框，请自己打开它允许本应用',
+-  'su-timeout': 'root 命令超时后被终止——请重试或缩短命令',
+-  'su-exec-failed': 'root 命令执行失败——请稍后重试；多次失败可复制日志反馈',
+-  'empty-command': '命令为空',
+-  'no-data-dir': '读不到应用数据目录（应用上下文异常）——请重启应用后再试',
+-  'bad-path': '路径无法解析',
+-  'out-of-app-data': '只允许修复应用数据目录内的文件',
+-  'repair-unsupported': '当前通道不支持属主修复（旧服务）——请到「手机控制」点「重置链接」重建通道后再试',
+-  'repair-item-failed': '有属主条目修复失败——请检查 root 授权后重试',
+-  'repair-incomplete': '属主修复未完成（仍有条目属主不对）——请重试',
+-  'repair-truncated': '目标目录达到遍历/深度上限，只处理了一部分——请查看诊断后再试',
+-  'repair-deadline': '属主维护达到时间预算，剩余结果未知——请查看诊断后再试',
+-  'repair-result-unknown': '特权工作结果不明，已暂停派发和维护；不要重复提交，仅重启应用不能证明结算。必要时重启设备',
+-  'root-maintenance-epoch-unavailable': '无法确认设备启动标识，本次不派发特权工作',
+-  'root-maintenance-lease-unavailable': '不能持久化特权执行租约，本次不派发',
+-  'repair-started': '已提交属主维护，尚未完成，结果会自动刷新',
+-  'repair-running': '属主维护已经在进行中，请等待原任务结算',
+-  'root-maintenance-busy': '属主维护占用特权通道，本次没有派发命令；请等待维护结算',
+-  'repair-configuration-required': '维护服务没有确认应用身份，请重置 Shizuku 连接',
+-  'shizuku-configuration-required': 'UserService 配置未确认，本次未派发；请重置连接',
+-  'shizuku-identity-failed': '无法确认执行服务的实际身份，本次拒绝派发',
+-  'repair-transport-incomplete': '维护进程或输出不完整，无法确认全部结果',
+-  'repair-helper-output-invalid': '维护 helper 没有返回完整有效结果，请复制诊断日志',
+-  'repair-native-failed': '原生维护异常，未能确认结果，请复制诊断日志',
+-  'invalid-app-data-anchor': '不能确认本应用可信数据目录，已拒绝维护',
+-  'invalid-repair-arguments': '属主维护参数非法，未开始变更',
+-  'installed-apk-unavailable': '无法读取已安装的签名应用代码，已拒绝维护',
+-  'requires-uid-0': '当前维护进程不是 root，未修改属主',
+-  'hardlink-protection-unavailable': '内核硬链接保护不可确认或已关闭，已拒绝维护',
+-  'invalid-app-uid': '完整应用 UID 不合法，已拒绝维护',
+-  'invalid-entry-cap': '属主维护条目上限非法，未开始变更',
+-  'invalid-deadline': '属主维护时间预算非法，未开始变更',
+-  'invalid-depth': '属主维护深度限制非法，未开始变更',
+-  'invalid-data-dir': '属主维护数据目录非法，未开始变更',
+-  'invalid-subpath': '属主维护相对路径非法，未开始变更',
+-  'subpath-depth-exceeded': '目标路径超过维护深度上限，已拒绝',
+-  'foreign-owner': '遇到非本应用且非 root 的属主，拒绝修改该条目',
+-  'shared-root-file': 'root 文件允许其它主体写入，无法确认安全归属，已拒绝修改',
+-  'unsafe-regular-link-count': '普通文件有不安全的硬链接数量，已拒绝修改',
+-  'cross-device-entry': '遇到其它挂载设备上的条目，已拒绝修改',
+-  'symlink-target': '目标是符号链接，已拒绝修改',
+-  'symlink-ancestor': '目标祖先是符号链接，已拒绝维护',
+-  'unsupported-node': '遇到特殊文件节点，未打开或修改',
+-  'directory-cycle': '遇到目录循环，已停止该分支',
+-  'inode-changed': '维护期间文件身份发生变化，已拒绝继续变更',
+-  'pinned-inode-changed': '已固定文件身份不一致，已拒绝继续变更',
+-  'chown-failed': '属主修改失败，未记为已修复',
+-  'ownership-verification-failed': '属主修改后验证失败，结果不能算完成',
+-  'repair-unexpected-failure': '属主维护发生未预期异常，请复制诊断日志',
+-  'anchor-open-failed': '无法打开可信应用数据锚点，未开始维护',
+-  'anchor-stat-failed': '无法确认应用数据锚点属性，未开始维护',
+-  'anchor-not-directory': '应用数据锚点不是目录，已拒绝维护',
+-  'ancestor-not-directory': '目标祖先不是目录，已拒绝维护',
+-  'listing-open-failed': '无法打开目录枚举，维护未完成',
+-  'listing-read-failed': '目录枚举失败，剩余条目未知',
+-  'invalid-child-name': '目录条目名非法，已拒绝访问',
+-  'pre-mutation-stat-failed': '变更前不能确认文件属性，未修改该条目',
+-  'verification-stat-failed': '变更后不能读取文件属性，结果未验证',
+-  'stat-failed': '无法读取文件属性，维护未完成',
+-  'open-failed': '无法打开维护条目，未修改该条目',
+-  'close-failed': '关闭维护描述符失败，请查看诊断日志',
++  // ── 셸 측: AI root 권한 인가 게이트 (RootGrant) ──────────────────────────────────
++  'consent-required': '먼저 「면책 조항을 읽었습니다」에 체크하고 《AI Root 권한 면책 조항》을 확인해야 AI Root 권한을 켤 수 있습니다 (면책 조항 내용 업데이트 시 재확인 필요)',
++  'not-root-channel': 'Shizuku 채널이 Root 권한 상태가 아닙니다 (루팅되지 않은 기기에서는 이 권한을 부여할 수 없음) — Shizuku를 Root 권한으로 실행한 후 다시 켜주세요',
++  'missing-asset': '앱 내부 문서가 누락되었습니다 (설치 패키지 불완전) — 앱을 다시 설치한 후 시도해 주세요',
++  'ui-thread-timeout': '앱 화면이 응답하지 않습니다 — 잠시 후 다시 시도하세요. 반복 실패 시 로그를 복사해 문의해 주세요',
++  'root-not-granted': 'Root 권한을 아직 획득하지 못했습니다 — 사용하는 Root 관리자 앱에서 이 앱의 Root 사용을 허용해 주세요 (대부분의 관리자는 권한 요청 창이 자동으로 뜨지 않습니다)',
++  'no-su': '기기에서 사용 가능한 su를 찾을 수 없습니다 (루팅되지 않았거나 Root 관리자 미설치) — 사용하는 Root 관리자에서 루팅을 완료한 후 다시 시도해 주세요',
++  'already-requesting': 'Root 권한 허용 결과를 대기하는 중입니다 — 관리자 창이 뜨지 않으면 직접 관리자 앱을 열어 이 앱을 허용해 주세요',
++  'request-started': 'Root 권한 확인을 시작했습니다 — 관리자 창이 뜨지 않으면 직접 관리자 앱을 열어 이 앱을 허용해 주세요. 권한 부여 후 자동으로 스위치가 켜집니다',
++  requesting: 'Root 권한 허용 결과를 대기하는 중입니다 — 관리자 창이 뜨지 않으면 직접 관리자 앱을 열어 이 앱을 허용해 주세요',
++  'su-timeout': 'Root 명령 실행 시간 초과로 중단되었습니다 — 다시 시도하거나 명령을 단축해 주세요',
++  'su-exec-failed': 'Root 명령 실행 실패 — 잠시 후 다시 시도하세요. 반복 실패 시 로그를 복사해 문의해 주세요',
++  'empty-command': '명령어가 비어 있습니다',
++  'no-data-dir': '앱 데이터 디렉터리를 읽을 수 없습니다 (앱 컨텍스트 이상) — 앱을 재시작한 후 다시 시도해 주세요',
++  'bad-path': '경로를 확인할 수 없습니다',
++  'out-of-app-data': '앱 데이터 디렉터리 내의 파일만 복구할 수 있습니다',
++  'repair-unsupported': '현재 채널에서 소유권 복구를 지원하지 않습니다 (구버전 서비스) — 「스마트폰 제어」에서 「연결 재설정」을 눌러 채널을 재구축한 후 다시 시도하세요',
++  'repair-item-failed': '일부 소유권 항목 복구 실패 — Root 권한을 확인한 후 다시 시도해 주세요',
++  'repair-incomplete': '소유권 복구가 완료되지 않았습니다 (소유권이 올바르지 않은 항목이 남아있음) — 다시 시도해 주세요',
++  'repair-truncated': '대상 디렉터리의 탐색/깊이 상한에 도달하여 일부만 처리되었습니다 — 진단 정보를 확인한 후 다시 시도해 주세요',
++  'repair-deadline': '소유권 유지 관리 시간 예산에 도달하여 남은 결과를 알 수 없습니다 — 진단 정보를 확인한 후 다시 시도해 주세요',
++  'repair-result-unknown': '특권 작업 결과가 불명확하여 작업 디스패치 및 유지 관리가 일시 중단되었습니다. 중복 제출하지 마세요. 앱 재시작만으로는 결과가 확인되지 않으며 필요 시 기기를 재부팅하세요',
++  'root-maintenance-epoch-unavailable': '기기 부팅 식별자를 확인할 수 없어 이번 특권 작업을 실행하지 않습니다',
++  'root-maintenance-lease-unavailable': '특권 실행 임대를 유지할 수 없어 이번 작업을 실행하지 않습니다',
++  'repair-started': '소유권 유지 관리가 제출되었으며 아직 완료되지 않았습니다. 결과는 자동으로 갱신됩니다',
++  'repair-running': '소유권 유지 관리가 이미 진행 중입니다. 기존 작업이 완료될 때까지 기다려 주세요',
++  'root-maintenance-busy': '소유권 유지 관리가 특권 채널을 사용 중이므로 명령이 실행되지 않았습니다. 작업 완료를 기다려 주세요',
++  'repair-configuration-required': '유지 관리 서비스에서 앱 신원을 확인하지 못했습니다. Shizuku 연결을 재설정해 주세요',
++  'shizuku-configuration-required': 'UserService 구성이 확인되지 않아 실행되지 않았습니다. 연결을 재설정해 주세요',
++  'shizuku-identity-failed': '실행 서비스의 실제 신원을 확인할 수 없어 이번 실행이 거부되었습니다',
++  'repair-transport-incomplete': '유지 관리 프로세스 또는 출력이 불완전하여 전체 결과를 확인할 수 없습니다',
++  'repair-helper-output-invalid': '유지 관리 헬퍼가 완전하고 유효한 결과를 반환하지 않았습니다. 진단 로그를 복사해 주세요',
++  'repair-native-failed': '네이티브 유지 관리 이상으로 결과를 확인할 수 없습니다. 진단 로그를 복사해 주세요',
++  'invalid-app-data-anchor': '이 앱의 신뢰할 수 있는 데이터 디렉터리를 확인할 수 없어 유지 관리가 거부되었습니다',
++  'invalid-repair-arguments': '소유권 유지 관리 매개변수가 잘못되어 변경이 시작되지 않았습니다',
++  'installed-apk-unavailable': '설치된 서명된 앱 코드를 읽을 수 없어 유지 관리가 거부되었습니다',
++  'requires-uid-0': '현재 유지 관리 프로세스가 Root가 아니므로 소유권이 수정되지 않았습니다',
++  'hardlink-protection-unavailable': '커널 하드링크 보호를 확인할 수 없거나 비활성화되어 있어 유지 관리가 거부되었습니다',
++  'invalid-app-uid': '전체 앱 UID가 올바르지 않아 유지 관리가 거부되었습니다',
++  'invalid-entry-cap': '소유권 유지 관리 항목 상한이 올바르지 않아 변경이 시작되지 않았습니다',
++  'invalid-deadline': '소유권 유지 관리 시간 예산이 올바르지 않아 변경이 시작되지 않았습니다',
++  'invalid-depth': '소유권 유지 관리 깊이 제한이 올바르지 않아 변경이 시작되지 않았습니다',
++  'invalid-data-dir': '소유권 유지 관리 데이터 디렉터리가 올바르지 않아 변경이 시작되지 않았습니다',
++  'invalid-subpath': '소유권 유지 관리 상대 경로가 올바르지 않아 변경이 시작되지 않았습니다',
++  'subpath-depth-exceeded': '대상 경로가 유지 관리 깊이 상한을 초과하여 거부되었습니다',
++  'foreign-owner': '이 앱 및 Root가 아닌 다른 소유자를 발견하여 해당 항목의 수정을 거부했습니다',
++  'shared-root-file': 'Root 파일이 다른 주체의 쓰기를 허용하여 안전한 소유권을 확인할 수 없으므로 수정을 거부했습니다',
++  'unsafe-regular-link-count': '일반 파일에 안전하지 않은 수의 하드링크가 있어 수정을 거부했습니다',
++  'cross-device-entry': '다른 마운트 기기상의 항목을 발견하여 수정을 거부했습니다',
++  'symlink-target': '대상이 심볼릭 링크이므로 수정을 거부했습니다',
++  'symlink-ancestor': '대상의 상위 디렉터리가 심볼릭 링크이므로 유지 관리를 거부했습니다',
++  'unsupported-node': '특수 파일 노드를 발견하여 열거나 수정하지 않았습니다',
++  'directory-cycle': '디렉터리 순환 참조를 발견하여 해당 분기를 중단했습니다',
++  'inode-changed': '유지 관리 도중 파일 신원이 변경되어 계속 수정을 거부했습니다',
++  'pinned-inode-changed': '고정된 파일 신원이 일치하지 않아 계속 수정을 거부했습니다',
++  'chown-failed': '소유권 수정에 실패하여 복구 완료로 기록되지 않았습니다',
++  'ownership-verification-failed': '소유권 수정 후 검증에 실패하여 완료로 처리할 수 없습니다',
++  'repair-unexpected-failure': '소유권 유지 관리 중 예상치 못한 이상이 발생했습니다. 진단 로그를 복사해 주세요',
++  'anchor-open-failed': '신뢰할 수 있는 앱 데이터 앵커를 열 수 없어 유지 관리가 시작되지 않았습니다',
++  'anchor-stat-failed': '앱 데이터 앵커 속성을 확인할 수 없어 유지 관리가 시작되지 않았습니다',
++  'anchor-not-directory': '앱 데이터 앵커가 디렉터리가 아니므로 유지 관리가 거부되었습니다',
++  'ancestor-not-directory': '대상의 상위가 디렉터리가 아니므로 유지 관리가 거부되었습니다',
++  'listing-open-failed': '디렉터리 열거를 열 수 없어 유지 관리가 완료되지 않았습니다',
++  'listing-read-failed': '디렉터리 열거 실패로 남은 항목을 알 수 없습니다',
++  'invalid-child-name': '디렉터리 항목 이름이 올바르지 않아 접근이 거부되었습니다',
++  'pre-mutation-stat-failed': '변경 전 파일 속성을 확인할 수 없어 해당 항목을 수정하지 않았습니다',
++  'verification-stat-failed': '변경 후 파일 속성을 읽을 수 없어 결과가 검증되지 않았습니다',
++  'stat-failed': '파일 속성을 읽을 수 없어 유지 관리가 완료되지 않았습니다',
++  'open-failed': '유지 관리 항목을 열 수 없어 해당 항목을 수정하지 않았습니다',
++  'close-failed': '유지 관리 파일 디스크립터를 닫지 못했습니다. 진단 로그를 확인해 주세요',
+ 
+-  // ── 壳侧：内置浏览器加载（BrowserHost 的 load-error:<code>）────────────
+-  'load-error': '内置浏览器加载失败——请检查网址，或换用系统浏览器打开',
++  // ── 셸 측: 내장 브라우저 로드 (BrowserHost의 load-error:<code>) ───────────
++  'load-error': '내장 브라우저 로드 실패 — URL을 확인하거나 시스템 브라우저로 열어보세요',
+ }
+ 
+-/** 未知码的兜底（**不带原码**；原码由调用方放进 `data-*`）。 */
+-export const UNKNOWN_CALL_REASON = '调用失败（原因未在本版登记）——请重试；多次失败可复制日志反馈'
++/** 알 수 없는 코드 기본 문구 */
++export const UNKNOWN_CALL_REASON = '호출 실패 (원인이 이 버전에 등록되지 않음) — 다시 시도하세요. 반복 실패 시 로그를 복사해 문의해 주세요'
+ 
+ /**
+- * 壳侧/页面侧的失败原因 → 人话。
+- *
+- * `load-error:<code>` 这类**带前缀的复合码**按前缀归类（后缀是 WebView 的内部错误码，
+- * 对用户无意义）；`reason` 里混进异常消息时也走兜底——绝不把异常措辞当文案。
+- * @param reason - 壳侧回的原因码，或页面自查码。
+- * @returns 用户可读的一句话（含下一步）。
++ * 셸 측/화면 측 실패 원인 → 사용자 친화적 문구 변환.
+  */
+ export function describeCallReason(reason: string | undefined): string {
+   const code = (reason ?? '').trim()
+@@ -143,64 +119,41 @@ export function describeCallReason(reason: string | undefined): string {
+ }
+ 
+ /**
+- * HTTP 状态 → 人话（**状态码不上屏**）。
+- *
+- * 缺陷现场（审查档 §4.1）：界面上出现过「未获授权（HTTP 401）」「扫描失败（HTTP 500）」——
+- * 用户拿不到任何可执行信息，只知道有个编号。这里按语义分档，`status` 仅留给调用方放进
+- * `data-http` 与诊断日志。
+- * @param action - 动作名（「读取来件状态」「清理运行时缓存」…），拼进句子。
+- * @param status - HTTP 状态码（仅用于分档，不拼进返回串）。
+- * @returns 用户可读的一句话（含下一步）。
++ * HTTP 상태 → 사용자 친화적 문구.
+  */
+ export function describeHttpFailure(action: string, status: number): string {
+-  if (status === 401 || status === 403) return action + '未获授权——请确认是在本机应用内操作；仍失败请重新打开应用'
+-  if (status === 404) return action + '的接口不存在（本版不匹配或应用安装包不完整）——请更新或重新安装应用'
+-  if (status === 405) return action + '不被允许——请更新应用到较新版本后再试'
+-  if (status >= 500) return action + '时应用内部出错——请稍后重试；仍失败可复制日志反馈'
+-  if (status >= 400) return action + '被应用拒绝——请稍后重试；仍失败可复制日志反馈'
+-  return action + '失败——请稍后重试'
++  if (status === 401 || status === 403) return action + ' 권한이 없습니다 — 기기 내부 앱에서 실행 중인지 확인하세요. 계속 실패 시 앱을 다시 여세요'
++  if (status === 404) return action + ' 인터페이스가 존재하지 않습니다 (버전 불일치 또는 앱 패키지 불완전) — 앱을 업데이트하거나 다시 설치해 주세요'
++  if (status === 405) return action + ' 작업이 허용되지 않습니다 — 앱을 최신 버전으로 업데이트한 후 다시 시도해 주세요'
++  if (status >= 500) return action + ' 중 앱 내부 오류가 발생했습니다 — 잠시 후 다시 시도하세요. 계속 실패 시 로그를 복사해 문의해 주세요'
++  if (status >= 400) return action + ' 요청이 앱에서 거부되었습니다 — 잠시 후 다시 시도하세요. 계속 실패 시 로그를 복사해 문의해 주세요'
++  return action + ' 실패 — 잠시 후 다시 시도하세요'
+ }
+ 
+ /**
+- * 通知设置写失败原因 → 人话（P3-1 + P3-6）。
+- *
+- * 壳侧 `NotifyCenter.applySetting` 回 `unknown-key` / `readback-mismatch` 两个码：
+- * 前者是本版不认识该开关（不该发生），后者是写完读回与预期不一致（系统拦了写入）。
+- * 旧实现把码与内部 key 一起上屏（「未生效（readback-mismatch）：cat.question」），
+- * 这里改成「哪一类开关没生效 + 下一步」，key 不收进句子。
++ * 알림 설정 쓰기 실패 원인 → 사용자 친화적 문구.
+  */
+ export function describeNotifyWriteFailure(reason: string | undefined): string {
+   const code = (reason ?? '').trim()
+-  if (code === 'readback-mismatch') return '系统没有接受这次改动（写入后读回不一致）——请重试；仍失败请到系统设置里直接修改通知权限'
+-  if (code === 'unknown-key') return '本版不认识这个开关（应用安装包与页面版本不匹配）——请更新或重新安装应用'
+-  return '开关未生效——请重试；仍失败可复制日志反馈'
++  if (code === 'readback-mismatch') return '시스템이 이번 변경을 적용하지 않았습니다 (쓰기 후 읽기 불일치) — 다시 시도하세요. 계속 실패 시 시스템 설정에서 알림 권한을 직접 수정하세요'
++  if (code === 'unknown-key') return '이 버전에서 지원하지 않는 설정 스위치입니다 (앱 패키지와 화면 버전 불일치) — 앱을 업데이트하거나 다시 설치해 주세요'
++  return '설정이 적용되지 않았습니다 — 다시 시도하세요. 계속 실패 시 로그를 복사해 문의해 주세요'
+ }
+ 
+ /**
+- * 通知渠道重要性（壳侧 `importance` 数字）→ 人话。
+- *
+- * 旧实现直接把数字印成「（重要性 4）」——数字档位对用户没有意义，用户要看的是
+- * 「会不会响、会不会弹」。档位语义与 Android `NotificationManager.IMPORTANCE_*` 一一对应。
+- * @param importance - 壳侧回的重要性整数。
+- * @returns 「高（会弹出并响铃）」这类人话；非数字返回空串（调用方整段省略）。
++ * 알림 채널 중요도 → 사용자 친화적 문구.
+  */
+ export function describeImportance(importance: unknown): string {
+   if (typeof importance !== 'number' || !Number.isFinite(importance)) return ''
+-  if (importance >= 4) return '高（会弹到屏幕上并响铃）'
+-  if (importance === 3) return '默认（会响铃，不弹到屏幕上）'
+-  if (importance === 2) return '低（只在通知栏提示，不响铃）'
+-  if (importance === 1) return '极低（不响铃、不提示，仅在通知栏可见）'
+-  return '已关闭（系统不再显示该渠道的通知）'
++  if (importance >= 4) return '높음 (화면에 팝업으로 표시되고 소리가 울림)'
++  if (importance === 3) return '기본 (소리가 울리며 화면에 팝업되지 않음)'
++  if (importance === 2) return '낮음 (알림창에만 표시되고 소리 안 남)'
++  if (importance === 1) return '매우 낮음 (소리/팝업 없음, 알림창에만 조용히 표시)'
++  return '꺼짐 (시스템이 이 채널의 알림을 더 이상 표시하지 않음)'
+ }
+ 
+ /**
+- * 硬截断唯一入口（P3-4）：超长一律附省略号。
+- *
+- * 缺陷现场：`take(24)` / `slice(0, 20)` 这类硬截断把 `rm -rf /data/loca` 呈现成一条**看起来
+- * 完整**的命令——用户据此判断「AI 在跑什么」会得出错误结论。截断必须自己说出来。
+- * @param text - 原文。
+- * @param max - 允许的最大字符数（含省略号）。
+- * @returns 未超长时原样；超长时 `max-1` 个字符 + `…`。
++ * 말줄임표 처리.
+  */
+ export function truncateWithEllipsis(text: string, max: number): string {
+   if (max <= 0) return ''
+@@ -209,52 +162,30 @@ export function truncateWithEllipsis(text: string, max: number): string {
+ }
+ 
+ /**
+- * 时长口径唯一真源（P3-3，页面侧）。
+- *
+- * 口径与壳侧 `UserCopy.durationText` **同规则**：`< 60s` 用「X秒」、`>= 60s` 用「X分Y秒」、
+- * `>= 1h` 用「X小时Y分」；不出现 `8.4s` / `1m24s` 这类英文单位混排。
+- * 未知（`<= 0`）返回空串，调用方**整段省略**，不打印 `-` 这类占位符。
+- * @param ms - 毫秒数。
+- * @returns 统一口径的时长文本。
++ * 시간 형식 포맷팅.
+  */
+ export function formatDuration(ms: number): string {
+   if (!Number.isFinite(ms) || ms <= 0) return ''
+   const total = Math.round(ms / 1000)
+   if (total < 60) {
+-    // 与壳侧同规则：整秒不带小数，否则保留一位（反馈读起来更有信息量）。
+-    if (ms % 1000 === 0) return total + '秒'
+-    return (ms / 1000).toFixed(1) + '秒'
++    if (ms % 1000 === 0) return total + '초'
++    return (ms / 1000).toFixed(1) + '초'
+   }
+   const minutes = Math.floor(total / 60)
+-  if (minutes < 60) return minutes + '分' + String(total % 60).padStart(2, '0') + '秒'
++  if (minutes < 60) return minutes + '분 ' + String(total % 60).padStart(2, '0') + '초'
+   const hours = Math.floor(minutes / 60)
+-  return hours + '小时' + String(minutes % 60).padStart(2, '0') + '分'
++  return hours + '시간 ' + String(minutes % 60).padStart(2, '0') + '분'
+ }
+ 
+-/**
+- * 一条用户可见回执：**人话正文 + 机器码**。
+- *
+- * 这是「码不上屏」这一条规则的载体：正文由本文件的翻译函数产出，码/状态码只经
+- * [noticeDataAttrs] 落进 `data-*`。组件里有 `code`/`http` 时**不得**把它拼进 `text`。
+- */
+ export interface Notice {
+-  /** 用户可读正文（含下一步）。 */
+   text: string
+-  /** 壳侧/页面侧的失败原因码（诊断用；不进正文）。 */
+   code?: string
+-  /** HTTP 状态码（诊断用；不进正文）。 */
+   http?: number
+ }
+ 
+-/**
+- * [Notice] → 可直接展开进 JSX 的 `data-*` 属性（空值不产生属性）。
+- * @param notice - 回执。
+- * @returns `{'data-code'?: string, 'data-http'?: string}`。
+- */
+ export function noticeDataAttrs(notice: Notice): Record<string, string> {
+   const attrs: Record<string, string> = {}
+   if (notice.code !== undefined && notice.code !== '') attrs['data-code'] = notice.code
+   if (notice.http !== undefined) attrs['data-http'] = String(notice.http)
+   return attrs
+ }
+-
+diff --git a/dsh-client-ui-responsive/tests/apk-update.spec.tsx b/dsh-client-ui-responsive/tests/apk-update.spec.tsx
+index ce6a317..e68980e 100644
+--- a/dsh-client-ui-responsive/tests/apk-update.spec.tsx
++++ b/dsh-client-ui-responsive/tests/apk-update.spec.tsx
+@@ -80,53 +80,53 @@ describe('设置页「检查更新」行', () => {
+   it('idle：主行说「未检查」，按钮是「检查更新」', async () => {
+     bridgeWith('idle')
+     const el = await render()
+-    expect(rowText(el)).toContain('未检查')
+-    expect(button(el).textContent).toBe('检查更新')
++    expect(rowText(el)).toContain('미확인')
++    expect(button(el).textContent).toBe('업데이트 확인')
+     expect(button(el).disabled).toBe(false)
+   })
+ 
+   it('checking：按钮禁用且说「检查中…」（进行中态）', async () => {
+     bridgeWith('checking')
+     const el = await render()
+-    expect(button(el).textContent).toBe('检查中…')
++    expect(button(el).textContent).toBe('확인 중…')
+     expect(button(el).disabled).toBe(true)
+   })
+ 
+   it('up-to-date：显示壳侧给的版本，按钮变「重新检查」', async () => {
+     bridgeWith('up-to-date', { version: 'v0.14.6' })
+     const el = await render()
+-    expect(rowText(el)).toContain('APK 已是最新 v0.14.6')
+-    expect(button(el).textContent).toBe('重新检查')
++    expect(rowText(el)).toContain('APK가 이미 최신 버전입니다 v0.14.6')
++    expect(button(el).textContent).toBe('다시 확인')
+   })
+ 
+   it('available：按钮是二次确认的「下载并安装」，并如实给出资产名与体积', async () => {
+     bridgeWith('available', { tag: 'v0.14.7', name: 'dsh-mobile-apk-v0.14.7-x86_64.apk', current: '0.14.6', sizeBytes: 169 * 1024 * 1024 })
+     const el = await render()
+-    expect(button(el).textContent).toBe('下载并安装 v0.14.7')
++    expect(button(el).textContent).toBe('다운로드 및 설치 v0.14.7')
+     // 用户要知道「将装哪个包」与「多大」——资产名是本机 ABI 的那个。
+     expect(rowText(el)).toContain('dsh-mobile-apk-v0.14.7-x86_64.apk')
+     expect(rowText(el)).toContain('169.0 MB')
+-    expect(rowText(el)).toContain('当前 v0.14.6')
++    expect(rowText(el)).toContain('현재 v0.14.6')
+   })
+ 
+   it('downloading：按钮禁用并显示真实百分比', async () => {
+     bridgeWith('downloading', { percent: 42, name: 'x.apk', sizeBytes: 1024 })
+     const el = await render()
+-    expect(button(el).textContent).toBe('下载中 42%')
++    expect(button(el).textContent).toBe('다운로드 중 42%')
+     expect(button(el).disabled).toBe(true)
+   })
+ 
+   it('installing：说清「装完需重开应用」；复用缓存时如实说明', async () => {
+     bridgeWith('installing', { reused: true })
+     const el = await render()
+-    expect(rowText(el)).toContain('重新打开应用')
+-    expect(rowText(el)).toContain('复用了上次已下载')
++    expect(rowText(el)).toContain('앱을 다시 열면')
++    expect(rowText(el)).toContain('재사용함')
+   })
+ 
+   it('need-permission：按钮是「授权后继续安装」而不是让它再点下载', async () => {
+     bridgeWith('need-permission')
+     const el = await render()
+-    expect(button(el).textContent).toBe('授权后继续安装')
++    expect(button(el).textContent).toBe('권한 허용 후 설치 계속')
+   })
+ 
+   it('failed：原因**原样**展示，不翻译不截断（壳侧 reason 已是成句中文）', async () => {
+@@ -134,20 +134,20 @@ describe('设置页「检查更新」行', () => {
+     bridgeWith('failed', { reason })
+     const el = await render()
+     expect(rowText(el)).toContain(reason)
+-    expect(button(el).textContent).toBe('重试')
++    expect(button(el).textContent).toBe('다시 시도')
+   })
+ 
+   it('failed 但没有 reason：如实说未给原因，不编造', async () => {
+     bridgeWith('failed')
+     const el = await render()
+-    expect(rowText(el)).toContain('壳侧未给出原因')
++    expect(rowText(el)).toContain('원인을 제공하지 않음')
+   })
+ 
+   it('**读不到 ≠ idle**：桥缺席时不得显示成合法空态或「已是最新」', async () => {
+     // 不装桥（桌面宿主 / 旧壳）。
+     const el = await render()
+-    expect(rowText(el)).toContain('读不到')
+-    expect(rowText(el)).not.toContain('已是最新')
++    expect(rowText(el)).toContain('확인 불가')
++    expect(rowText(el)).not.toContain('최신 버전')
+     expect(el.querySelector('.dsh-dev-row')?.getAttribute('data-apk-state')).toBe('unavailable')
+   })
+ 
+@@ -156,7 +156,7 @@ describe('设置页「检查更新」行', () => {
+       value: { apkUpdate: () => 'not-json' }, configurable: true, writable: true,
+     })
+     const el = await render()
+-    expect(rowText(el)).toContain('读不到')
++    expect(rowText(el)).toContain('확인 불가')
+   })
+ 
+   it('available 态点按钮发的是 install（二次确认语义），不是再发 check', async () => {
+@@ -191,7 +191,7 @@ describe('设置页「检查更新」行', () => {
+     })
+     const el = await render()
+     await act(async () => { button(el).click() })
+-    expect(el.textContent).toContain('仍在进行中')
++    expect(el.textContent).toContain('진행 중입니다')
+   })
+ 
+   it('**只在进行中态轮询**：idle/终态不挂定时器，downloading 才轮询', async () => {
+@@ -224,7 +224,7 @@ describe('设置页「检查更新」行', () => {
+     bridgeWith('idle')
+     const el = await render()
+     const hint = el.querySelector('.dsh-dev-hint')?.textContent ?? ''
+-    expect(hint).toContain('只在你点击时')
++    expect(hint).toContain('클릭할 때만')
+     expect(hint).toContain('APK')
+   })
+ })
+diff --git a/dsh-client-ui-responsive/tests/browser-tab.spec.tsx b/dsh-client-ui-responsive/tests/browser-tab.spec.tsx
+index 5a5f9f9..f0f7260 100644
+--- a/dsh-client-ui-responsive/tests/browser-tab.spec.tsx
++++ b/dsh-client-ui-responsive/tests/browser-tab.spec.tsx
+@@ -138,7 +138,7 @@ describe('official browser chrome over the Android adapter', () => {
+   it('surfaces a native unsupported-profile reason rather than rendering a ready page', async () => {
+     const view = await mount({ profileAvailable: false, profileReason: 'android-profile-isolation-unsupported' })
+     expect(view.host.textContent).toContain('android-profile-isolation-unsupported')
+-    expect(view.host.textContent).toContain('浏览器身份档不可用')
++    expect(view.host.textContent).toMatch(/浏览器身份档不可用|브라우저 프로필을 사용할 수 없음/)
+   })
+ 
+   it('routes PC profile and viewport actions to the owning UI occurrence', async () => {
+diff --git a/dsh-client-ui-responsive/tests/dev-section.spec.tsx b/dsh-client-ui-responsive/tests/dev-section.spec.tsx
+index a928ae6..496b61c 100644
+--- a/dsh-client-ui-responsive/tests/dev-section.spec.tsx
++++ b/dsh-client-ui-responsive/tests/dev-section.spec.tsx
+@@ -21,7 +21,7 @@ type Bridge = {
+ 
+ /** 悬浮球开关（开发者选项里的第二个复选框；按标签文本定位，不依赖顺序）。 */
+ function overlayToggle(el: HTMLElement): HTMLInputElement {
+-  const label = [...el.querySelectorAll('label')].find(l => l.textContent?.includes('悬浮球'))
++  const label = [...el.querySelectorAll('label')].find(l => l.textContent?.includes('플로팅 버튼'))
+   expect(label, '悬浮球开关必须在场').toBeTruthy()
+   return label!.querySelector('input') as HTMLInputElement
+ }
+@@ -58,10 +58,10 @@ describe('DevSection（开发者选项设置页）', () => {
+   it('渲染操作按钮（重启/关闭/刷新/控制台）与日志开关', async () => {
+     const el = await render({})
+     const texts = [...el.querySelectorAll('button')].map(b => b.textContent)
+-    expect(texts).toContain('重启')
+-    expect(texts).toContain('关闭')
+-    expect(texts).toContain('刷新界面')
+-    expect(texts).toContain('打开控制台')
++    expect(texts).toContain('다시 시작')
++    expect(texts).toContain('종료')
++    expect(texts).toContain('화면 새로고침')
++    expect(texts).toContain('콘솔 열기')
+     expect(el.querySelector('input[type=checkbox]')).not.toBeNull()
+   })
+ 
+@@ -70,10 +70,10 @@ describe('DevSection（开发者选项设置页）', () => {
+     // S3-15：忙碌态只在**桥如实回报「已发起」**时进入，故这里的桩返回 true（旧签名 void 已改）。
+     const restartEngine = vi.fn(() => true)
+     const el = await render({ restartEngine })
+-    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '重启')!
++    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작')!
+     await act(async () => { btn.click() })
+     expect(restartEngine).not.toHaveBeenCalled()
+-    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '重启')!
++    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '다시 시작')!
+     await act(async () => { confirmBtn.click() })
+     expect(restartEngine).toHaveBeenCalledOnce()
+     expect(btn.hasAttribute('disabled')).toBe(true)
+@@ -85,13 +85,13 @@ describe('DevSection（开发者选项设置页）', () => {
+   it('关闭：点击后弹二次确认，取消不调桥，确认调 shutdownToGuide', async () => {
+     const shutdownToGuide = vi.fn()
+     const el = await render({ shutdownToGuide })
+-    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '关闭')!
++    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '종료')!
+     await act(async () => { btn.click() })
+-    const cancel = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '取消')!
++    const cancel = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '취소')!
+     await act(async () => { cancel.click() })
+     expect(shutdownToGuide).not.toHaveBeenCalled()
+     await act(async () => { btn.click() })
+-    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '关闭')!
++    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '종료')!
+     await act(async () => { confirmBtn.click() })
+     expect(shutdownToGuide).toHaveBeenCalledOnce()
+   })
+@@ -101,8 +101,8 @@ describe('DevSection（开发者选项设置页）', () => {
+     const openConsole = vi.fn()
+     const el = await render({ reloadWebUI, openConsole })
+     const texts = [...el.querySelectorAll('button')]
+-    texts.find(b => b.textContent === '刷新界面')!.click()
+-    texts.find(b => b.textContent === '打开控制台')!.click()
++    texts.find(b => b.textContent === '화면 새로고침')!.click()
++    texts.find(b => b.textContent === '콘솔 열기')!.click()
+     expect(reloadWebUI).toHaveBeenCalledOnce()
+     expect(openConsole).toHaveBeenCalledOnce()
+   })
+@@ -125,7 +125,7 @@ describe('DevSection（开发者选项设置页）', () => {
+   it('未授予所有文件访问时提示私有目录', async () => {
+     const el = await render({ hasAllFilesAccess: () => false })
+     const hints = [...el.querySelectorAll('p')].map(p => p.textContent)
+-    expect(hints.some(h => h?.includes('应用私有目录'))).toBe(true)
++    expect(hints.some(h => h?.includes('앱 전용 디렉터리'))).toBe(true)
+   })
+ 
+   it('已授权时提示公共目录路径', async () => {
+@@ -137,9 +137,9 @@ describe('DevSection（开发者选项设置页）', () => {
+   it('桥缺失时安全降级（不抛异常，默认关）', async () => {
+     const el = await render({})
+     expect((el.querySelector('input[type=checkbox]') as HTMLInputElement).checked).toBe(false)
+-    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '重启')!
++    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작')!
+     await act(async () => { btn.click() })
+-    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '重启')!
++    const confirmBtn = [...el.querySelectorAll('.dsh-dev-modal button')].find(b => b.textContent === '다시 시작')!
+     await act(async () => { confirmBtn.click() })
+     expect(() => { confirmBtn.click() }).not.toThrow()
+   })
+@@ -169,9 +169,9 @@ describe('DevSection（开发者选项设置页）', () => {
+   it('P5-6：悬浮球文案必须点名「虚拟屏浮窗」以示区分', async () => {
+     const el = await render({})
+     const text = el.textContent ?? ''
+-    expect(text).toContain('悬浮球')
+-    expect(text, '必须点名「手机控制」页的虚拟屏浮窗是另一个东西').toContain('虚拟屏浮窗')
+-    expect(text, '必须说清悬浮球是什么').toContain('任务面板')
++    expect(text).toContain('플로팅 버튼')
++    expect(text, '必须点名「手机控制」页的虚拟屏浮窗是另一个东西').toContain('가상 디스플레이 오버레이 창')
++    expect(text, '必须说清悬浮球是什么').toContain('작업 패널')
+   })
+ 
+   it('ST-02：系统侧撤销权限后回前台不重挂载也收敛（展示值与桥回值同时收敛）', async () => {
+@@ -197,11 +197,11 @@ describe('DevSection（开发者选项设置页）', () => {
+       getOverlayEnabled: () => state.overlay,
+       hasAllFilesAccess: () => state.allFiles,
+     })
+-    const logLabel = [...el.querySelectorAll('label')].find(l => l.textContent?.includes('开发者调试日志'))!
++    const logLabel = [...el.querySelectorAll('label')].find(l => l.textContent?.includes('개발자 디버그 로그'))!
+     const logInput = logLabel.querySelector('input') as HTMLInputElement
+     expect(logInput.checked).toBe(false)
+     expect(overlayToggle(el).checked).toBe(false)
+-    expect(el.textContent).toContain('应用私有目录')
++    expect(el.textContent).toContain('앱 전용 디렉터리')
+ 
+     // 只动系统侧（壳侧真源），不碰我方 UI
+     state.log = true
+@@ -219,7 +219,7 @@ describe('DevSection（开发者选项设置页）', () => {
+     const toggle = overlayToggle(el)
+     expect(toggle.checked).toBe(false)
+     await act(async () => { toggle.click() })
+-    expect(el.textContent).toContain('已打开系统授权页；授予后请重新打开本开关')
++    expect(el.textContent).toContain('시스템 권한 설정 창을 열었습니다')
+     expect(el.textContent).not.toContain('返回后自动生效')
+     expect(toggle.checked, '桥回读为 false → 开关不得乐观置位').toBe(false)
+   })
+@@ -232,7 +232,7 @@ describe('DevSection（开发者选项设置页）', () => {
+ describe('DevSection 破坏性操作与假忙碌（S3-14 / S3-15）', () => {
+   /** 临时工作区清理按钮（按文本定位；文案为「一键清理」）。 */
+   function cleanButton(el: HTMLElement): HTMLButtonElement {
+-    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '一键清理')
++    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '원클릭 정리')
+     expect(btn, '一键清理按钮必须在场').toBeTruthy()
+     return btn as HTMLButtonElement
+   }
+@@ -251,15 +251,15 @@ describe('DevSection 破坏性操作与假忙碌（S3-14 / S3-15）', () => {
+ 
+     await act(async () => { cleanButton(el).click() })
+     // 旧实现：单击即删。现在必须只弹确认。
+-    expect(el.textContent).toContain('清理临时工作区？')
+-    expect(el.textContent).toContain('无法恢复')
++    expect(el.textContent).toContain('임시 작업 공간을 정리하시겠습니까?')
++    expect(el.textContent).toContain('무효화되며 복구할 수 없습니다')
+     expect(calls.some(u => u.includes('/clean')), '确认之前不得发起清理').toBe(false)
+ 
+     // 确认后才真的删。注意：同页还有「运行时缓存清理」的按钮，文本同为「清理」——
+     // 必须**限定在确认弹窗内**取（首版取到的是缓存那枚，测试自身踩了选择器歧义）。
+     const dialog = el.querySelector('[role="dialog"]')
+     expect(dialog, '必须弹出确认对话框').toBeTruthy()
+-    const ok = [...dialog!.querySelectorAll('button')].find(b => b.textContent === '清理') as HTMLButtonElement
++    const ok = [...dialog!.querySelectorAll('button')].find(b => b.textContent === '정리') as HTMLButtonElement
+     expect(ok, '确认弹窗必须有执行按钮').toBeTruthy()
+     await act(async () => { ok.click() })
+     await act(async () => { await Promise.resolve() })
+@@ -269,28 +269,28 @@ describe('DevSection 破坏性操作与假忙碌（S3-14 / S3-15）', () => {
+   it('S3-15：重启没发起时如实说明，不得进入假忙碌态', async () => {
+     // 桥存在但返回 false（已在重启中/未发起）——旧实现无论成败都显示「重启中…」两秒后自己变回。
+     const el = await render({ restartEngine: () => false })
+-    const restart = [...el.querySelectorAll('button')].find(b => b.textContent === '重启') as HTMLButtonElement
++    const restart = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작') as HTMLButtonElement
+     await act(async () => { restart.click() })
+-    const confirmBtn = [...el.querySelectorAll('button')].find(b => b.textContent === '重启' && b !== restart) as HTMLButtonElement
++    const confirmBtn = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작' && b !== restart) as HTMLButtonElement
+     await act(async () => { confirmBtn.click() })
+-    expect(el.textContent).toContain('重启没有发起')
+-    expect(el.textContent, '不得显示假忙碌').not.toContain('重启中…')
++    expect(el.textContent).toContain('다시 시작하지 못했습니다')
++    expect(el.textContent, '不得显示假忙碌').not.toContain('다시 시작 중…')
+   })
+ 
+   it('S3-15：桥缺席时重启也要如实说没发起（不是假装在重启）', async () => {
+     const el = await render({})
+-    const restart = [...el.querySelectorAll('button')].find(b => b.textContent === '重启') as HTMLButtonElement
++    const restart = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작') as HTMLButtonElement
+     await act(async () => { restart.click() })
+-    const confirmBtn = [...el.querySelectorAll('button')].find(b => b.textContent === '重启' && b !== restart) as HTMLButtonElement
++    const confirmBtn = [...el.querySelectorAll('button')].find(b => b.textContent === '다시 시작' && b !== restart) as HTMLButtonElement
+     await act(async () => { confirmBtn.click() })
+-    expect(el.textContent).toContain('重启没有发起')
++    expect(el.textContent).toContain('다시 시작하지 못했습니다')
+   })
+ 
+   it('S3-15：控制台桥缺席时给回执（不再静默）', async () => {
+     const el = await render({})
+-    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '打开控制台') as HTMLButtonElement
++    const btn = [...el.querySelectorAll('button')].find(b => b.textContent === '콘솔 열기') as HTMLButtonElement
+     await act(async () => { btn.click() })
+-    expect(el.textContent).toContain('控制台不可用')
++    expect(el.textContent).toContain('콘솔을 사용할 수 없습니다')
+   })
+ })
+ 
+diff --git a/dsh-client-ui-responsive/tests/general-settings.spec.tsx b/dsh-client-ui-responsive/tests/general-settings.spec.tsx
+index 27e5f26..ce385dd 100644
+--- a/dsh-client-ui-responsive/tests/general-settings.spec.tsx
++++ b/dsh-client-ui-responsive/tests/general-settings.spec.tsx
+@@ -100,7 +100,7 @@ describe('GeneralSettings 沉浸式开关的失败回执（S3-17）', () => {
+     // 壳桥接受调用但不改变真值（宿主拒绝）——旧实现 refresh 一下，开关自己弹回去，屏上无解释。
+     const el = await render({ getImmersiveMode: () => true, setImmersiveMode: () => {} })
+     await act(async () => { el.click() })
+-    expect(host!.textContent).toContain('沉浸式状态栏没有')
++    expect(host!.textContent).toContain('몰입형 상태표시줄을')
+   })
+ 
+   it('桥抛错时给失败回执（不假装已生效）', async () => {
+@@ -109,7 +109,7 @@ describe('GeneralSettings 沉浸式开关的失败回执（S3-17）', () => {
+       setImmersiveMode: () => { throw new Error('bridge blew up') },
+     })
+     await act(async () => { el.click() })
+-    expect(host!.textContent).toContain('设置没有生效')
++    expect(host!.textContent).toContain('설정이 적용되지 않았습니다')
+   })
+ 
+   it('正常生效时不得出现任何失败文案', async () => {
+@@ -117,8 +117,8 @@ describe('GeneralSettings 沉浸式开关的失败回执（S3-17）', () => {
+     const el = await render({ getImmersiveMode: () => value, setImmersiveMode: (v: boolean) => { value = v } })
+     await act(async () => { el.click() })
+     expect(value).toBe(true)
+-    expect(host!.textContent).not.toContain('设置没有生效')
+-    expect(host!.textContent).not.toContain('没有开启')
++    expect(host!.textContent).not.toContain('설정이 적용되지 않았습니다')
++    expect(host!.textContent).not.toContain('켜지 못했습니다')
+   })
+ })
+ 
+diff --git a/dsh-client-ui-responsive/tests/incoming-draft.spec.ts b/dsh-client-ui-responsive/tests/incoming-draft.spec.ts
+index 2a9fda4..93bb994 100644
+--- a/dsh-client-ui-responsive/tests/incoming-draft.spec.ts
++++ b/dsh-client-ui-responsive/tests/incoming-draft.spec.ts
+@@ -162,7 +162,7 @@ describe('IncomingDraftConsumer', () => {
+ 
+       expect(createSession).toHaveBeenCalledTimes(1)
+       expect(notify).toHaveBeenCalledTimes(1)
+-      expect(notify.mock.calls[0]?.[1]).toContain('停止自动重试')
++      expect(notify.mock.calls[0]?.[1]).toContain('자동 재시도를 중지했습니다')
+       expect(document.documentElement.getAttribute('data-dsh-incoming-draft-poll')).toBe('exhausted')
+     } finally {
+       window.androidBridge = previous
+@@ -192,8 +192,8 @@ describe('来件草稿的工作区不可用回执（S3-21）', () => {
+     await consumer.poll()
+     // 旧实现：`if (cwd === '') return` —— 用户的分享就此消失，屏上什么都没有。
+     expect(events.length, '必须给出一次可见回执').toBe(1)
+-    expect(String(events[0].detail.title)).toContain('分享进来的文件')
+-    expect(String(events[0].detail.detail)).toContain('重新分享')
++    expect(String(events[0].detail.title)).toContain('공유된 파일')
++    expect(String(events[0].detail.detail)).toContain('다시 공유')
+     // 再轮询一次不得刷屏（同一 entryId 只提示一次）。
+     await consumer.poll()
+     expect(events.length, '同一文件只提示一次').toBe(1)
+diff --git a/dsh-client-ui-responsive/tests/notify-settings.spec.tsx b/dsh-client-ui-responsive/tests/notify-settings.spec.tsx
+index c272028..927980c 100644
+--- a/dsh-client-ui-responsive/tests/notify-settings.spec.tsx
++++ b/dsh-client-ui-responsive/tests/notify-settings.spec.tsx
+@@ -85,10 +85,10 @@ function shellSelfCheck(overrides: { channels?: unknown[] } = {}) {
+     ok: true,
+     notificationsEnabled: true,
+     permissionGranted: true,
+-    permissionLabel: '已授予',
++    permissionLabel: '허용됨',
+     channels: overrides.channels ?? [
+-      { category: 'report', label: '工作汇报', selected: 'dsh-report', exists: true, importance: 4, importanceLabel: '高（会弹到屏幕上并响铃）', degraded: false },
+-      { category: 'question', label: '提问', selected: 'dsh-question', exists: true, importance: 4, importanceLabel: '高（会弹到屏幕上并响铃）', degraded: false },
++      { category: 'report', label: '작업 보고', selected: 'dsh-report', exists: true, importance: 4, importanceLabel: '높음 (화면에 팝업 및 벨소리)', degraded: false },
++      { category: 'question', label: '질문', selected: 'dsh-question', exists: true, importance: 4, importanceLabel: '높음 (화면에 팝업 및 벨소리)', degraded: false },
+     ],
+   }
+ }
+@@ -112,17 +112,17 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+ 
+     expect(calls.filter((c) => c.kind === 'get').length).toBeGreaterThan(0)
+     // 展示值必须等于真源：true = 抑制开启。
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(true)
+-    expect(el.textContent).toContain('前台抑制开启')
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(true)
++    expect(el.textContent).toContain('포그라운드 제한 켜짐')
+   })
+ 
+   it('默认值下开关为关且文案说明「前台照常推送」', async () => {
+     const { bridge } = makeBridge({ snapshot: () => snapshot() })
+     setBridge(bridge)
+     const el = await render()
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(false)
+-    expect(el.textContent).toContain('前台照常推送')
+-    expect(el.textContent).toContain('等于本版默认值')
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(false)
++    expect(el.textContent).toContain('포그라운드 정상 전송')
++    expect(el.textContent).toContain('이번 버전 기본값과 동일')
+   })
+ 
+   it('拨动开关必须经桥写入，并按返回读回（真源变才置位）', async () => {
+@@ -134,13 +134,13 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     setBridge(bridge)
+     const el = await render()
+ 
+-    await act(async () => { switchByLabel(el, '前台抑制通知').click() })
++    await act(async () => { switchByLabel(el, '포그라운드 알림 제한').click() })
+ 
+     const writes = calls.filter((c) => c.kind === 'set')
+     expect(writes).toEqual([{ kind: 'set', key: 'suppressForeground', value: true }])
+     // 写后必须再读真源（而不是把入参写进本地 state）。
+     expect(calls.filter((c) => c.kind === 'get').length).toBeGreaterThanOrEqual(2)
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(true)
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(true)
+   })
+ 
+   it('applied=false 时不得置位，并如实显示真因（拒绝乐观置位）', async () => {
+@@ -151,12 +151,12 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     setBridge(bridge)
+     const el = await render()
+ 
+-    await act(async () => { switchByLabel(el, '前台抑制通知').click() })
++    await act(async () => { switchByLabel(el, '포그라운드 알림 제한').click() })
+ 
+     expect(calls.some((c) => c.kind === 'set')).toBe(true)
+     // 真源仍为 false ⇒ 开关必须仍是关的（不得乐观置位）。
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(false)
+-    expect(el.textContent).toContain('系统没有接受这次改动')
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(false)
++    expect(el.textContent).toContain('시스템이 이번 변경을 적용하지 않았습니다')
+     // P3-1/P3-6：码不上屏（旧断言把「未生效（readback-mismatch）：cat.question」当契约），只进 data-code。
+     expect(el.textContent, '机器码不得出现在正文').not.toContain('readback-mismatch')
+     expect(el.textContent, '内部 key 不得出现在正文').not.toContain('cat.')
+@@ -174,18 +174,18 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     setBridge(bridge)
+     const el = await render()
+ 
+-    expect(switchByLabel(el, '后台动态').checked).toBe(false)
+-    expect(switchByLabel(el, '工作汇报').checked).toBe(true)
++    expect(switchByLabel(el, '백그라운드 상태').checked).toBe(false)
++    expect(switchByLabel(el, '작업 보고').checked).toBe(true)
+ 
+-    await act(async () => { switchByLabel(el, '工作汇报').click() })
++    await act(async () => { switchByLabel(el, '작업 보고').click() })
+     expect(calls.filter((c) => c.kind === 'set')).toEqual([{ kind: 'set', key: 'cat.report', value: false }])
+-    expect(switchByLabel(el, '工作汇报').checked).toBe(false)
++    expect(switchByLabel(el, '작업 보고').checked).toBe(false)
+   })
+ 
+   it('桥缺席时显示不可用，绝不显示伪造的开关状态', async () => {
+     setBridge(undefined)
+     const el = await render()
+-    expect(el.textContent).toContain('通知设置不可用')
++    expect(el.textContent).toContain('알림 설정을 사용할 수 없습니다')
+     expect(el.querySelector('input[role="switch"]')).toBeNull()
+   })
+ 
+@@ -193,7 +193,7 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     const { bridge } = makeBridge({ snapshot: () => ({ ok: false, reason: 'no-shell-context' }) })
+     setBridge(bridge)
+     const el = await render()
+-    expect(el.textContent).toContain('通知设置不可用')
++    expect(el.textContent).toContain('알림 설정을 사용할 수 없습니다')
+     expect(el.querySelector('input[role="switch"]')).toBeNull()
+   })
+ 
+@@ -204,41 +204,41 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     }
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { switchByLabel(el, '前台抑制通知').click() })
+-    expect(el.textContent).toContain('写入失败')
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(false)
++    await act(async () => { switchByLabel(el, '포그라운드 알림 제한').click() })
++    expect(el.textContent).toContain('기록 실패')
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(false)
+   })
+ 
+   it('自检：系统把渠道降级时必须说「已降级」，不得显示「未降级任何渠道」', async () => {
+     const { bridge } = makeBridge({
+       selfCheck: () => shellSelfCheck({
+         channels: [
+-          { category: 'question', label: '提问', selected: 'dsh-question', exists: true, importance: 2, importanceLabel: '低（只在通知栏提示，不响铃）', degraded: true },
++          { category: 'question', label: '질문', selected: 'dsh-question', exists: true, importance: 2, importanceLabel: '낮음 (알림창에만 표시, 벨소리 없음)', degraded: true },
+         ],
+       }),
+     })
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { buttonByText(el, '通知自检').click() })
++    await act(async () => { buttonByText(el, '알림 자체 진단').click() })
+ 
+-    expect(el.textContent).toContain('系统已降级以下通知')
+-    expect(el.textContent).toContain('提问')
+-    expect(el.textContent, '降级时不得再声称未降级').not.toContain('系统未降级任何通知渠道')
++    expect(el.textContent).toContain('시스템에서 다음 알림을 제한(다운그레이드)했습니다')
++    expect(el.textContent).toContain('질문')
++    expect(el.textContent, '降级时不得再声称未降级').not.toContain('시스템에서 다운그레이드된 알림 채널이 없습니다')
+     // 档位取壳侧人话，不印数字（旧页面印的是「（重要性 4）」）。
+-    expect(el.textContent).toContain('低（只在通知栏提示，不响铃）')
+-    expect(el.textContent).not.toContain('重要性 2')
++    expect(el.textContent).toContain('낮음 (알림창에만 표시, 벨소리 없음)')
++    expect(el.textContent).not.toContain('중요도 2')
+   })
+ 
+   it('自检：未被降级时明确说「未降级任何渠道」（与上一条互为正反）', async () => {
+     const { bridge } = makeBridge({ selfCheck: () => shellSelfCheck() })
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { buttonByText(el, '通知自检').click() })
+-    expect(el.textContent).toContain('系统未降级任何通知渠道')
+-    expect(el.textContent).not.toContain('系统已降级以下通知')
++    await act(async () => { buttonByText(el, '알림 자체 진단').click() })
++    expect(el.textContent).toContain('시스템에서 다운그레이드된 알림 채널이 없습니다')
++    expect(el.textContent).not.toContain('시스템에서 다음 알림을 제한(다운그레이드)했습니다')
+     // 总开关与权限也要可见（任务不提醒时用户能看出是哪一层被关）。
+-    expect(el.textContent).toContain('应用通知总开关')
+-    expect(el.textContent).toContain('已授予')
++    expect(el.textContent).toContain('앱 알림 전체 스위치')
++    expect(el.textContent).toContain('허용됨')
+   })
+ 
+   it('自检：渠道设置深链用的是壳侧给的 selected 渠道 id', async () => {
+@@ -250,8 +250,8 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     }
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { buttonByText(el, '通知自检').click() })
+-    const link = [...el.querySelectorAll('button')].find((b) => b.textContent === '打开该渠道设置')
++    await act(async () => { buttonByText(el, '알림 자체 진단').click() })
++    const link = [...el.querySelectorAll('button')].find((b) => b.textContent === '해당 채널 설정 열기')
+     expect(link, '自检行必须有渠道深链').toBeDefined()
+     await act(async () => { (link as HTMLButtonElement).click() })
+     expect(opened).toEqual(['dsh-report'])
+@@ -263,9 +263,9 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     ;(bridge as Record<string, unknown>).notifySendTest = () => { calls.push(1); return 5 }
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { buttonByText(el, '发送测试通知').click() })
++    await act(async () => { buttonByText(el, '테스트 알림 전송').click() })
+     expect(calls.length).toBe(1)
+-    expect(el.textContent).toContain('已发送 5 条测试通知')
++    expect(el.textContent).toContain('테스트 알림 5개를 보냈습니다')
+   })
+ 
+   it('S3-26：一条都没发出去时必须如实说没发出去（不得谎报已发送）', async () => {
+@@ -273,9 +273,9 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     ;(bridge as Record<string, unknown>).notifySendTest = () => 0
+     setBridge(bridge)
+     const el = await render()
+-    await act(async () => { buttonByText(el, '发送测试通知').click() })
+-    expect(el.textContent).toContain('一条也没发出去')
+-    expect(el.textContent).not.toContain('已发送')
++    await act(async () => { buttonByText(el, '테스트 알림 전송').click() })
++    expect(el.textContent).toContain('알림이 전송되지 않았습니다')
++    expect(el.textContent).not.toContain('보냈습니다')
+   })
+ 
+   it('P3-2：五类用词与壳侧渠道名同源（同一概念不许两个名字）', async () => {
+@@ -286,7 +286,7 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+       .map((input) => input.getAttribute('aria-label'))
+     // 这五个词必须与壳侧 `UserCopy.notifyCategory` + `NotifyCenter.Face.label` 逐字一致
+     // （Kotlin 侧 `UserCopyTest.faceLabelsShareTheSingleTable` 钉住那一半）。
+-    expect(labels).toEqual(['工作汇报', '提问', '授权请求', '待办进度', '后台动态'])
++    expect(labels).toEqual(['작업 보고', '질문', '권한 요청', '할 일 진행률', '백그라운드 상태'])
+   })
+ 
+   it('P3-5：通知设置已从「开发者选项」提级为设置页一级分区（源码级形态断言）', async () => {
+@@ -299,7 +299,7 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     // 只允许留一行指路文案。
+     const dev = fs.readFileSync('src/client/dev-section/DevSection.tsx', 'utf8')
+     expect(dev, '开发者选项不得再内嵌 NotifySettingsRow').not.toContain('<NotifySettingsRow')
+-    expect(dev).toContain('设置 → 通知')
++    expect(dev).toContain('설정 → 알림')
+   })
+ 
+   it('回前台重读真源（从系统设置返回后展示值不得陈旧）', async () => {
+@@ -307,11 +307,11 @@ describe('NotifySettingsRow（块J FIX-4 设置页入口）', () => {
+     const { bridge } = makeBridge({ snapshot: () => snapshot({ suppressForeground: stored }) })
+     setBridge(bridge)
+     const el = await render()
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(false)
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(false)
+ 
+     // 模拟「在别处（壳侧/adb）改了真源，然后回到页面」。
+     stored = true
+     await act(async () => { window.dispatchEvent(new Event('focus')) })
+-    expect(switchByLabel(el, '前台抑制通知').checked).toBe(true)
++    expect(switchByLabel(el, '포그라운드 알림 제한').checked).toBe(true)
+   })
+ })
+diff --git a/dsh-client-ui-responsive/tests/phone-chrome.spec.tsx b/dsh-client-ui-responsive/tests/phone-chrome.spec.tsx
+index 421be5a..94035a4 100644
+--- a/dsh-client-ui-responsive/tests/phone-chrome.spec.tsx
++++ b/dsh-client-ui-responsive/tests/phone-chrome.spec.tsx
+@@ -238,7 +238,7 @@ describe('P4 硬判据：hero/sessionless 态（新建会话那一屏）必须
+       const button = leading.querySelector('button')
+       expect(button, 'header 高 ' + headerHeight + ' 时汉堡仍必须渲染').toBeTruthy()
+       expect(getComputedStyle(button!).display).not.toBe('none')
+-      expect(button!.getAttribute('aria-label')).toBe('打开导航')
++      expect(button!.getAttribute('aria-label')).toMatch(/打开导航|네비게이션 열기/)
+       expect(button!.hasAttribute('data-dsh-sidebar-toggle')).toBe(true)
+       act(() => { button!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+       expect(clicked, 'hero 态下点汉堡必须真的触发 drawer 切换').toBe(1)
+@@ -294,7 +294,7 @@ describe('P4/P5：组件本身仍可渲染（没有在重构中变成空壳）',
+     act(() => { root.render(<SidebarToggle toggleSidebar={() => {}} /> as never) })
+     const button = host.querySelector('button')
+     expect(button).toBeTruthy()
+-    expect(button!.getAttribute('aria-label')).toMatch(/打开导航|关闭导航/)
++    expect(button!.getAttribute('aria-label')).toMatch(/打开导航|关闭导航|네비게이션 열기|네비게이션 닫기/)
+     act(() => { root.unmount() })
+   })
+ 
+diff --git a/dsh-client-ui-responsive/tests/phone-control.spec.tsx b/dsh-client-ui-responsive/tests/phone-control.spec.tsx
+index 799f542..2d20b37 100644
+--- a/dsh-client-ui-responsive/tests/phone-control.spec.tsx
++++ b/dsh-client-ui-responsive/tests/phone-control.spec.tsx
+@@ -107,7 +107,7 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     const setScreenScope = vi.fn((scope: Scope) => { state.scope = scope })
+     const getScreenScope = vi.fn(() => state.scope)
+     const el = await render({ getScreenScope, setScreenScope })
+-    const select = el.querySelector('select[aria-label="开放屏幕范围"]') as HTMLSelectElement
++    const select = el.querySelector('select[aria-label="화면 공유 범위"]') as HTMLSelectElement
+     expect(select, '开放屏幕范围选择器必须在场').toBeTruthy()
+     expect(select.value).toBe('virtual-only')
+     await act(async () => {
+@@ -120,7 +120,7 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+ 
+   it('开放屏幕范围：壳桥缺失时回落安全默认 virtual-only', async () => {
+     const el = await render({})
+-    const select = el.querySelector('select[aria-label="开放屏幕范围"]') as HTMLSelectElement
++    const select = el.querySelector('select[aria-label="화면 공유 범위"]') as HTMLSelectElement
+     expect(select.value).toBe('virtual-only')
+   })
+ 
+@@ -129,14 +129,14 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     const getVdisplayScale = vi.fn(() => scale)
+     const setVdisplayScale = vi.fn((value: number) => { scale = value })
+     const el = await render({ getVdisplayScale, setVdisplayScale })
+-    const select = el.querySelector('select[aria-label="虚拟屏分辨率档位"]') as HTMLSelectElement
++    const select = el.querySelector('select[aria-label="가상 화면 해상도 배율"]') as HTMLSelectElement
+     expect(select.value).toBe('0.5')
+     await act(async () => {
+       select.value = '1'
+       select.dispatchEvent(new Event('change', { bubbles: true }))
+     })
+     expect(setVdisplayScale).toHaveBeenCalledWith(1)
+-    expect((el.querySelector('select[aria-label="虚拟屏分辨率档位"]') as HTMLSelectElement).value).toBe('1')
++    expect((el.querySelector('select[aria-label="가상 화면 해상도 배율"]') as HTMLSelectElement).value).toBe('1')
+   })
+ 
+   it('虚拟屏浮窗：默认开，关闭写壳桥并回读', async () => {
+@@ -144,11 +144,11 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     const getVdisplayFloatEnabled = vi.fn(() => enabled)
+     const setVdisplayFloatEnabled = vi.fn((next: boolean) => { enabled = next })
+     const el = await render({ getVdisplayFloatEnabled, setVdisplayFloatEnabled })
+-    const toggle = el.querySelector('input[aria-label="虚拟屏浮窗（退后台自动显示）"]') as HTMLInputElement
++    const toggle = el.querySelector('input[aria-label="가상 화면 플로팅 뷰 (백그라운드 진입 시 자동 표시)"]') as HTMLInputElement
+     expect(toggle.checked).toBe(true)
+     await act(async () => { toggle.click() })
+     expect(setVdisplayFloatEnabled).toHaveBeenCalledWith(false)
+-    expect((el.querySelector('input[aria-label="虚拟屏浮窗（退后台自动显示）"]') as HTMLInputElement).checked).toBe(false)
++    expect((el.querySelector('input[aria-label="가상 화면 플로팅 뷰 (백그라운드 진입 시 자동 표시)"]') as HTMLInputElement).checked).toBe(false)
+   })
+ 
+   // P5-6：与开发者选项里的「悬浮球」去混淆——两处都叫「浮」，必须各说各是什么，
+@@ -156,15 +156,15 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+   it('P5-6：浮窗命名必须点名「悬浮球」以示区分', async () => {
+     const el = await render({})
+     const text = el.textContent ?? ''
+-    expect(text).toContain('虚拟屏浮窗')
+-    expect(text, '必须点名开发者选项里的「悬浮球」是另一个东西').toContain('悬浮球')
+-    expect(text, '必须说清它显示的是什么').toContain('虚拟屏画面')
++    expect(text).toContain('가상 화면 플로팅 뷰')
++    expect(text, '必须点名开发者选项里的「悬浮球」是另一个东西').toContain('플로팅 버튼')
++    expect(text, '必须说清它显示的是什么').toContain('가상 화면을 표시')
+   })
+ 
+   it('强制销毁：前两次点击只确认，第三次才调用壳桥', async () => {
+     const forceDestroyVdisplay = vi.fn(() => JSON.stringify({ ok: true, code: 'vdisplay-destroyed' }))
+     const el = await render({ forceDestroyVdisplay })
+-    const button = buttonByText(el, '强制销毁虚拟屏')
++    const button = buttonByText(el, '가상 화면 강제 종료')
+     await act(async () => { button.click() })
+     expect(forceDestroyVdisplay).not.toHaveBeenCalled()
+     expect(button.textContent).toContain('1/3')
+@@ -173,14 +173,14 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     expect(button.textContent).toContain('2/3')
+     await act(async () => { button.click() })
+     expect(forceDestroyVdisplay).toHaveBeenCalledTimes(1)
+-    expect(el.textContent).toContain('已强制销毁全部虚拟屏')
++    expect(el.textContent).toContain('모든 가상 화면을 강제 종료했습니다')
+   })
+ 
+   // P5-5：破坏性按钮必须与同页普通按钮**看得出区别**，且进入确认态后必须能退出。
+   // 反证：把 className 的 danger 分支删掉、或删掉「取消」按钮，本组用例即判红。
+   it('P5-5：确认态必须带危险样式，未进入确认态不得带', async () => {
+     const el = await render({ forceDestroyVdisplay: () => JSON.stringify({ ok: true }) })
+-    const button = buttonByText(el, '强制销毁虚拟屏')
++    const button = buttonByText(el, '가상 화면 강제 종료')
+     expect(button.className, '未确认时是普通按钮').not.toContain('dsh-dev-danger')
+     expect(button.getAttribute('data-armed')).toBe('false')
+     await act(async () => { button.click() })
+@@ -192,13 +192,13 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+   it('P5-5：确认态必须给取消途径，取消后不得调用壳桥', async () => {
+     const forceDestroyVdisplay = vi.fn(() => JSON.stringify({ ok: true }))
+     const el = await render({ forceDestroyVdisplay })
+-    const button = buttonByText(el, '强制销毁虚拟屏')
++    const button = buttonByText(el, '가상 화면 강제 종료')
+     await act(async () => { button.click() })
+-    const cancel = buttonByText(el, '取消')
++    const cancel = buttonByText(el, '취소')
+     await act(async () => { cancel.click() })
+     expect(forceDestroyVdisplay, '取消后一次都不该调用').not.toHaveBeenCalled()
+     expect(button.className, '取消后回到普通样式').not.toContain('dsh-dev-danger')
+-    expect(button.textContent).toBe('强制销毁虚拟屏')
++    expect(button.textContent).toBe('가상 화면 강제 종료')
+     // 取消是真的撤臂：再点一下只回到 1/3，而不是直接执行。
+     await act(async () => { button.click() })
+     expect(forceDestroyVdisplay).not.toHaveBeenCalled()
+@@ -214,12 +214,12 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     }))
+     const el = await render({ shizukuStatus, vdisplayStatus })
+     expect(shizukuStatus).toHaveBeenCalled()
+-    expect(el.textContent).toContain('通道就绪')
++    expect(el.textContent).toContain('채널 준비됨')
+     // 虚拟屏状态归页头那枚胶囊（data-state 是状态源），Shizuku 行不得出现虚拟屏的状态码。
+     const chip = el.querySelector('.dsh-screen-control-state') as HTMLElement
+     expect(chip.dataset.state).toBe('active')
+-    expect(chip.textContent).toBe('已激活')
+-    expect(detailLine(el, 'Shizuku 特权通道'), 'Shizuku 行不得出现虚拟屏的状态码').not.toContain('vdisplay-active')
++    expect(chip.textContent).toBe('활성화됨')
++    expect(detailLine(el, 'Shizuku 특권 채널'), 'Shizuku 行不得出现虚拟屏的状态码').not.toContain('vdisplay-active')
+     // displayId 是诊断信息：进 data 属性，不再由页面自己拼一行「Android displayId = N」上屏
+     // （0.14.1 UI 审查：内部标识不上用户面）。壳侧 guidance 里自带的 displayId 属另一处文案，
+     // 未在本次改动范围内。
+@@ -242,9 +242,9 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+       ok: true, state: 'ready', code: 'vdisplay-ready', guidance: 'Shizuku 已授权且 shell UserService 已就绪；可创建虚拟屏幕 1。',
+     }))
+     const el = await render({ vdisplayStatus })
+-    expect(detailLine(el, 'Shizuku 特权通道')).toContain('状态不可读')
+-    expect(el.textContent).not.toContain('通道就绪')
+-    expect(buttonByText(el, '打开 Shizuku').disabled).toBe(true)
++    expect(detailLine(el, 'Shizuku 특권 채널')).toContain('상태를 읽을 수 없음')
++    expect(el.textContent).not.toContain('채널 준비됨')
++    expect(buttonByText(el, 'Shizuku 열기').disabled).toBe(true)
+   })
+ 
+   // ── Shizuku 区块：两个入口（用户定例：左下载右跳转，未装不可跳）──
+@@ -253,8 +253,8 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     const absent = await render({
+       shizukuStatus: () => shizukuJson({ installed: false, running: false, granted: false, bound: false, code: 'shizuku-absent' }),
+     })
+-    expect(absent.textContent).toContain('未安装')
+-    expect(buttonByText(absent, '打开 Shizuku').disabled).toBe(true)
++    expect(absent.textContent).toContain('미설치')
++    expect(buttonByText(absent, 'Shizuku 열기').disabled).toBe(true)
+     await unmount()
+ 
+     const openShizukuManager = vi.fn(() => JSON.stringify({ ok: true }))
+@@ -262,19 +262,19 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+       shizukuStatus: () => shizukuJson({ running: false, granted: false, bound: false, code: 'shizuku-not-running' }),
+       openShizukuManager,
+     })
+-    const jump = buttonByText(installed, '打开 Shizuku')
++    const jump = buttonByText(installed, 'Shizuku 열기')
+     expect(jump.disabled).toBe(false)
+     await act(async () => { jump.click() })
+     expect(openShizukuManager).toHaveBeenCalledTimes(1)
+-    expect(installed.textContent).toContain('已打开 Shizuku')
++    expect(installed.textContent).toContain('Shizuku를 열었습니다')
+   })
+ 
+   it('「下载 Shizuku」走外链通道 key=shizuku-download（两入口共用一条通道）', async () => {
+     const openExternalLink = vi.fn(() => JSON.stringify({ ok: true }))
+     const el = await render({ shizukuStatus: () => shizukuJson(), openExternalLink })
+-    await act(async () => { buttonByText(el, '下载 Shizuku').click() })
++    await act(async () => { buttonByText(el, 'Shizuku 다운로드').click() })
+     expect(openExternalLink).toHaveBeenCalledWith('shizuku-download')
+-    expect(el.textContent).toContain('已打开 Shizuku 发布页')
++    expect(el.textContent).toContain('Shizuku 릴리스 페이지를 열었습니다')
+   })
+ 
+   // ── Shizuku 区块：重置链接（0.14.2 P1，用户现场「重启 App 也不行」）──────────
+@@ -282,16 +282,16 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+   it('「重置链接」与「刷新状态」同一行，并且真的调壳桥 resetShizukuConnection', async () => {
+     const resetShizukuConnection = vi.fn(() => shizukuJson({ bound: false, binding: false, code: 'shizuku-user-service-reset' }))
+     const el = await render({ shizukuStatus: () => shizukuJson(), resetShizukuConnection })
+-    const reset = buttonByText(el, '重置链接')
+-    const refresh = buttonByText(el, '刷新状态')
++    const reset = buttonByText(el, '연결 재설정')
++    const refresh = buttonByText(el, '상태 새로고침')
+     // 同一行：两者父节点相同（「与刷新状态并列，都是非破坏性」）。
+     expect(reset.parentElement).toBe(refresh.parentElement)
+     await act(async () => { reset.click() })
+     expect(resetShizukuConnection).toHaveBeenCalledTimes(1)
+     // 即时回执必须说清「做了什么 + 现在什么态 + 谁来收敛」（三态诚实，不过度承诺）。
+-    expect(el.textContent).toContain('已重置 Shizuku 连接')
+-    expect(el.textContent).toContain('正在重新建立通道')
+-    expect(el.textContent).toContain('每 2 秒自动重扫')
++    expect(el.textContent).toContain('Shizuku 연결을 재설정했습니다')
++    expect(el.textContent).toContain('채널을 다시 연결하는 중입니다')
++    expect(el.textContent).toContain('2초마다 자동 재스캔')
+   })
+ 
+   it('重置成功立即回读一次状态（不靠等下一拍轮询）', async () => {
+@@ -299,32 +299,32 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     const shizukuStatus = vi.fn(() => shizukuJson())
+     const el = await render({ shizukuStatus, resetShizukuConnection })
+     const before = shizukuStatus.mock.calls.length
+-    await act(async () => { buttonByText(el, '重置链接').click() })
++    await act(async () => { buttonByText(el, '연결 재설정').click() })
+     expect(shizukuStatus.mock.calls.length).toBeGreaterThan(before)
+   })
+ 
+   it('重置失败如实报原因与下一步，不静默也不把机器码印进正文（P3-1/P3-6）', async () => {
+     const resetShizukuConnection = vi.fn(() => JSON.stringify({ ok: false, reason: 'not-installed' }))
+     const el = await render({ shizukuStatus: () => shizukuJson(), resetShizukuConnection })
+-    await act(async () => { buttonByText(el, '重置链接').click() })
+-    expect(el.textContent).toContain('重置 Shizuku 连接失败')
+-    expect(el.textContent).toContain('下载 Shizuku')
++    await act(async () => { buttonByText(el, '연결 재설정').click() })
++    expect(el.textContent).toContain('Shizuku 연결 재설정 실패')
++    expect(el.textContent).toContain('Shizuku 다운로드')
+     expect(el.textContent).not.toContain('not-installed')
+   })
+ 
+   it('反证：壳桥抛错时必须给人话，不得冒泡也不得静默', async () => {
+     const resetShizukuConnection = vi.fn(() => { throw new Error('bridge down') })
+     const el = await render({ shizukuStatus: () => shizukuJson(), resetShizukuConnection })
+-    await act(async () => { buttonByText(el, '重置链接').click() })
++    await act(async () => { buttonByText(el, '연결 재설정').click() })
+     // 抛错 => raw 为 undefined => settleLinkCall 走失败支（原因未登记 -> 兜底人话）。
+-    expect(el.textContent).toContain('重置 Shizuku 连接失败')
++    expect(el.textContent).toContain('Shizuku 연결 재설정 실패')
+   })
+ 
+   it('反证：旧壳没有 resetShizukuConnection 时按钮必须在场且点了给人话（不得点了没反应）', async () => {
+     const el = await render({ shizukuStatus: () => shizukuJson() })
+-    const reset = buttonByText(el, '重置链接')
++    const reset = buttonByText(el, '연결 재설정')
+     await act(async () => { reset.click() })
+-    expect(el.textContent).toContain('重置 Shizuku 连接失败')
++    expect(el.textContent).toContain('Shizuku 연결 재설정 실패')
+   })
+ 
+   it('反证：重置不得新开定时器（新增常驻轮询与 T1 的 CPU 前科同族）', async () => {
+@@ -336,7 +336,7 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+     })
+     const baselineIntervals = setIntervalSpy.mock.calls.length
+     const baselineTimeouts = setTimeoutSpy.mock.calls.length
+-    await act(async () => { buttonByText(el, '重置链接').click() })
++    await act(async () => { buttonByText(el, '연결 재설정').click() })
+     expect(setIntervalSpy.mock.calls.length, '重置不得新增常驻轮询').toBe(baselineIntervals)
+     expect(setTimeoutSpy.mock.calls.length, '重置不得新增定时器').toBe(baselineTimeouts)
+   })
+@@ -346,7 +346,7 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+       shizukuStatus: () => shizukuJson(),
+       resetShizukuConnection: vi.fn(() => shizukuJson({ bound: false })),
+     })
+-    await act(async () => { buttonByText(el, '重置链接').click() })
++    await act(async () => { buttonByText(el, '연결 재설정').click() })
+     const text = el.textContent ?? ''
+     for (const overPromise of ['一定能', '必定', '保证修好', '一定修好']) {
+       expect(text, '不得出现过度承诺词: ' + overPromise).not.toContain(overPromise)
+@@ -355,11 +355,11 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+   it('「点击查看教程」是外链 key=shizuku-tutorial，且样式为蓝字下划线', async () => {
+     const openExternalLink = vi.fn(() => JSON.stringify({ ok: true }))
+     const el = await render({ shizukuStatus: () => shizukuJson(), openExternalLink })
+-    const link = buttonByText(el, '点击查看教程')
++    const link = buttonByText(el, '클릭하여 튜토리얼 보기')
+     expect(link.className).toContain('dsh-dev-link')
+     await act(async () => { link.click() })
+     expect(openExternalLink).toHaveBeenCalledWith('shizuku-tutorial')
+-    expect(el.textContent).toContain('已用浏览器打开视频教程')
++    expect(el.textContent).toContain('브라우저에서 튜토리얼 동영상을 열었습니다')
+     // 样式契约：用户定例「标蓝 + 下划线」，CSS 在 dev-section.css.ts 里——断其在场。
+     expect(DEV_SECTION_CSS).toMatch(/\.dsh-dev-link\s*\{[^}]*text-decoration:\s*underline/)
+     expect(DEV_SECTION_CSS).toMatch(/\.dsh-dev-link\s*\{[^}]*color:\s*#4d6bfe/i)
+@@ -370,8 +370,8 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+   it('外链失败给人话与下一步，不把机器码抛给用户', async () => {
+     const openExternalLink = vi.fn(() => JSON.stringify({ ok: false, reason: 'no-handler' }))
+     const el = await render({ shizukuStatus: () => shizukuJson(), openExternalLink })
+-    await act(async () => { buttonByText(el, '下载 Shizuku').click() })
+-    expect(el.textContent).toContain('设备上没有能打开它的应用')
++    await act(async () => { buttonByText(el, 'Shizuku 다운로드').click() })
++    expect(el.textContent).toContain('기기에 해당 경로를 열 수 있는 앱이 없습니다')
+     expect(el.textContent, '机器码不得上屏').not.toContain('no-handler')
+     expect(el.textContent).not.toContain('no-handler')
+   })
+@@ -385,28 +385,28 @@ describe('PhoneControlSection（手机控制设置页）', () => {
+       restrictedSettingsApplies: true,
+       hint: '未开启：到 系统设置 → 无障碍 → 已下载的服务 里开启「DSH 设备控制」',
+     }))
+-    const unlockRestrictedSettings = vi.fn(() => JSON.stringify({ ok: true, message: '已解锁受限设置（Shizuku 特权 shell）' }))
++    const unlockRestrictedSettings = vi.fn(() => JSON.stringify({ ok: true, message: '제한된 설정을 해제했습니다 (Shizuku 특권 shell)' }))
+     const el = await render({ a11yStatus, unlockRestrictedSettings })
+-    expect(el.textContent).toContain('未开启（推荐开启）')
+-    expect(el.textContent).toContain('受限设置')
+-    const unlock = buttonByText(el, '解锁受限设置')
++    expect(el.textContent).toContain('꺼짐 (사용 권장)')
++    expect(el.textContent).toContain('제한된 설정')
++    const unlock = buttonByText(el, '제한된 설정 해제')
+     await act(async () => { unlock.click() })
+     expect(unlockRestrictedSettings).toHaveBeenCalledTimes(1)
+-    expect(el.textContent).toContain('已解锁受限设置')
++    expect(el.textContent).toContain('제한된 설정을 해제했습니다')
+   })
+ 
+   it('无障碍已开启时不显示解锁按钮（不给用户一个不必要的特权动作）', async () => {
+     const a11yStatus = vi.fn(() => JSON.stringify({ enabled: true, restrictedSettingsApplies: true, hint: '无障碍服务已开启' }))
+     const el = await render({ a11yStatus })
+-    expect(el.textContent).toContain('已开启（语义读取/点击/输入）')
+-    expect([...el.querySelectorAll('button')].some((item) => item.textContent === '解锁受限设置')).toBe(false)
++    expect(el.textContent).toContain('켜짐 (화면 읽기/클릭/입력)')
++    expect([...el.querySelectorAll('button')].some((item) => item.textContent === '제한된 설정 해제')).toBe(false)
+   })
+ 
+   it('无障碍状态读不到时如实报「状态不可读」，不冒充「未开启」', async () => {
+     const el = await render({})
+-    const detail = detailLine(el, '无障碍通道')
+-    expect(detail).toContain('状态不可读')
+-    expect(detail).not.toContain('未开启')
++    const detail = detailLine(el, '접근성 채널')
++    expect(detail).toContain('상태를 읽을 수 없음')
++    expect(detail).not.toContain('꺼짐')
+   })
+ })
+ 
+@@ -416,13 +416,13 @@ describe('手机控制纯函数（文案口径）', () => {
+   }
+ 
+   it('shizukuStateLabel 走真实推进顺序，各态互不相同', () => {
+-    expect(shizukuStateLabel({ ...ready, readable: false })).toBe('状态不可读')
+-    expect(shizukuStateLabel({ ...ready, installed: false })).toBe('未安装')
+-    expect(shizukuStateLabel({ ...ready, running: false })).toBe('已安装，Shizuku 未启动')
+-    expect(shizukuStateLabel({ ...ready, granted: false })).toBe('已启动，尚未授权')
+-    expect(shizukuStateLabel({ ...ready, bound: false, binding: true })).toBe('已授权，通道建立中')
+-    expect(shizukuStateLabel({ ...ready, bound: false, binding: false })).toBe('已授权，通道未建立')
+-    expect(shizukuStateLabel(ready)).toBe('通道就绪')
++    expect(shizukuStateLabel({ ...ready, readable: false })).toBe('상태를 읽을 수 없음')
++    expect(shizukuStateLabel({ ...ready, installed: false })).toBe('미설치')
++    expect(shizukuStateLabel({ ...ready, running: false })).toBe('설치됨, Shizuku 미실행')
++    expect(shizukuStateLabel({ ...ready, granted: false })).toBe('실행됨, 미승인')
++    expect(shizukuStateLabel({ ...ready, bound: false, binding: true })).toBe('승인됨, 채널 연결 중')
++    expect(shizukuStateLabel({ ...ready, bound: false, binding: false })).toBe('승인됨, 채널 미연결')
++    expect(shizukuStateLabel(ready)).toBe('채널 준비됨')
+   })
+ 
+   it('每一态都给出「下一步做什么」，没有只报状态的死句', () => {
+@@ -440,8 +440,8 @@ describe('手机控制纯函数（文案口径）', () => {
+ 
+   it('失败原因一律经唯一真源翻成人话（P3-1）', () => {
+     // 本文件原有的局部表 LINK_REASON_LABEL 已删除——断言改指向唯一真源，避免又长出第二张表。
+-    expect(describeCallReason('unknown-key')).toContain('没有在本版登记')
+-    expect(describeCallReason('not-installed')).toContain('下载 Shizuku')
++    expect(describeCallReason('unknown-key')).toContain('현재 버전에 등록되지 않은')
++    expect(describeCallReason('not-installed')).toContain('Shizuku 다운로드')
+   })
+ 
+   it('未知原因不得原样带出机器码（旧断言把缺陷当契约，已按 P3-1 反向）', () => {
+@@ -451,14 +451,14 @@ describe('手机控制纯函数（文案口径）', () => {
+   })
+ 
+   it('settleLinkCall / settleUnlockCall：只有 ok 才算成功，失败必带原因', () => {
+-    expect(settleLinkCall(JSON.stringify({ ok: true }), '成功', '失败')).toEqual({ ok: true, text: '成功' })
+-    const refused = settleLinkCall(JSON.stringify({ ok: false, reason: 'insecure-url' }), '成功', '打开失败')
++    expect(settleLinkCall(JSON.stringify({ ok: true }), '성공', '실패')).toEqual({ ok: true, text: '성공' })
++    const refused = settleLinkCall(JSON.stringify({ ok: false, reason: 'insecure-url' }), '성공', '열기 실패')
+     expect(refused.ok).toBe(false)
+-    expect(refused.text).toContain('https')
++    expect(refused.text).toContain('HTTPS')
+     // 桥缺席（undefined）不得当成成功——静默成功正是本轮在清的缺陷形态。
+-    expect(settleLinkCall(undefined, '成功', '打开失败').ok).toBe(false)
+-    expect(settleUnlockCall(JSON.stringify({ ok: true, message: '已解锁' }))).toEqual({ ok: true, text: '已解锁' })
+-    expect(settleUnlockCall(JSON.stringify({ ok: false, message: '解锁失败（权限不足）' })).text).toContain('权限不足')
++    expect(settleLinkCall(undefined, '성공', '열기 실패').ok).toBe(false)
++    expect(settleUnlockCall(JSON.stringify({ ok: true, message: '해제됨' }))).toEqual({ ok: true, text: '해제됨' })
++    expect(settleUnlockCall(JSON.stringify({ ok: false, message: '해제 실패(권한 부족)' })).text).toContain('권한 부족')
+   })
+ })
+ 
+@@ -476,7 +476,7 @@ function rootGrantJson(over: Record<string, unknown> = {}): string {
+     rootGranted: false,
+     rootState: 'unknown',
+     ownership: { running: false, startedAt: 0, completedAt: 0, overdue: false },
+-    honesty: '本开关是策略门与知情同意门，不是技术沙箱。',
++    honesty: '본 스위치는 정책 및 사전 동의 스위치이며 기술적 샌드박스가 아닙니다.',
+     ...over,
+   })
+ }
+@@ -492,16 +492,16 @@ function rootAccessJson(over: Record<string, unknown> = {}): string {
+     granted: false,
+     requesting: false,
+     manager: { package: 'me.weishu.kernelsu', label: 'KernelSU', installed: true },
+-    guidance: '尚未检测——点「检测 root 授权」会尝试取一次 root 身份（多数管理器不会自动弹授权框，需你在管理器里允许）。',
++    guidance: '미확인 — 「root 권한 확인」을 누르면 root 권한 획득을 시도합니다 (대부분의 관리자는 팝업을 자동으로 띄우지 않으므로 관리자에서 허용해야 합니다).',
+     ...over,
+   })
+ }
+ 
+ describe('AI root 权限开关（issue #262 方案 A）', () => {
+   const grantedInput = (el: HTMLElement) =>
+-    el.querySelector('input[aria-label="授权 AI 使用 root"]') as HTMLInputElement
++    el.querySelector('input[aria-label="AI의 root 사용 허용"]') as HTMLInputElement
+   const consentInput = (el: HTMLElement) =>
+-    el.querySelector('input[aria-label="已阅读免责声明"]') as HTMLInputElement
++    el.querySelector('input[aria-label="면책 조항을 읽었음"]') as HTMLInputElement
+ 
+   it('两条 root 路径均不可用：AI 开关置灰，但同意和免责声明仍可读可撤销', async () => {
+     const el = await render({
+@@ -510,11 +510,11 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+     })
+     expect(grantedInput(el).disabled).toBe(true)
+     expect(consentInput(el).disabled).toBe(false)
+-    expect(buttonByText(el, '阅读《AI root 权限免责声明》').disabled).toBe(false)
++    expect(buttonByText(el, '《AI root 권한 면책 조항》 읽기').disabled).toBe(false)
+     const red = el.querySelector('.dsh-dev-error[data-code="not-root-channel"]')
+     expect(red, '红字必须在场').toBeTruthy()
+     expect(red!.textContent).toBe(ROOT_GRANT_NOT_ROOT_TEXT)
+-    expect(ROOT_GRANT_NOT_ROOT_TEXT).toBe('无法在未 root 的设备上赋予该权限')
++    expect(ROOT_GRANT_NOT_ROOT_TEXT).toBe('root 권한이 없는 기기에는 이 권한을 부여할 수 없습니다')
+   })
+ 
+   it('Shizuku 以 ADB 启动（uid 2000）：置灰 + 引导「以 root 启动」（不是未 root 红字）', async () => {
+@@ -525,7 +525,7 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+     expect(grantedInput(el).disabled).toBe(true)
+     const hint = el.querySelector('[data-code="shizuku-shell-identity"]')
+     expect(hint, 'shell 身份引导必须在场').toBeTruthy()
+-    expect(hint!.textContent).toContain('以 root 启动')
++    expect(hint!.textContent).toContain('root로 실행')
+     expect(el.querySelector('.dsh-dev-error[data-code="not-root-channel"]')).toBe(null)
+   })
+ 
+@@ -559,7 +559,7 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+     await act(async () => { grantedInput(el).click() })
+     expect(setRootGranted).toHaveBeenCalledWith(true)
+     expect(grantedInput(el).checked).toBe(true)
+-    expect(el.textContent).toContain('已开启 AI root 权限')
++    expect(el.textContent).toContain('AI root 권한을 켰습니다')
+   })
+ 
+   it('已授权态：开关显示为已开启', async () => {
+@@ -591,8 +591,8 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+     expect(setRootConsent).toHaveBeenLastCalledWith(false)
+     expect(consentInput(el).checked).toBe(false)
+     expect(grantedInput(el).checked).toBe(false)
+-    expect(el.textContent).toContain('已撤销同意，并同时关闭了 AI root 权限')
+-    expect(el.textContent).not.toContain('撤销同意失败')
++    expect(el.textContent).toContain('동의를 철회했으며, AI root 권한도 함께 꺼졌습니다')
++    expect(el.textContent).not.toContain('동의 철회 실패')
+   })
+ 
+   it('root 消失后仍能撤销已记录同意，也能关闭持有的 AI 开关', async () => {
+@@ -626,7 +626,7 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+     const el = await render({ rootGrantState, setRootConsent })
+     expect(grantedInput(el).disabled).toBe(true)
+     expect(consentInput(el).disabled).toBe(false)
+-    expect(el.textContent).toContain('应用 su root')
++    expect(el.textContent).toContain('앱 su root')
+     expect(el.querySelector('[data-code="not-root-channel"]')).toBeNull()
+     expect(el.querySelector('[data-code="shizuku-shell-identity"]')).toBeNull()
+     await act(async () => { consentInput(el).click() })
+@@ -640,31 +640,31 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+   it('结算只认 ok===true：壳侧回包缺 ok 时如实报失败（不假装成功）', () => {
+     const parsed = JSON.parse(rootGrantJson({ consentValid: true, consentVersionCode: 100 })) as Record<string, unknown>
+     delete parsed.ok
+-    const settled = settleLinkCall(JSON.stringify(parsed), '已撤销同意', '撤销同意失败')
++    const settled = settleLinkCall(JSON.stringify(parsed), '동의 철회됨', '동의 철회 실패')
+     expect(settled.ok).toBe(false)
+-    expect(settled.text).toContain('撤销同意失败')
++    expect(settled.text).toContain('동의 철회 실패')
+   })
+ 
+   it('勾选/撤销的成功回执与拒收翻译都走真源（不再出现「未在本版登记」）', () => {
+     // 成功形状（壳侧 setConsent 修后）：state + ok:true
+-    const ok = settleLinkCall(rootGrantJson({ ok: true, consentValid: true }), '已记录「已阅读」', '记录失败')
++    const ok = settleLinkCall(rootGrantJson({ ok: true, consentValid: true }), '「면책 조항을 읽었음」을 기록했습니다', '기록 실패')
+     expect(ok.ok).toBe(true)
+-    expect(ok.text).toBe('已记录「已阅读」')
++    expect(ok.text).toBe('「면책 조항을 읽었음」을 기록했습니다')
+     // 拒收形状（setRootGranted 未确认就开）：ok:false + reason=consent-required → 人话翻译
+     const refused = settleLinkCall(
+       rootGrantJson({ ok: false, reason: 'consent-required' }),
+-      '已开启', '开启 AI root 权限失败',
++      '켜짐', 'AI root 권한 켜기 실패',
+     )
+     expect(refused.ok).toBe(false)
+-    expect(refused.text).toContain('免责声明')
+-    expect(refused.text).not.toContain('未在本版登记')
++    expect(refused.text).toContain('면책 조항')
++    expect(refused.text).not.toContain('현재 버전에 등록되지 않은')
+     // 非 root 通道拒收同理
+     const notRoot = settleLinkCall(
+       rootGrantJson({ ok: false, reason: 'not-root-channel', channelRoot: false }),
+-      '已开启', '开启 AI root 权限失败',
++      '켜짐', 'AI root 권한 켜기 실패',
+     )
+-    expect(notRoot.text).toContain('root 身份')
+-    expect(notRoot.text).not.toContain('未在本版登记')
++    expect(notRoot.text).toContain('root')
++    expect(notRoot.text).not.toContain('현재 버전에 등록되지 않은')
+   })
+ 
+   it('免责声明链接点开走本地文档通道', async () => {
+@@ -674,7 +674,7 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+       rootGrantState: () => rootGrantJson(),
+       openRootDisclaimer,
+     })
+-    const link = buttonByText(el, '阅读《AI root 权限免责声明》')
++    const link = buttonByText(el, '《AI root 권한 면책 조항》 읽기')
+     await act(async () => { link.click() })
+     expect(openRootDisclaimer).toHaveBeenCalled()
+   })
+@@ -685,7 +685,7 @@ describe('AI root 权限开关（issue #262 方案 A）', () => {
+       // 壳桥缺席 → readRootGrant 回落 ROOT_GRANT_UNREADABLE
+     })
+     expect(grantedInput(el).disabled).toBe(true)
+-    expect(el.textContent).toContain('状态不可读')
++    expect(el.textContent).toContain('상태를 읽을 수 없음')
+   })
+ })
+ 
+@@ -696,12 +696,12 @@ describe('AI root 权限纯函数（文案与判据口径）', () => {
+   }
+ 
+   it('rootGrantStateLabel 各态互不相同，顺序即判据顺序', () => {
+-    expect(rootGrantStateLabel({ ...base, readable: false })).toBe('状态不可读')
+-    expect(rootGrantStateLabel({ ...base, channelRoot: false })).toBe('没有可用 root 通道')
+-    expect(rootGrantStateLabel(base)).toBe('未授权')
+-    expect(rootGrantStateLabel({ ...base, granted: true })).toBe('已授权（AI 可用 root）')
+-    expect(rootGrantStateLabel({ ...base, channelRoot: false, rootGranted: true })).toBe('未授权')
+-    expect(rootGrantStateLabel({ ...base, channelRoot: false, rootGranted: true, granted: true })).toBe('已授权（AI 可用 root）')
++    expect(rootGrantStateLabel({ ...base, readable: false })).toBe('상태를 읽을 수 없음')
++    expect(rootGrantStateLabel({ ...base, channelRoot: false })).toBe('사용 가능한 root 채널 없음')
++    expect(rootGrantStateLabel(base)).toBe('미승인')
++    expect(rootGrantStateLabel({ ...base, granted: true })).toBe('승인됨 (AI가 root 사용 가능)')
++    expect(rootGrantStateLabel({ ...base, channelRoot: false, rootGranted: true })).toBe('미승인')
++    expect(rootGrantStateLabel({ ...base, channelRoot: false, rootGranted: true, granted: true })).toBe('승인됨 (AI가 root 사용 가능)')
+   })
+ 
+   it('canToggleRootGrant 接受任一 root 路径，但读不到或仅有状态词不能获得资格', () => {
+@@ -721,7 +721,7 @@ describe('AI root 权限纯函数（文案与判据口径）', () => {
+     expect(rootGrantChannelHint({ ...base, channelRoot: true }).kind).toBe('none')
+     const shell = rootGrantChannelHint({ ...base, channelRoot: false, channelUid: 2000 })
+     expect(shell.kind).toBe('shell-identity')
+-    expect(shell.text).toContain('以 root 启动')
++    expect(shell.text).toContain('root로 실행')
+     expect(shell.text).not.toContain(ROOT_GRANT_NOT_ROOT_TEXT)
+     const notRoot = rootGrantChannelHint({ ...base, channelRoot: false, channelUid: -1 })
+     expect(notRoot.kind).toBe('not-root')
+@@ -736,12 +736,12 @@ describe('应用级 Root 授权面（2026-09-30 主人定例）', () => {
+       readable: true, suExists: true, state: 'unknown', uid: -1, granted: false,
+       requesting: false, managerLabel: 'KernelSU', managerInstalled: true, guidance: '',
+     }
+-    expect(rootAccessStateLabel({ ...base, readable: false })).toBe('状态不可读')
+-    expect(rootAccessStateLabel(base)).toBe('未检测')
+-    expect(rootAccessStateLabel({ ...base, state: 'granted', uid: 0, granted: true })).toBe('已授权（uid 0）')
+-    expect(rootAccessStateLabel({ ...base, state: 'requesting', requesting: true })).toBe('正在检测授权…')
+-    expect(rootAccessStateLabel({ ...base, state: 'denied' })).toBe('已拒绝')
+-    expect(rootAccessStateLabel({ ...base, state: 'timeout' })).toBe('检测超时，请在管理器确认后重试')
++    expect(rootAccessStateLabel({ ...base, readable: false })).toBe('상태를 읽을 수 없음')
++    expect(rootAccessStateLabel(base)).toBe('미확인')
++    expect(rootAccessStateLabel({ ...base, state: 'granted', uid: 0, granted: true })).toBe('승인됨 (uid 0)')
++    expect(rootAccessStateLabel({ ...base, state: 'requesting', requesting: true })).toBe('권한 확인 중…')
++    expect(rootAccessStateLabel({ ...base, state: 'denied' })).toBe('거부됨')
++    expect(rootAccessStateLabel({ ...base, state: 'timeout' })).toBe('확인 시간 초과: 관리자에서 확인 후 다시 시도하세요')
+     expect(rootAccessStateLabel({ ...base, state: 'no-su', suExists: false })).toContain('su')
+   })
+ 
+@@ -762,14 +762,14 @@ describe('应用级 Root 授权面（2026-09-30 主人定例）', () => {
+       rootGrantState: () => rootGrantJson({ rootGranted: false, rootState: 'unknown' }),
+       rootAccessState: () => rootAccessJson(),
+     })
+-    expect(detailLine(el, '1. 应用 root 授权')).toContain('未检测')
+-    expect(el.textContent).toContain('未检测')
++    expect(detailLine(el, '1. 앱 root 권한')).toContain('미확인')
++    expect(el.textContent).toContain('미확인')
+     expect(el.textContent).toContain('KernelSU')
+-    expect(buttonByText(el, '检测 root 授权')).toBeTruthy()
+-    expect(buttonByText(el, '修复文件属主')).toBeTruthy()
++    expect(buttonByText(el, 'root 권한 확인')).toBeTruthy()
++    expect(buttonByText(el, '파일 소유자 복구')).toBeTruthy()
+     // 2026-09-30 主人指正：**不做「打开 Root 管理器」入口**（各家管理器包名/入口不一，打开不保证成功）
+-    expect(queryButtonByText(el, '打开 Root 管理器')).toBeUndefined()
+-    expect(el.textContent).toContain('多数管理器不会自动弹授权框')
++    expect(queryButtonByText(el, 'Root 관리자 열기')).toBeUndefined()
++    expect(el.textContent).toContain('관리자에서 허용해야 합니다')
+   })
+ 
+   it('检测授权走桥；无 su 时按钮禁用', async () => {
+@@ -780,7 +780,7 @@ describe('应用级 Root 授权面（2026-09-30 主人定例）', () => {
+       rootAccessState: () => rootAccessJson({ state: 'denied' }),
+       requestRootAccess,
+     })
+-    await act(async () => { buttonByText(el, '检测 root 授权').click() })
++    await act(async () => { buttonByText(el, 'root 권한 확인').click() })
+     expect(requestRootAccess).toHaveBeenCalled()
+ 
+     const el2 = await render({
+@@ -791,24 +791,24 @@ describe('应用级 Root 授权面（2026-09-30 主人定例）', () => {
+         manager: { package: '', label: '', installed: false },
+       }),
+     })
+-    expect(buttonByText(el2, '检测 root 授权').disabled).toBe(true)
+-    expect(el2.textContent).toContain('本机没有可用的 su')
+-    expect(el2.textContent).not.toContain('Root 管理器：')
++    expect(buttonByText(el2, 'root 권한 확인').disabled).toBe(true)
++    expect(el2.textContent).toContain('기기에 사용 가능한 su가 없습니다')
++    expect(el2.textContent).not.toContain('Root 관리자:')
+   })
+ 
+   it('Root 设置分为应用授权、AI 免责开关、折叠维护三组，互不混淆', async () => {
+     const el = await render({ rootGrantState: () => rootGrantJson(), rootAccessState: () => rootAccessJson() })
+-    const card = el.querySelector('section[aria-label="Root 权限设置"]')!
++    const card = el.querySelector('section[aria-label="Root 권한 설정"]')!
+     const groups = [...card.children].filter((node) => node.matches('.dsh-root-step, details.dsh-root-maintenance'))
+     expect(groups).toHaveLength(3)
+-    expect(groups[0]!.textContent).toContain('1. 应用 root 授权')
++    expect(groups[0]!.textContent).toContain('1. 앱 root 권한')
+     expect(groups[0]!.querySelector('input')).toBeNull()
+-    expect(groups[1]!.textContent).toContain('2. AI root 权限')
++    expect(groups[1]!.textContent).toContain('2. AI root 권한')
+     expect(groups[1]!.querySelectorAll('input')).toHaveLength(2)
+     const maintenance = groups[2] as HTMLDetailsElement
+     expect(maintenance.open).toBe(false)
+-    expect(maintenance.querySelector('summary')!.textContent).toBe('文件属主维护')
+-    expect(maintenance.textContent).toContain('不改变 AI 授权')
++    expect(maintenance.querySelector('summary')!.textContent).toBe('파일 소유자 유지보수')
++    expect(maintenance.textContent).toContain('AI 권한은 변경하지 않습니다')
+     expect(maintenance.querySelector('input')).toBeNull()
+   })
+ })
+@@ -832,7 +832,7 @@ describe('Root 桥回执形状与失败呈现', () => {
+       expect(readRootGrant().readable).toBe(false)
+       expect(readRootAccess().readable).toBe(false)
+       expect(readShizuku().readable).toBe(false)
+-      expect(settleLinkCall(raw, '已完成', '操作失败').ok).toBe(false)
++      expect(settleLinkCall(raw, '완료됨', '작업 실패').ok).toBe(false)
+     })
+ 
+   it.each(['{}', '{"granted":"true","state":4,"installed":"true"}'])
+@@ -859,10 +859,10 @@ describe('Root 桥回执形状与失败呈现', () => {
+ 
+   it('坏 root 状态在页面上不可读，两开关均不可点，文档入口仍保留', async () => {
+     const el = await render({ rootGrantState: () => '[{"granted":true}]', rootAccessState: () => 'null' })
+-    expect(detailLine(el, '2. AI root 权限')).toContain('状态不可读')
+-    expect((el.querySelector('input[aria-label="授权 AI 使用 root"]') as HTMLInputElement).disabled).toBe(true)
+-    expect((el.querySelector('input[aria-label="已阅读免责声明"]') as HTMLInputElement).disabled).toBe(true)
+-    expect(buttonByText(el, '阅读《AI root 权限免责声明》').disabled).toBe(false)
++    expect(detailLine(el, '2. AI root 권한')).toContain('상태를 읽을 수 없음')
++    expect((el.querySelector('input[aria-label="AI의 root 사용 허용"]') as HTMLInputElement).disabled).toBe(true)
++    expect((el.querySelector('input[aria-label="면책 조항을 읽었음"]') as HTMLInputElement).disabled).toBe(true)
++    expect(buttonByText(el, '《AI root 권한 면책 조항》 읽기').disabled).toBe(false)
+   })
+ 
+   it.each([
+@@ -873,13 +873,13 @@ describe('Root 桥回执形状与失败呈现', () => {
+     { label: '拒收', raw: '{"ok":false,"reason":"consent-required"}' },
+   ])('同意写入 $label 不谎报成功也不泄漏机器码', async ({ raw }) => {
+     const el = await render({ rootGrantState: () => rootGrantJson(), setRootConsent: () => raw })
+-    await act(async () => { (el.querySelector('input[aria-label="已阅读免责声明"]') as HTMLInputElement).click() })
++    await act(async () => { (el.querySelector('input[aria-label="면책 조항을 읽었음"]') as HTMLInputElement).click() })
+     const receipt = el.querySelector('.dsh-root-step [role="status"]')!
+     expect(receipt.className).toContain('dsh-dev-error')
+-    expect(receipt.textContent).toContain('记录「已阅读」失败')
++    expect(receipt.textContent).toContain('「면책 조항을 읽었음」 기록 실패')
+     expect(receipt.textContent).not.toContain('future-native-private-code')
+-    expect(receipt.textContent).not.toContain('已记录「已阅读」')
+-    expect((el.querySelector('input[aria-label="已阅读免责声明"]') as HTMLInputElement).checked).toBe(false)
++    expect(receipt.textContent).not.toContain('「면책 조항을 읽었음」을 기록했습니다')
++    expect((el.querySelector('input[aria-label="면책 조항을 읽었음"]') as HTMLInputElement).checked).toBe(false)
+   })
+ 
+   it('request-started 是等待而非已开启；当前同意失效后不得自动续开', async () => {
+@@ -893,16 +893,16 @@ describe('Root 桥回执形状与失败呈现', () => {
+       rootAccessState: () => rootAccessJson({ state: rootGranted ? 'granted' : 'requesting', granted: rootGranted, requesting: !rootGranted }),
+       setRootGranted,
+     })
+-    await act(async () => { (el.querySelector('input[aria-label="授权 AI 使用 root"]') as HTMLInputElement).click() })
+-    expect(el.textContent).toContain('正在检测 root 授权')
+-    expect(el.textContent).not.toContain('开启 AI root 权限失败')
+-    expect(el.textContent).not.toContain('已开启 AI root 权限：')
++    await act(async () => { (el.querySelector('input[aria-label="AI의 root 사용 허용"]') as HTMLInputElement).click() })
++    expect(el.textContent).toContain('root 권한을 확인하는 중입니다')
++    expect(el.textContent).not.toContain('AI root 권한 켜기 실패')
++    expect(el.textContent).not.toContain('AI root 권한을 켰습니다:')
+     consentValid = false
+     await act(async () => { vi.advanceTimersByTime(2_000) })
+     rootGranted = true
+     await act(async () => { vi.advanceTimersByTime(2_000) })
+     expect(setRootGranted).toHaveBeenCalledTimes(1)
+-    expect((el.querySelector('input[aria-label="授权 AI 使用 root"]') as HTMLInputElement).checked).toBe(false)
++    expect((el.querySelector('input[aria-label="AI의 root 사용 허용"]') as HTMLInputElement).checked).toBe(false)
+   })
+ 
+   it('检测应用 root 成功只更新事实面，不自动开启 AI 策略门', async () => {
+@@ -916,13 +916,13 @@ describe('Root 桥回执形状与失败呈现', () => {
+       rootAccessState: () => rootAccessJson({ state: rootGranted ? 'granted' : 'unknown', granted: rootGranted }),
+       requestRootAccess, setRootGranted,
+     })
+-    await act(async () => { buttonByText(el, '检测 root 授权').click() })
+-    expect(el.textContent).toContain('检测成功不代表 AI root 开关已开启')
++    await act(async () => { buttonByText(el, 'root 권한 확인').click() })
++    expect(el.textContent).toContain('확인 성공이 AI root 스위치가 켜졌음을 의미하지는 않습니다')
+     rootGranted = true
+     await act(async () => { vi.advanceTimersByTime(2_000) })
+-    expect(detailLine(el, '1. 应用 root 授权')).toContain('已授权（uid 0）')
++    expect(detailLine(el, '1. 앱 root 권한')).toContain('승인됨 (uid 0)')
+     expect(setRootGranted).not.toHaveBeenCalled()
+-    expect((el.querySelector('input[aria-label="授权 AI 使用 root"]') as HTMLInputElement).checked).toBe(false)
++    expect((el.querySelector('input[aria-label="AI의 root 사용 허용"]') as HTMLInputElement).checked).toBe(false)
+   })
+ })
+ 
+@@ -940,18 +940,18 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+     const setRootConsent = vi.fn()
+     const el = await render({ rootGrantState, repairRootOwnership, setRootGranted, setRootConsent })
+     const before = rootGrantState.mock.calls.length
+-    await act(async () => { buttonByText(el, '修复文件属主').click() })
++    await act(async () => { buttonByText(el, '파일 소유자 복구').click() })
+     expect(rootGrantState.mock.calls.length).toBeGreaterThan(before)
+-    expect(buttonByText(el, '属主维护进行中').disabled).toBe(true)
+-    expect(el.textContent).toContain('结果会自动刷新')
+-    expect(el.textContent).not.toContain('文件属主维护完成')
+-    await act(async () => { buttonByText(el, '属主维护进行中').click() })
++    expect(buttonByText(el, '소유자 유지보수 진행 중').disabled).toBe(true)
++    expect(el.textContent).toContain('결과는 자동으로 새로고침됩니다')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 완료')
++    await act(async () => { buttonByText(el, '소유자 유지보수 진행 중').click() })
+     expect(repairRootOwnership).toHaveBeenCalledTimes(1)
+     ownership = { running: false, startedAt: 10, completedAt: 20, result: completedRepair }
+     await act(async () => { vi.advanceTimersByTime(2_000) })
+-    expect(el.textContent).toContain('文件属主维护完成（检查 42 项 / 修复 3 项 / 失败 0 项）')
+-    expect(el.textContent).toContain('未进行 SELinux 重标记')
+-    expect(buttonByText(el, '修复文件属主').disabled).toBe(false)
++    expect(el.textContent).toContain('파일 소유자 유지보수 완료(검사 42개 / 복구 3개 / 실패 0개)')
++    expect(el.textContent).toContain('SELinux 재레이블은 수행하지 않았습니다')
++    expect(buttonByText(el, '파일 소유자 복구').disabled).toBe(false)
+     expect(setRootGranted).not.toHaveBeenCalled()
+     expect(setRootConsent).not.toHaveBeenCalled()
+   })
+@@ -961,11 +961,11 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+       rootGrantState: () => rootGrantJson({ ownership: { running: true, startedAt: 10, completedAt: 0, overdue: true } }),
+       rootAccessState: () => rootAccessJson({ ownership: { running: false, startedAt: 10, completedAt: 20, result: completedRepair } }),
+     })
+-    expect(buttonByText(el, '属主维护进行中').disabled).toBe(true)
++    expect(buttonByText(el, '소유자 유지보수 진행 중').disabled).toBe(true)
+     const receipt = el.querySelector('.dsh-root-maintenance [role="status"]')!
+     expect(receipt.className).toContain('dsh-dev-error')
+-    expect(receipt.textContent).toContain('特权工作结果仍不明，已暂停新派发和维护')
+-    expect(el.textContent).not.toContain('文件属主维护完成')
++    expect(receipt.textContent).toContain('특권 작업 결과를 여전히 알 수 없어 새 작업 할당 및 유지보수를 일시 중단했습니다')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 완료')
+   })
+ 
+   it('作业在提交回包前已完成时，仍只按完整原生 result 结算', async () => {
+@@ -973,19 +973,19 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+       ok: true, code: 'repair-started', running: false, startedAt: 10, completedAt: 20, result: completedRepair,
+     }))
+     const el = await render({ rootGrantState: () => rootGrantJson(), repairRootOwnership })
+-    await act(async () => { buttonByText(el, '修复文件属主').click() })
+-    expect(el.textContent).toContain('文件属主维护完成（检查 42 项 / 修复 3 项 / 失败 0 项）')
+-    expect(el.textContent).not.toContain('启动文件属主维护失败')
++    await act(async () => { buttonByText(el, '파일 소유자 복구').click() })
++    expect(el.textContent).toContain('파일 소유자 유지보수 완료(검사 42개 / 복구 3개 / 실패 0개)')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 시작 실패')
+   })
+ 
+   it('repair-running 回执沿用同一个单飞作业，不宣称已修复', async () => {
+     const pending = { running: true, startedAt: 10, completedAt: 0, overdue: false }
+     const repairRootOwnership = vi.fn(() => JSON.stringify({ ok: true, code: 'repair-running', ...pending }))
+     const el = await render({ rootGrantState: () => rootGrantJson(), repairRootOwnership })
+-    await act(async () => { buttonByText(el, '修复文件属主').click() })
+-    expect(buttonByText(el, '属主维护进行中').disabled).toBe(true)
+-    expect(el.textContent).toContain('结果会自动刷新')
+-    expect(el.textContent).not.toContain('文件属主维护完成')
++    await act(async () => { buttonByText(el, '파일 소유자 복구').click() })
++    expect(buttonByText(el, '소유자 유지보수 진행 중').disabled).toBe(true)
++    expect(el.textContent).toContain('결과는 자동으로 새로고침됩니다')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 완료')
+     expect(repairRootOwnership).toHaveBeenCalledTimes(1)
+   })
+ 
+@@ -1002,12 +1002,12 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+   ])('$label 不能当作完成维护', async ({ raw }) => {
+     const repairRootOwnership = vi.fn(() => raw)
+     const el = await render({ rootGrantState: () => rootGrantJson(), repairRootOwnership })
+-    await act(async () => { buttonByText(el, '修复文件属主').click() })
++    await act(async () => { buttonByText(el, '파일 소유자 복구').click() })
+     const receipt = el.querySelector('.dsh-root-maintenance [role="status"]')!
+     expect(receipt.className).toContain('dsh-dev-error')
+-    expect(receipt.textContent).toContain('启动文件属主维护失败')
++    expect(receipt.textContent).toContain('파일 소유자 유지보수 시작 실패')
+     expect(receipt.textContent).not.toContain('future-repair-code')
+-    expect(el.textContent).not.toContain('文件属主维护完成')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 완료')
+   })
+ 
+   it.each([
+@@ -1031,9 +1031,9 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+     }) })
+     const receipt = el.querySelector('.dsh-root-maintenance [role="status"]')!
+     expect(receipt.className).toContain('dsh-dev-error')
+-    expect(receipt.textContent).toMatch(/未完成|结果不可读/)
++    expect(receipt.textContent).toMatch(/미완료|결과를 읽을 수 없어/)
+     expect(receipt.textContent).not.toContain('private-unregistered-native-error')
+-    expect(el.textContent).not.toContain('文件属主维护完成')
++    expect(el.textContent).not.toContain('파일 소유자 유지보수 완료')
+   })
+ 
+   it('未开始/不可读无成功回执；进行中、未知、跳过与验证完成明确区分', () => {
+@@ -1043,11 +1043,11 @@ describe('文件属主维护异步结算（rootGrant.ownership）', () => {
+     expect(describeOwnershipRepair(ownershipStatus({ running: true, overdue: true }))?.ok).toBe(false)
+     expect(describeOwnershipRepair(ownershipStatus())?.ok).toBe(false)
+     const skipped = describeOwnershipRepair(ownershipStatus({ result: { ok: true, skipped: 'no-root-path' } }))!
+-    expect(skipped.text).toContain('未执行属主变更')
+-    expect(skipped.text).not.toContain('维护完成')
++    expect(skipped.text).toContain('소유자 변경을 실행하지 않았습니다')
++    expect(skipped.text).not.toContain('유지보수 완료')
+     expect(describeOwnershipRepair(ownershipStatus({ result: completedRepair }))?.ok).toBe(true)
+     const malformed = describeOwnershipRepair(ownershipStatus({ result: { ok: false, checked: -1, healed: Number.NaN, failures: '0' } }))!
+     expect(malformed.ok).toBe(false)
+-    expect(malformed.text).toContain('检查 未知 项 / 修复 未知 项 / 失败 未知 项')
++    expect(malformed.text).toContain('검사 알 수 없음개 / 복구 알 수 없음개 / 실패 알 수 없음개')
+   })
+ })
+diff --git a/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx b/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx
+index 0e6fdb2..1f621dd 100644
+--- a/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx
++++ b/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx
+@@ -91,8 +91,8 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     expect(el.textContent).toContain('$DSH_FILES_DIR/engine.log.1')
+     expect(el.textContent).toContain('$DSH_HOME/cache/pip')
+     // 白名单说明与硬清单口径必须在场（用户能看到边界）。
+-    expect(el.textContent).toContain('白名单制')
+-    expect(el.textContent).toContain('当前引擎日志')
++    expect(el.textContent).toContain('허용 목록 기준')
++    expect(el.textContent).toContain('현재 엔진 로그')
+   })
+ 
+   it('不展示任何绝对路径（只接受宿主下发的 $DSH_HOME/$DSH_FILES_DIR 标签）', async () => {
+@@ -112,7 +112,7 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+ 
+-    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '清理')!
++    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '정리')!
+     await act(async () => { clean.click() })
+     expect(fetchSpy.calls.filter((call) => call.url.endsWith('/execute'))).toHaveLength(0)
+ 
+@@ -120,7 +120,7 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     expect(dialog.textContent).toContain('3.0 MB')
+     expect(dialog.textContent).toContain('$DSH_HOME/cache/pip')
+ 
+-    const confirm = [...dialog.querySelectorAll('button')].find((b) => b.textContent === '清理')!
++    const confirm = [...dialog.querySelectorAll('button')].find((b) => b.textContent === '정리')!
+     await act(async () => { confirm.click() })
+     const executions = fetchSpy.calls.filter((call) => call.url.endsWith('/execute'))
+     expect(executions).toEqual([
+@@ -135,8 +135,8 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '清理')!.click() })
+-    const cancel = [...el.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent === '取消')!
++    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '정리')!.click() })
++    const cancel = [...el.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent === '취소')!
+     await act(async () => { cancel.click() })
+     expect(fetchSpy.calls.some((call) => call.url.endsWith('/execute'))).toBe(false)
+   })
+@@ -148,28 +148,28 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '清理')!.click() })
++    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '정리')!.click() })
+     await act(async () => {
+-      [...el.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent === '清理')!.click()
++      [...el.querySelectorAll('[role="dialog"] button')].find((b) => b.textContent === '정리')!.click()
+     })
+-    expect(el.textContent).toContain('已清理 1 项')
+-    expect(el.textContent).toContain('1 项失败')
++    expect(el.textContent).toContain('1개 항목을 정리하여')
++    expect(el.textContent).toContain('1개 항목 실패')
+     // P3-1/P3-6：OS 错误串不上屏——正文给人话，明细只进 data-detail（可截图给维护方）。
+-    expect(el.textContent).toContain('删除失败（文件被占用、只读或权限不足）')
++    expect(el.textContent).toContain('삭제 실패 (파일이 사용 중이거나 읽기 전용 또는 권한 부족)')
+     expect(el.textContent, 'OS 错误串不得出现在正文').not.toContain('EBUSY')
+     const failed = el.querySelector('[data-detail="EBUSY: injected"]')
+     expect(failed, '明细必须可诊断').not.toBeNull()
+     expect(failed?.getAttribute('data-reason')).toBe('remove-failed')
+-    expect(el.textContent).toContain('$DSH_FILES_DIR/engine.log.1 — 已删除 1.0 MB')
++    expect(el.textContent).toContain('$DSH_FILES_DIR/engine.log.1 — 삭제됨 1.0 MB')
+   })
+ 
+   it('跳过项如实展示（未识别路径不得静默）', async () => {
+     const fetchSpy = makeFetch({ '/api/android/runtime-cache/scan': { body: SCAN_BODY } })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    expect(el.textContent).toContain('跳过 2 项')
+-    expect(el.textContent).toContain('未列入白名单（本版不清理）')
+-    expect(el.textContent).toContain('当前引擎日志不在场（引擎未启动）')
++    expect(el.textContent).toContain('2개 항목 건너뜀')
++    expect(el.textContent).toContain('허용 목록에 없음 (이번 버전에서 정리하지 않음)')
++    expect(el.textContent).toContain('현재 엔진 로그가 없음 (엔진이 시작되지 않음)')
+   })
+ 
+   it('无鉴权（401/403）时如实报错且不显示可清理体积', async () => {
+@@ -177,10 +177,10 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+     // P3-1/P3-6：状态码不上屏——正文给人话，码只进 data-http（可 grep、可截图给维护方）。
+-    expect(el.textContent).toContain('未获授权')
++    expect(el.textContent).toContain('권한이 없습니다')
+     expect(el.textContent, '状态码不得出现在正文').not.toContain('403')
+     expect(el.querySelector('[data-http="403"]'), '状态码必须可诊断').not.toBeNull()
+-    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '清理') as HTMLButtonElement
++    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '정리') as HTMLButtonElement
+     expect(clean.disabled, '无可回收体积时「清理」必须禁用').toBe(true)
+   })
+ 
+@@ -189,9 +189,9 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     // 现在：不报错、界面照常渲染，但头部必须说读不到，清理入口禁用。
+     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+     const el = await render()
+-    expect(el.textContent).toContain('读不到')
+-    expect(el.textContent, '不得冒充真值 0').not.toContain('可回收：0 B')
+-    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '清理') as HTMLButtonElement
++    expect(el.textContent).toContain('확인 불가')
++    expect(el.textContent, '不得冒充真值 0').not.toContain('0 B')
++    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '정리') as HTMLButtonElement
+     expect(clean.disabled).toBe(true)
+   })
+ 
+@@ -201,14 +201,14 @@ describe('RuntimeCacheRow（块 E 设置页面）', () => {
+     })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    expect(([...el.querySelectorAll('button')].find((b) => b.textContent === '清理') as HTMLButtonElement).disabled).toBe(true)
++    expect(([...el.querySelectorAll('button')].find((b) => b.textContent === '정리') as HTMLButtonElement).disabled).toBe(true)
+   })
+ 
+   it('重新扫描按用户请求重发（体积刷新不靠重挂载）', async () => {
+     const fetchSpy = makeFetch({ '/api/android/runtime-cache/scan': { body: SCAN_BODY } })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '重新扫描')!.click() })
++    await act(async () => { [...el.querySelectorAll('button')].find((b) => b.textContent === '다시 스캔')!.click() })
+     expect(fetchSpy.calls.filter((call) => call.method === 'GET')).toHaveLength(2)
+   })
+ })
+@@ -220,10 +220,10 @@ describe('RuntimeCacheRow 读不到 vs 真值 0（S3-16）', () => {
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+     // 旧实现：`reclaimable` 回落成 0 ⇒ 「可回收：0 B（0 项）」，看起来像「确实没东西可清」。
+-    expect(el.textContent).toContain('读不到')
+-    expect(el.textContent, '不得把读不到画成 0 B').not.toContain('可回收：0 B')
++    expect(el.textContent).toContain('확인 불가')
++    expect(el.textContent, '不得把读不到画成 0 B').not.toContain('0 B')
+     expect(el.querySelector('[data-scan-state]')?.getAttribute('data-scan-state')).toBe('failed')
+-    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '清理') as HTMLButtonElement
++    const clean = [...el.querySelectorAll('button')].find((b) => b.textContent === '정리') as HTMLButtonElement
+     expect(clean.disabled, '读不到时不得允许清理').toBe(true)
+     // 设备实测补正：读不到时不得继续展示上一次的清单（陈旧数据看起来像现值）。
+     expect(el.querySelector('.dsh-dev-cache-list'), '读不到时不得展示缓存清单').toBeNull()
+@@ -238,21 +238,21 @@ describe('RuntimeCacheRow 读不到 vs 真值 0（S3-16）', () => {
+     vi.stubGlobal('fetch', impl)
+     const el = await render()
+     await act(async () => { await Promise.resolve() })
+-    expect(el.textContent).toContain('读不到')
++    expect(el.textContent).toContain('확인 불가')
+     expect(el.querySelector('.dsh-dev-cache-list')).toBeNull()
+     fail = false
+-    const rescan = [...el.querySelectorAll('button')].find((b) => b.textContent === '重新扫描') as HTMLButtonElement
++    const rescan = [...el.querySelectorAll('button')].find((b) => b.textContent === '다시 스캔') as HTMLButtonElement
+     await act(async () => { rescan.click() })
+     await act(async () => { await Promise.resolve() })
+-    expect(el.textContent).toContain('运行时缓存可回收：3.0 MB')
++    expect(el.textContent).toContain('런타임 캐시 정리 가능: 3.0 MB')
+     expect(el.querySelector('.dsh-dev-cache-list')).not.toBeNull()
+   })
+ 
+   it('宿主不可用（fetch 抛错）时同样说「读不到」，不退化成 0 B', async () => {
+     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }))
+     const el = await render()
+-    expect(el.textContent).toContain('读不到')
+-    expect(el.textContent).not.toContain('可回收：0 B')
++    expect(el.textContent).toContain('확인 불가')
++    expect(el.textContent).not.toContain('0 B')
+   })
+ 
+   it('扫描成功但没有可清理项时，才是「暂无可清理项」这个合法空态', async () => {
+@@ -261,8 +261,8 @@ describe('RuntimeCacheRow 读不到 vs 真值 0（S3-16）', () => {
+     })
+     vi.stubGlobal('fetch', fetchSpy.impl)
+     const el = await render()
+-    expect(el.textContent).toContain('暂无可清理项')
+-    expect(el.textContent).not.toContain('读不到')
++    expect(el.textContent).toContain('정리할 항목 없음')
++    expect(el.textContent).not.toContain('확인 불가')
+     expect(el.querySelector('[data-scan-state]')?.getAttribute('data-scan-state')).toBe('ok')
+   })
+ })
+diff --git a/dsh-client-ui-responsive/tests/sidebar-bubbles.spec.ts b/dsh-client-ui-responsive/tests/sidebar-bubbles.spec.ts
+index fe6e34e..af6310f 100644
+--- a/dsh-client-ui-responsive/tests/sidebar-bubbles.spec.ts
++++ b/dsh-client-ui-responsive/tests/sidebar-bubbles.spec.ts
+@@ -92,8 +92,8 @@ describe('narrow navigation over native tabs', () => {
+     expect(popover().getAttribute('aria-hidden')).toBe('true')
+     expect(panel.querySelector('.dsh-bubble-heading')?.textContent).toBe('chat')
+     expect([...panel.querySelectorAll('[data-dsh-bubble-tab]')].map(node => node.getAttribute('data-dsh-bubble-tab'))).toEqual(['chat', 'child', 'browser', 'terminal', 'screen'])
+-    expect(select('terminal').getAttribute('aria-label')).toBe('终端: terminal')
+-    expect(select('screen').getAttribute('aria-label')).toBe('虚拟屏: screen')
++    expect(select('terminal').getAttribute('aria-label')).toBe('터미널: terminal')
++    expect(select('screen').getAttribute('aria-label')).toBe('가상 화면: screen')
+     expect(select('chat').getAttribute('aria-pressed')).toBe('true')
+     expect(select('chat').querySelectorAll('svg')).toHaveLength(1)
+   })
+diff --git a/dsh-client-ui-responsive/tests/user-copy.spec.ts b/dsh-client-ui-responsive/tests/user-copy.spec.ts
+index a378a6c..82e301e 100644
+--- a/dsh-client-ui-responsive/tests/user-copy.spec.ts
++++ b/dsh-client-ui-responsive/tests/user-copy.spec.ts
+@@ -47,7 +47,7 @@ describe('describeCallReason（P3-1：码不上屏）', () => {
+ 
+   it('带前缀的复合码按前缀归类（load-error:<webview 内部码>）', () => {
+     const text = describeCallReason('load-error:-2')
+-    expect(text).toContain('内置浏览器')
++    expect(text).toContain('내장 브라우저')
+     expect(text).not.toContain('load-error')
+   })
+ })
+@@ -55,28 +55,28 @@ describe('describeCallReason（P3-1：码不上屏）', () => {
+ describe('describeHttpFailure（P3-1：状态码只作分档依据）', () => {
+   it('各档位都给人话，且正文不含状态码数字', () => {
+     for (const status of [400, 401, 403, 404, 405, 418, 500, 503]) {
+-      const text = describeHttpFailure('读取来件占用', status)
+-      expect(text.length, String(status)).toBeGreaterThan(8)
++      const text = describeHttpFailure('읽기', status)
++      expect(text.length, String(status)).toBeGreaterThan(4)
+       expect(text, '正文不得出现状态码：' + status).not.toContain(String(status))
+-      expect(text).toContain('读取来件占用')
++      expect(text).toContain('읽기')
+     }
+   })
+ 
+   it('未授权/不存在/服务端出错三类语义不同——用户下一步不同，就不能说同一句话', () => {
+-    const unauthorized = describeHttpFailure('清理运行时缓存', 403)
+-    const missing = describeHttpFailure('清理运行时缓存', 404)
+-    const server = describeHttpFailure('清理运行时缓存', 500)
++    const unauthorized = describeHttpFailure('정리', 403)
++    const missing = describeHttpFailure('정리', 404)
++    const server = describeHttpFailure('정리', 500)
+     expect(new Set([unauthorized, missing, server]).size).toBe(3)
+-    expect(unauthorized).toContain('未获授权')
++    expect(unauthorized).toContain('권한이 없습니다')
+     // 页面侧的 500 来自本机应用自身（引擎/宿主），不是远端服务——措辞与壳侧的 httpFailure 刻意不同。
+-    expect(server).toContain('应用内部')
++    expect(server).toContain('앱 내부')
+   })
+ })
+ 
+ describe('describeNotifyWriteFailure（P3-1）', () => {
+   it('壳侧读回失败的原因给人话，且不回显码与内部 key', () => {
+     const text = describeNotifyWriteFailure('readback-mismatch')
+-    expect(text).toContain('没有接受')
++    expect(text).toContain('적용하지 않았습니다')
+     expect(text).not.toContain('readback-mismatch')
+     expect(describeNotifyWriteFailure('unknown-key')).not.toContain('unknown-key')
+     expect(describeNotifyWriteFailure(undefined)).not.toContain('unknown')
+@@ -124,20 +124,20 @@ describe('truncateWithEllipsis（P3-4：截断必须自证）', () => {
+ 
+ describe('formatDuration（P3-3：统一「分秒」口径）', () => {
+   it('不足 1 分钟用「X秒」，不用 8.4s 这类英文单位', () => {
+-    expect(formatDuration(8_400)).toBe('8.4秒')
+-    expect(formatDuration(8_000)).toBe('8秒')
+-    expect(formatDuration(45_000)).toBe('45秒')
++    expect(formatDuration(8_400)).toBe('8.4초')
++    expect(formatDuration(8_000)).toBe('8초')
++    expect(formatDuration(45_000)).toBe('45초')
+   })
+ 
+   it('1 分钟到 1 小时用「X分YY秒」', () => {
+-    expect(formatDuration(60_000)).toBe('1分00秒')
+-    expect(formatDuration(84_000)).toBe('1分24秒')
+-    expect(formatDuration(3_599_000)).toBe('59分59秒')
++    expect(formatDuration(60_000)).toBe('1분 00초')
++    expect(formatDuration(84_000)).toBe('1분 24초')
++    expect(formatDuration(3_599_000)).toBe('59분 59초')
+   })
+ 
+   it('超过 1 小时用「X小时YY分」', () => {
+-    expect(formatDuration(3_600_000)).toBe('1小时00分')
+-    expect(formatDuration(7_500_000)).toBe('2小时05分')
++    expect(formatDuration(3_600_000)).toBe('1시간 00분')
++    expect(formatDuration(7_500_000)).toBe('2시간 05분')
+   })
+ 
+   it('未知时长返回空串——不打印「-」（用户分不清「未知」与「零」）', () => {

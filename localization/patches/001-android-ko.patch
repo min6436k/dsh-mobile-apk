@@ -1,0 +1,79 @@
+diff --git a/app/src/main/res/values-ko/strings.xml b/app/src/main/res/values-ko/strings.xml
+new file mode 100644
+index 0000000..cc57b71
+--- /dev/null
++++ b/app/src/main/res/values-ko/strings.xml
+@@ -0,0 +1,73 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++  <string name="app_name">DeepCode</string>
++  <string name="ds_brand_subtitle">내장 런타임</string>
++  <string name="ds_start_engine">엔진 시작</string>
++  <string name="ds_retry">다시 시도</string>
++  <string name="ds_safe_start">안전 모드로 시작</string>
++  <string name="ds_clear_isolation">격리 해제 및 다시 시도</string>
++  <string name="ds_safe_entered">안전 모드로 전환되었습니다: 서드파티 플러그인이 비활성화되고 앱 내장 플러그인은 모두 유지됩니다. 복구 명령어가 클립보드에 복사되었습니다. 콘솔을 열어 붙여넣기 하세요. 앱 재시작 후 안전 모드가 적용됩니다.</string>
++  <string name="ds_safe_prompt_copied">복구 명령어가 클립보드에 복사되었습니다 (이번 오류 원문 포함).</string>
++  <string name="ds_safe_prompt_copy_failed">복구 명령어 클립보드 복사 실패 (시스템 클립보드를 사용할 수 없음) — 콘솔을 열고 안내에 따라 안전 모드 명령을 실행하세요.</string>
++  <string name="ds_safe_failed">안전 모드 진입 실패: %1$s</string>
++  <string name="ds_safe_hint_short">하단의 「안전 모드로 시작」을 눌러 복구할 수도 있습니다: 서드파티 플러그인만 제외하고 앱 플러그인은 유지하며, 오류 원문이 포함된 복구 명령어를 클립보드에 복사합니다.</string>
++  <string name="ds_client_plugin_fail_title">플러그인 로드 실패</string>
++  <string name="ds_client_plugin_fail_hint">화면 플러그인을 로드하지 못했습니다 (%1$s). 자동 롤백을 시도했으나 계속 실패할 경우 하단의 「안전 모드로 시작」을 누르세요: 서드파티 플러그인만 제외하고 앱 플러그인은 유지하며, 오류 원문이 포함된 복구 명령어를 클립보드에 복사합니다.</string>
++  <string name="ds_webview_provider_missing">기기에 사용 가능한 WebView 엔진이 없습니다 (미설치, 사용 중지 또는 업데이트 중). Android System WebView를 설치하거나 업데이트한 후 다시 시도해 주세요.</string>
++  <string name="ds_safe_hint">시작 실패 시 「안전 모드로 시작」을 누를 수 있습니다: 서드파티 플러그인만 제거하고 앱 플러그인은 유지하며, 오류 원문이 포함된 복구 명령어를 클립보드에 복사합니다. 콘솔을 열어 안전 모드 명령을 실행할 수도 있습니다.</string>
++  <string name="ds_restart">다시 시작</string>
++  <string name="ds_starting">시작 중</string>
++  <string name="ds_updating">업데이트 중</string>
++  <string name="ds_undoing">되돌리는 중</string>
++  <string name="ds_open_console">콘솔 열기</string>
++  <string name="ds_check_update">업데이트 확인</string>
++  <string name="ds_apk_checking">확인 중…</string>
++  <string name="ds_apk_latest">APK가 이미 최신 버전입니다 %1$s</string>
++  <string name="ds_apk_confirm">%1$s 다운로드 및 설치</string>
++  <string name="ds_apk_available">새 APK 버전 %1$s 발견 (현재 %2$s, %3$s) — 같은 버튼을 한 번 더 누르면 다운로드 및 설치가 시작됩니다</string>
++  <string name="ds_apk_downloading">다운로드 중 %1$d%%</string>
++  <string name="ds_apk_download_hint">미러 서버에서 %1$s(%2$s) 다운로드 중 — 앱을 화면 전면에 유지해 주세요</string>
++  <string name="ds_apk_retry">%1$s 다운로드 및 설치 다시 시도</string>
++  <string name="ds_apk_retry_install">설치 다시 시도</string>
++  <string name="ds_apk_need_permission">「출처를 알 수 없는 앱 설치」 권한이 필요합니다. 권한 설정 페이지를 열었습니다 — 허용 후 돌아오면 자동으로 설치됩니다</string>
++  <string name="ds_apk_permission_denied">「출처를 알 수 없는 앱 설치」 권한을 얻지 못했습니다 — APK가 다운로드되었으므로 권한 허용 후 버튼을 다시 눌러 설치를 계속할 수 있습니다</string>
++  <string name="ds_apk_installing">시스템 설치 관리자를 실행했습니다 — 설치 완료 후 앱을 다시 열면 적용됩니다</string>
++  <string name="ds_apk_permission_page_failed">이 시스템에는 「출처를 알 수 없는 앱 설치」 권한 페이지가 없습니다 (열기 실패) — 시스템 설정에서 이 앱의 앱 설치를 수동으로 허용한 후, 버튼을 다시 눌러 설치를 계속하세요</string>
++  <string name="ds_apk_grant_install">권한 허용 후 설치 계속</string>
++  <string name="ds_copy_log">복사</string>
++  <string name="ds_log_title">engine.log</string>
++  <string name="ds_runtime_ready">런타임 준비 완료</string>
++  <string name="ds_runtime_pending">런타임 압축 해제 대기 중</string>
++  <string name="ds_storage_granted">저장소 권한 허용됨</string>
++  <string name="ds_storage_needed">저장소 권한 허용하기</string>
++  <string name="ds_storage_write_failed">저장소 쓰기 실패</string>
++  <string name="ds_storage_pending">저장소: 확인 대기 중</string>
++  <string name="ds_storage_pending_cd">저장소 상태가 아직 확인되지 않았습니다. 여기를 눌러 지금 확인하세요</string>
++  <string name="ds_storage_write_failed_cd">저장소 쓰기 실패. 여기를 눌러 실패 상세 정보를 복사하세요</string>
++  <string name="ds_storage_granted_cd">저장소 준비 완료, 추가 작업 불필요</string>
++  <string name="ds_storage_detail_copied">실패 상세 정보가 복사되었습니다 — 붙여넣어 문의해 주세요</string>
++  <string name="ds_storage_no_detail">복사할 실패 상세 정보가 없습니다 (실패 기록이 없음)</string>
++  <string name="ds_storage_probing">저장소 상태 확인 중…</string>
++  <string name="ds_brand_explain">로컬 AI 작업, 시각적 확인, 상시 제어 가능</string>
++  <string name="ds_recovering">자동 복구 진행 중</string>
++  <string name="ds_copy_log_empty">현재 복사할 로그가 없습니다 (엔진이 아직 engine.log를 기록하지 않음)</string>
++  <string name="ds_log_copied">로그가 복사되었습니다</string>
++  <string name="ds_notify_channel_name">작업 알림 및 내보내기 결과</string>
++  <string name="ds_notify_channel_desc">엔진 작업 상태, 답변 대기 요청 및 파일 내보내기 결과 알림</string>
++  <string name="ds_notify_permission_rationale">알림 권한이 필요합니다: 엔진이 질문하거나 권한을 요청할 때 알림을 통해서만 확인할 수 있습니다 (작업이 계속 대기함). 권한이 없으면 이 알림을 앱 내에서만 볼 수 있습니다.</string>
++  <string name="ds_notify_denied_note">알림 권한이 허용되지 않음: 엔진의 질문 및 권한 요청이 알림창에 표시되지 않으며 앱 내에서만 확인할 수 있습니다.</string>
++  <string name="adb_keyboard_label">DeepSeek ADB 입력 채널</string>
++  <string name="a11y_service_label">DeepCode 기기 제어</string>
++  <string name="a11y_service_summary">AI 어시스턴트가 의미론적으로 화면을 읽고 컨트롤을 조작하도록 허용합니다</string>
++  <string name="a11y_service_description">활성화하면 AI 어시스턴트가 현재 화면의 컨트롤(텍스트/설명/위치)을 읽고 클릭, 입력, 스크롤 등의 작업을 수행할 수 있습니다. 사용자가 직접 켰을 때만 작동하며 끄면 즉시 중지됩니다. 세션이 「완전 접근」 등급이어야 합니다.</string>
++  <string name="ds_start_port_foreign">로컬 포트 3080이 다른 프로그램에서 사용 중이며, 앱에서 해당 프로그램을 중지하지 못했습니다. 충돌하는 앱을 종료한 후 「시작 다시 시도」를 누르거나 기기를 재부팅하세요. [port-foreign]</string>
++  <string name="ds_start_private_denied">앱이 자체 전용 실행 디렉터리에 쓸 수 없습니다. 공용 파일 권한으로는 이 문제를 해결할 수 없습니다. 기기를 재부팅한 후 앱을 다시 열어주세요. 계속 실패할 경우 콘솔을 열고 로그를 복사해 문의해 주세요. 안전 모드는 플러그인만 격리하며 디렉터리 권한은 수정할 수 없습니다. [private-storage-denied]</string>
++  <string name="ds_start_storage_full">기기의 저장 공간이 부족합니다. 공간을 확보한 후 「안전 모드로 시작」을 누르세요. 이 버튼은 플러그인만 격리하며 공간을 확보하지는 않습니다. 이 앱의 데이터를 삭제하지 마세요. [storage-full]</string>
++  <string name="ds_start_runtime_unavailable">런타임 또는 필수 플러그인이 준비되지 않았습니다. 콘솔을 열고 로그를 복사하여 원인을 확인하세요. 안전 모드는 기존 복구 경로를 유지합니다. [runtime-unavailable]</string>
++  <string name="ds_start_unknown">시작 실패 원인을 확인할 수 없습니다. 콘솔을 열거나 로그를 복사해 문의하세요. 안전 모드를 통해 서드파티 플러그인을 임시로 격리해 볼 수도 있습니다. [start-unknown]</string>
++  <string name="ds_start_retry">시작 다시 시도</string>
++  <string name="ds_share_log">진단 로그 공유</string>
++  <string name="ds_share_log_working">진단 로그 압축 중…</string>
++  <string name="ds_share_log_done">진단 로그 %1$s 생성이 완료되었습니다. 전송할 앱을 선택해 주세요</string>
++  <string name="ds_share_log_failed">공유 실패: %1$s</string>
++</resources>
