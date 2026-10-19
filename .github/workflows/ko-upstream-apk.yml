@@ -19,7 +19,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ko-apk-${{ github.ref }}
+  group: ko-apk-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: .deploy-tmp/ko-success-marker
-          # Rebuild at least weekly so the 30-day APK artifacts don't all expire.
+          # Recheck unchanged inputs weekly so the source packaging does not go untested.
           key: ko-v1-arm64-${{ steps.sources.outputs.upstream_sha }}-${{ steps.sources.outputs.locale_sha }}-${{ steps.sources.outputs.week }}
 
       - name: Decide whether a build is needed
@@ -170,7 +170,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ 'arm64' = arm64 ]; then base_dir=arm64-base; else base_dir=x64-base; fi
+          base_dir=arm64-base
           mkdir -p ".deploy-tmp/${base_dir}"
           cp "base/base-usr-arm64.tar.xz" ".deploy-tmp/${base_dir}/base-usr.tar.xz"
           cp base/base-dsh.tar.xz ".deploy-tmp/${base_dir}/base-dsh.tar.xz"
