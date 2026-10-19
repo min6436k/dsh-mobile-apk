@@ -11,7 +11,7 @@ on:
     # 03:15 KST, every day. Skip the expensive build if inputs are unchanged.
     - cron: '15 18 * * *'
   push:
-    branches: [l10n/ko]
+    branches: [ko-patch]
     paths:
       - 'localization/patches/**'
 
@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           upstream_sha="$(git rev-parse HEAD)"
-          git fetch --no-tags --depth=1 "https://github.com/${FORK_REPO}.git" refs/heads/l10n/ko
+          git fetch --no-tags --depth=1 "https://github.com/${FORK_REPO}.git" refs/heads/ko-patch
           locale_sha="$(git rev-parse FETCH_HEAD)"
           echo "upstream_sha=$upstream_sha" >> "$GITHUB_OUTPUT"
           echo "locale_sha=$locale_sha" >> "$GITHUB_OUTPUT"
