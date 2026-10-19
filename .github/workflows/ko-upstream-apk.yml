@@ -206,6 +206,21 @@ jobs:
           } else {
             throw new Error('Unexpected upstream completeness gate change; review before building.')
           }
+          if (retired) {
+            // The upstream route-auth gate also includes undo in its snapshot
+            // extraction list; one missing member makes every marker fail.
+            const authPath = 'scripts/check-api-route-auth.mjs'
+            const auth = readFileSync(authPath, 'utf8')
+            const obsolete = "    ['dsh-undo-savepoint/lib/index.js', 'dsh-mobile undo route auth (U1)'],"
+            if (auth.includes(obsolete)) {
+              writeFileSync(authPath, auth.replace(obsolete + '\n', ''))
+              console.log('Route-auth snapshot check updated for the retired plugin.')
+            } else if (!auth.includes('dsh-undo-savepoint/lib/index.js')) {
+              console.log('Upstream route-auth snapshot check is already aligned.')
+            } else {
+              throw new Error('Unexpected route-auth snapshot marker layout; review upstream.')
+            }
+          }
           NODE
 
       - name: Build Korean APK
