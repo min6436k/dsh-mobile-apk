@@ -2,9 +2,10 @@
 
 이 공개 포크는 [원본 dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 최신 `main`을 자동으로 받아, 별도 브랜치에서 관리하는 한국어 `.patch` 파일을 적용한 후 **arm64 APK 하나**를 빌드합니다.
 
-- 자동 빌드 설정: 이 저장소의 `main` → `.github/workflows/ko-upstream-apk.yml`
+- 자동 빌드 설정: 이 저장소의 기본 브랜치 `l10n/ko` → `.github/workflows/ko-upstream-apk.yml`
 - 한국어 패치 보관: 이 저장소의 **`l10n/ko` 브랜치** → `localization/patches/*.patch`
 - 빌드 대상: 원본 `kelai141/dsh-mobile-apk`의 최신 `main`
+- 원본 추적 브랜치: 이 포크의 `main`은 업스트림 `main`과 동일한 소스만 보관하고, 번역 및 자동화는 `l10n/ko`에서 관리합니다.
 - 결과물: [Releases](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)** 안에 `dsh-ko-arm64.apk`, `KO-BUILD-SOURCES.txt`
 - 실행: 패치 추가·변경 시 자동 / 매일 03:15(KST) 원본 변경 확인 / Actions 수동 실행
 
