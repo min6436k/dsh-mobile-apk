@@ -11,6 +11,23 @@ index 8499ffb..f4c7fcb 100644
          </div>
        </div>
      </div>
+diff --git a/dsh-client-ui-responsive/src/client/composer-row.css.ts b/dsh-client-ui-responsive/src/client/composer-row.css.ts
+index 7235c5c..21ff258 100644
+--- a/dsh-client-ui-responsive/src/client/composer-row.css.ts
++++ b/dsh-client-ui-responsive/src/client/composer-row.css.ts
+@@ -17,10 +17,12 @@
+ export const COMPOSER_ROW_CSS: string = `
+ @media (max-width: 400px) {
+   [data-composer-card] [aria-label*='选择模型'],
++  [data-composer-card] [aria-label*='모델 선택'],
+   [data-composer-card] [aria-label*='model'] {
+     max-width: 104px;
+   }
+   [data-composer-card] [aria-label*='选择模型'] span,
++  [data-composer-card] [aria-label*='모델 선택'] span,
+   [data-composer-card] [aria-label*='model'] span {
+     overflow: hidden;
+     text-overflow: ellipsis;
 diff --git a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx b/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
 index af67678..42c6c0d 100644
 --- a/dsh-client-ui-responsive/src/client/dev-section/DevSection.tsx
@@ -559,7 +576,7 @@ index bd6c222..9054d09 100644
        </header>
        <NotifySettingsRow />
 diff --git a/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx b/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
-index 31aa0c1..79c8542 100644
+index 31aa0c1..9b9b1f9 100644
 --- a/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
 +++ b/dsh-client-ui-responsive/src/client/dev-section/phone-control.tsx
 @@ -123,8 +123,7 @@ const STATUS_LABEL: Record<VdisplayState, string> = {
@@ -647,24 +664,23 @@ index 31aa0c1..79c8542 100644
  }
  
  function readScope(): ScreenScope {
-@@ -314,14 +312,12 @@ function readVdisplay(): VdisplayStatus {
+@@ -314,13 +312,13 @@ function readVdisplay(): VdisplayStatus {
        code: typeof parsed?.code === 'string' ? parsed.code : 'vdisplay-status-unavailable',
        guidance: typeof parsed?.guidance === 'string'
          ? parsed.guidance
 -        : tr('虚拟屏状态暂不可读；不会把虚拟屏请求回退到真实屏幕。', 'Virtual screen status is unavailable; requests are not sent to the real screen.'),
--      ...(typeof parsed?.displayId === 'number' ? { displayId: parsed.displayId } : {}),
-+        : tr('虚拟屏状态暂不可读；不会把虚拟屏请求回退到真实屏幕。', 'Virtual screen status is unavailable; requests are not sent to the real screen.'),      ...(typeof parsed?.displayId === 'number' ? { displayId: parsed.displayId } : {}),
++        : tr('虚拟屏状态暂不可读；不会把虚拟屏请求回退到真实屏幕。', 'Virtual screen status is unavailable; requests are not sent to the real screen.', '가상 화면 상태를 일시적으로 읽을 수 없습니다. 가상 화면 요청을 실제 화면으로 대체하지 않습니다.'),
+       ...(typeof parsed?.displayId === 'number' ? { displayId: parsed.displayId } : {}),
      }
    } catch {
      // P3-6：旧文案是「虚拟屏状态读取失败（fail-closed）。」——`fail-closed` 是内部策略词，
      // 对用户没有意义；这里说清「读不到 + 不会做什么 + 能做什么」，策略词只留在 code 里。
 -    return { state: 'blocked', code: 'vdisplay-status-unavailable', guidance: tr('读不到虚拟屏状态：应用内桥未接好或解析失败。重新打开应用再试；读不到时不会把虚拟屏请求回退到真实屏幕。', 'Cannot read virtual screen status: the app bridge is missing or the reply did not parse. Requests are not sent to the real screen.') }
--  }
-+    return { state: 'blocked', code: 'vdisplay-status-unavailable', guidance: tr('读不到虚拟屏状态：应用内桥未接好或解析失败。重新打开应用再试；读不到时不会把虚拟屏请求回退到真实屏幕。', 'Cannot read virtual screen status: the app bridge is missing or the reply did not parse. Requests are not sent to the real screen.') }  }
++    return { state: 'blocked', code: 'vdisplay-status-unavailable', guidance: tr('读不到虚拟屏状态：应用内桥未接好或解析失败。重新打开应用再试；读不到时不会把虚拟屏请求回退到真实屏幕。', 'Cannot read virtual screen status: the app bridge is missing or the reply did not parse. Requests are not sent to the real screen.', '가상 화면 상태를 읽을 수 없습니다: 앱 내 브릿지가 연결되지 않았거나 구문 분석에 실패했습니다. 앱을 다시 열고 시도하세요. 상태를 읽지 못할 때 가상 화면 요청을 실제 화면으로 대체하지 않습니다.') }
+   }
  }
  
- function readScale(): number {
-@@ -424,14 +420,14 @@ export function readRootAccess(): RootAccessStatus {
+@@ -424,14 +422,14 @@ export function readRootAccess(): RootAccessStatus {
  
  /** 应用级 root 授权状态 → 中文状态词（与壳侧 RootAccess 的状态常量一一对应）。 */
  export function rootAccessStateLabel(status: RootAccessStatus): string {
@@ -686,7 +702,7 @@ index 31aa0c1..79c8542 100644
    }
  }
  
-@@ -446,10 +442,10 @@ export function canRequestRoot(status: RootAccessStatus): boolean {
+@@ -446,10 +444,10 @@ export function canRequestRoot(status: RootAccessStatus): boolean {
   * 顺序即真实判据顺序：读不到 → 通道非 root（置灰）→ 未授权 → 已授权。
   */
  export function rootGrantStateLabel(status: RootGrantStatus): string {
@@ -701,7 +717,7 @@ index 31aa0c1..79c8542 100644
  }
  
  /** 开关可否点击：只有**通道身份确为 root**才可点（读不到/非 root 一律不可点）。 */
-@@ -476,12 +472,13 @@ export function rootGrantChannelHint(status: RootGrantStatus): { text: string; k
+@@ -476,12 +474,13 @@ export function rootGrantChannelHint(status: RootGrantStatus): { text: string; k
        text: tr(
          'Shizuku 当前以 shell（uid 2000）身份运行——请在 Shizuku 内以 root 启动它，再回到本页开启。',
          'Shizuku runs as shell (uid 2000). Start it as root inside Shizuku, then turn this on here.',
@@ -716,7 +732,7 @@ index 31aa0c1..79c8542 100644
      kind: 'not-root',
    }
  }
-@@ -586,8 +583,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -586,8 +585,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.openExternalLink
          ? () => window.androidBridge!.openExternalLink!(LINK_DOWNLOAD)
          : undefined,
@@ -727,7 +743,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runShizukuAction])
  
-@@ -596,8 +593,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -596,8 +595,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.openExternalLink
          ? () => window.androidBridge!.openExternalLink!(LINK_TUTORIAL)
          : undefined,
@@ -738,7 +754,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runShizukuAction])
  
-@@ -606,8 +603,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -606,8 +605,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.openShizukuManager
          ? () => window.androidBridge!.openShizukuManager!()
          : undefined,
@@ -749,7 +765,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runShizukuAction])
  
-@@ -624,8 +621,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -624,8 +623,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.requestShizukuPermission
          ? () => window.androidBridge!.requestShizukuPermission!()
          : undefined,
@@ -760,7 +776,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runShizukuAction])
  
-@@ -644,8 +641,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -644,8 +643,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.resetShizukuConnection
          ? () => window.androidBridge!.resetShizukuConnection!()
          : undefined,
@@ -771,7 +787,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runShizukuAction])
  
-@@ -686,7 +683,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -686,7 +685,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
      if (next && parsed?.code === 'request-started') {
        setPendingEnable(true)
        setRootOk(true)
@@ -780,7 +796,7 @@ index 31aa0c1..79c8542 100644
        refreshRootGrant()
        refreshRootAccess()
        return
-@@ -694,9 +691,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -694,9 +693,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
      runRootAction(
        undefined,
        next
@@ -793,7 +809,7 @@ index 31aa0c1..79c8542 100644
        raw,
      )
    }, [runRootAction, refreshRootGrant, refreshRootAccess])
-@@ -712,8 +709,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -712,8 +711,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.requestRootAccess
          ? () => window.androidBridge!.requestRootAccess!()
          : undefined,
@@ -804,7 +820,7 @@ index 31aa0c1..79c8542 100644
      )
      refreshRootAccess()
    }, [runRootAction, refreshRootAccess])
-@@ -737,7 +734,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -737,7 +736,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        setRepairReply(observed)
        setRepairFailure(undefined)
      } else {
@@ -813,7 +829,7 @@ index 31aa0c1..79c8542 100644
      }
      refreshRootGrant()
    }, [refreshRootGrant])
-@@ -769,9 +766,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -769,9 +768,9 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
          ? () => window.androidBridge!.setRootConsent!(next)
          : undefined,
        next
@@ -826,7 +842,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runRootAction])
  
-@@ -780,8 +777,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -780,8 +779,8 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        window.androidBridge?.openRootDisclaimer
          ? () => window.androidBridge!.openRootDisclaimer!()
          : undefined,
@@ -837,7 +853,7 @@ index 31aa0c1..79c8542 100644
      )
    }, [runRootAction])
  
-@@ -798,18 +795,16 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -798,17 +797,17 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        const parsed = raw ? JSON.parse(raw) as { ok?: boolean; code?: string } : undefined
        const ok = parsed?.ok === true
        setForceMsg(ok
@@ -847,40 +863,46 @@ index 31aa0c1..79c8542 100644
 +        : { ok: false, text: tr('销毁失败：', 'Destroy failed: ', '종료 실패: ') + describeCallReason(parsed?.code), code: String(parsed?.code ?? 'unknown') })
      } catch {
 -      setForceMsg({ ok: false, text: tr('销毁调用失败（应用内桥不可用）——请重新打开应用后重试。', 'The destroy call failed: the app bridge is unavailable. Reopen the app and retry.'), code: 'bridge-threw' })
--    }
-+      setForceMsg({ ok: false, text: tr('销毁调用失败（应用内桥不可用）——请重新打开应用后重试。', 'The destroy call failed: the app bridge is unavailable. Reopen the app and retry.'), code: 'bridge-threw' })    }
++      setForceMsg({ ok: false, text: tr('销毁调用失败（应用内桥不可用）——请重新打开应用后重试。', 'The destroy call failed: the app bridge is unavailable. Reopen the app and retry.', '종료 호출 실패(앱 내 브릿지 사용 불가) — 앱을 다시 연 후 재시도하세요.'), code: 'bridge-threw' })
+     }
      refreshVdisplay()
    }, [confirmStage, refreshVdisplay])
  
    const forceLabel = confirmStage === 0
      ? tr('强制销毁虚拟屏', 'Force destroy virtual screens')
 -    : tr('再次点击确认（', 'Tap again to confirm (') + confirmStage + '/3)'
--  // P5-5：进入确认态后必须给**取消途径**。旧实现没有任何退出通道——误点一下就只能
-+    : tr('再次点击确认（', 'Tap again to confirm (') + confirmStage + '/3)'  // P5-5：进入确认态后必须给**取消途径**。旧实现没有任何退出通道——误点一下就只能
++    : tr('再次点击确认（', 'Tap again to confirm (', '다시 클릭하여 확인(') + confirmStage + '/3)'
+   // P5-5：进入确认态后必须给**取消途径**。旧实现没有任何退出通道——误点一下就只能
    // 「再点两下把它执行掉」或者等 4 秒超时（超时不可见，用户并不知道自己还能等）。
    const forceArmed = confirmStage > 0
-   const cancelForce = useCallback(() => {
-@@ -829,8 +824,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -829,7 +828,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        <header className="dsh-screen-control-header">
          <span>
            <strong id="dsh-phone-control-title">{tr('手机控制', 'Phone control')}</strong>
 -          <small>{tr('屏幕与特权通道的授权设置；模型改不了这里的设置。', 'Screen and privileged channel settings. The model cannot change them.')}</small>
--        </span>
-+          <small>{tr('屏幕与特权通道的授权设置；模型改不了这里的设置。', 'Screen and privileged channel settings. The model cannot change them.')}</small>        </span>
++          <small>{tr('屏幕与特权通道的授权设置；模型改不了这里的设置。', 'Screen and privileged channel settings. The model cannot change them.', '화면 및 특권 채널 권한 설정입니다. 모델은 이 설정을 변경할 수 없습니다.')}</small>
+         </span>
          <span className="dsh-screen-control-state" data-state={vdisplay.state}>{STATUS_LABEL[vdisplay.state]}</span>
        </header>
- 
-@@ -842,8 +836,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
-       ) : null}
- 
-       <div className="dsh-screen-control-detail">
--        <strong>{tr('Shizuku 特权通道', 'Shizuku privileged channel')}</strong>
--        <span data-code={shizuku.readable ? undefined : 'shizuku-status-unreadable'}>
-+        <strong>{tr('Shizuku 特权通道', 'Shizuku privileged channel')}</strong>        <span data-code={shizuku.readable ? undefined : 'shizuku-status-unreadable'}>
-           {shizukuStateLabel(shizuku)}
-         </span>
+@@ -863,7 +862,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
        </div>
-@@ -897,51 +890,51 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+       {/* 精简（0.14.7-B D5）：保留「两个入口都会跳出去」「授权只能由你亲手完成」；状态自动刷新
+           这句已由上方状态行与本页 2 秒轮询承担，不再复述。 */}
+-      <p className="dsh-dev-hint">{tr('两个入口都会跳到应用外（系统浏览器 / Shizuku 应用）；装好并授权后回本页即可，授权只能在 Shizuku 内由你亲手完成。', 'Both buttons leave the app (browser or Shizuku). Come back here after installing and granting; only you can grant inside Shizuku.')}</p>
++      <p className="dsh-dev-hint">{tr('两个入口都会跳到应用外（系统浏览器 / Shizuku 应用）；装好并授权后回本页即可，授权只能在 Shizuku 内由你亲手完成。', 'Both buttons leave the app (browser or Shizuku). Come back here after installing and granting; only you can grant inside Shizuku.', '두 버튼 모두 앱 외부(시스템 브라우저 / Shizuku 앱)로 이동합니다. 설치하고 권한을 부여한 후 이 페이지로 돌아오세요. 권한 부여는 Shizuku 내에서 직접 완료해야 합니다.')}</p>
+       <div className="dsh-dev-row">
+         <button type="button" className="dsh-dev-link" onClick={tutorialShizuku}>{tr('点击查看教程', 'Watch the tutorial')}</button>
+         <button type="button" className="dsh-dev-btn" onClick={refreshShizuku}>{tr('刷新状态', 'Refresh status')}</button>
+@@ -880,7 +879,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+             {tr('请求 Shizuku 授权', 'Request Shizuku access')}
+           </button>
+           {/* 失败机理保留（用户据此判断「为什么点了没反应」），只压掉重复的前提句。 */}
+-          <span className="dsh-dev-hint">{tr('授权框需要前台界面才会弹出，后台自动请求会静默失败。', 'The grant dialog only appears with the app in front; background requests fail silently.')}</span>
++          <span className="dsh-dev-hint">{tr('授权框需要前台界面才会弹出，后台自动请求会静默失败。', 'The grant dialog only appears with the app in front; background requests fail silently.', '권한 요청 대화상자는 포그라운드 화면에서만 표시됩니다. 백그라운드 자동 요청은 조용히 실패합니다.')}</span>
+         </div>
+       )}
+       {shizukuMsg === null ? null : (
+@@ -897,51 +896,51 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
  
          <div className="dsh-root-step">
            <div className="dsh-screen-control-detail">
@@ -945,7 +967,7 @@ index 31aa0c1..79c8542 100644
            ) : null}
            {rootMsg === null ? null : (
              <p role="status" aria-live="polite" className={rootOk === true ? 'dsh-dev-hint' : 'dsh-dev-error'}>{rootMsg}</p>
-@@ -994,7 +987,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+@@ -994,7 +993,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
            <small>{tr('只读浮窗：退后台时显示虚拟屏画面，前台只在侧栏可见。不是开发者选项里的「悬浮球」（那个是任务面板入口）。', 'Read-only window: it shows the virtual screen in the background and only in the sidebar in front. It is not the floating ball in developer options.')}</small>
          </span>
          <input
@@ -954,6 +976,14 @@ index 31aa0c1..79c8542 100644
            type="checkbox"
            checked={floatOn}
            onChange={(event) => setFloat(event.target.checked)}
+@@ -1015,6 +1014,7 @@ export function PhoneControlSection(_props: PropsRuntime<'settings.section'>) {
+         <p className="dsh-dev-hint">{tr(
+           'Android 13 及以上对侧载应用默认开启「受限设置」，系统页里本应用的开关是灰的：先点「解锁受限设置」（经 Shizuku 特权通道，只影响本应用这一项），再回去开启。',
+           'Android 13 and later restrict sideloaded apps, so this app switch is greyed out. Tap Unlock restricted settings (Shizuku, affects only this app), then turn it on again.',
++          'Android 13 이상에서는 외부 설치 앱에 대해 기본적으로 「제한된 설정」이 적용되어 시스템 설정의 스위치가 비활성화됩니다. 먼저 「제한된 설정 해제」(Shizuku 특권 채널 경유, 이 앱에만 적용)를 누른 다음 돌아가서 켜세요.',
+         )}</p>
+       ) : null}
+       <div className="dsh-dev-row">
 diff --git a/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx b/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx
 index 9b58441..a2cbb57 100644
 --- a/dsh-client-ui-responsive/src/client/dev-section/runtime-cache.tsx
@@ -1144,7 +1174,7 @@ index 9b58441..a2cbb57 100644
            </div>
          </div>
 diff --git a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
-index 069e8fd..f7dde33 100644
+index 069e8fd..724e18e 100644
 --- a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
 +++ b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
 @@ -37,9 +37,10 @@ const IMMERSIVE_KEY = 'dsh.android.immersive'
@@ -1160,6 +1190,24 @@ index 069e8fd..f7dde33 100644
  }
  
  /**
+@@ -80,7 +81,7 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+     setNotice(null)
+     const api = window.androidBridge
+     if (api?.setUiLanguage === undefined) {
+-      setNotice(tr('需在安卓应用内切换。', 'Switch this in the Android app.'))
++      setNotice(tr('需在安卓应用内切换。', 'Switch this in the Android app.', 'Android 앱 내에서 전환해야 합니다.'))
+       setLanguage(readUiLanguage())
+       return
+     }
+@@ -90,7 +91,7 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+       // drops the Java object and every call throws "non-injected object".
+       applied = (api.setUiLanguage(next) as UiLanguageMode | undefined) ?? next
+     } catch {
+-      setNotice(tr('没有保存，请重开应用再试。', 'Not saved. Reopen the app and try again.'))
++      setNotice(tr('没有保存，请重开应用再试。', 'Not saved. Reopen the app and try again.', '저장되지 않았습니다. 앱을 다시 열고 재시도하세요.'))
+       setLanguage(readUiLanguage())
+       return
+     }
 @@ -106,7 +107,8 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
    const toggleSidebarSwipe = useCallback((side: 'left' | 'right', enabled: boolean) => {
      if (!setSidebarSwipeEnabled(side, enabled)) {
@@ -1275,10 +1323,10 @@ index d736c09..5e55763 100644
      return 'en'
    }
 diff --git a/dsh-client-ui-responsive/src/client/i18n.ts b/dsh-client-ui-responsive/src/client/i18n.ts
-index 3b872f8..03bf52e 100644
+index 3b872f8..af2dca2 100644
 --- a/dsh-client-ui-responsive/src/client/i18n.ts
 +++ b/dsh-client-ui-responsive/src/client/i18n.ts
-@@ -7,31 +7,188 @@
+@@ -7,31 +7,216 @@
   * this page, so reading that attribute at call time is enough.
   */
  
@@ -1451,6 +1499,34 @@ index 3b872f8..03bf52e 100644
 +  '特权工作结果仍不明，已暂停新派发和维护；不要重复操作。无法确认 helper 结算时请重启设备（仅重启应用不算结算）。': '특권 작업 결과를 여전히 알 수 없어 새 작업 할당 및 유지보수를 일시 중단했습니다. 반복 조작하지 마세요. helper 정산을 확인할 수 없는 경우 기기를 재부팅하세요 (앱 재시작만으로는 정산되지 않음).',
 +  '正在等待已有特权工作结算，尚未开始文件属主维护。': '기존 특권 작업 정산을 기다리는 중이며, 파일 소유자 유지보수를 아직 시작하지 않았습니다.',
 +  '属主维护进行中，正在有界检查本应用数据目录；结果会自动刷新。': '소유자 유지보수 진행 중: 본 앱 데이터 디렉터리를 제한 검사하고 있습니다. 결과는 자동으로 새로고침됩니다.',
++  '需在安卓应用内切换。': 'Android 앱 내에서 전환해야 합니다.',
++  '没有保存，请重开应用再试。': '저장되지 않았습니다. 앱을 다시 열고 재시도하세요.',
++  'Android 显示': 'Android 화면 설정',
++  '虚拟屏状态暂不可读；不会把虚拟屏请求回退到真实屏幕。': '가상 화면 상태를 일시적으로 읽을 수 없습니다. 가상 화면 요청을 실제 화면으로 대체하지 않습니다.',
++  '读不到虚拟屏状态：应用内桥未接好或解析失败。重新打开应用再试；读不到时不会把虚拟屏请求回退到真实屏幕。': '가상 화면 상태를 읽을 수 없습니다: 앱 내 브릿지가 연결되지 않았거나 구문 분석에 실패했습니다. 앱을 다시 열고 시도하세요. 상태를 읽지 못할 때 가상 화면 요청을 실제 화면으로 대체하지 않습니다.',
++  '销毁调用失败（应用内桥不可用）——请重新打开应用后重试。': '종료 호출 실패(앱 내 브릿지 사용 불가) — 앱을 다시 연 후 재시도하세요.',
++  '再次点击确认（': '다시 클릭하여 확인(',
++  '屏幕与特权通道的授权设置；模型改不了这里的设置。': '화면 및 특권 채널 권한 설정입니다. 모델은 이 설정을 변경할 수 없습니다.',
++  '两个入口都会跳到应用外（系统浏览器 / Shizuku 应用）；装好并授权后回本页即可，授权只能在 Shizuku 内由你亲手完成。': '두 버튼 모두 앱 외부(시스템 브라우저 / Shizuku 앱)로 이동합니다. 설치하고 권한을 부여한 후 이 페이지로 돌아오세요. 권한 부여는 Shizuku 내에서 직접 완료해야 합니다.',
++  '授权框需要前台界面才会弹出，后台自动请求会静默失败。': '권한 요청 대화상자는 포그라운드 화면에서만 표시됩니다. 백그라운드 자동 요청은 조용히 실패합니다.',
++  'Android 13 及以上对侧载应用默认开启「受限设置」，系统页里本应用的开关是灰的：先点「解锁受限设置」（经 Shizuku 特权通道，只影响本应用这一项），再回去开启。': 'Android 13 이상에서는 외부 설치 앱에 대해 기본적으로 「제한된 설정」이 적용되어 시스템 설정의 스위치가 비활성화됩니다. 먼저 「제한된 설정 해제」(Shizuku 특권 채널 경유, 이 앱에만 적용)를 누른 다음 돌아가서 켜세요.',
++  '打开导航': '내비게이션 열기',
++  '（有一个浏览器标签在等你展开侧栏）': ' (열기를 기다리는 브라우저 탭이 있습니다)',
++  '有浏览器标签待展开': '대기 중인 브라우저 탭 있음',
++  '上传附件': '첨부파일 업로드',
++  '上传图片': '이미지 업로드',
++  '事件详情': '이벤트 세부정보',
++  '对话加载失败，请关闭标签后重试': '대화 불러오기 실패, 탭을 닫은 후 다시 시도하세요',
++  '正在加载对话…': '대화 불러오는 중…',
++  '对话': '대화',
++  '拖到此处以在侧边栏打开': '사이드바에서 열려면 여기로 드래그하세요',
++  '松开于侧边栏打开': '사이드바에서 열려면 놓으세요',
++  '后台任务': '백그라운드 작업',
++  '打开配置文件': '설정 파일 열기',
++  '已打开配置文件的副本': '설정 파일의 복사본을 열었습니다',
++  '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；改完请回到「设置 → 开发者选项 → 导入配置」。': '이 파일은 내보낸 복사본(Documents/dshdata/exports/config/settings.yaml)입니다. 여기에서 수정해도 직접 적용되지 않으며, 수정 후 「설정 → 개발자 옵션 → 설정 가져오기」로 돌아오세요.',
++  '收起插件工具': '플러그인 도구 접기',
++  '展开插件工具': '플러그인 도구 펼치기',
 +}
 +
 +/** Pick Chinese, English, or Korean copy for the active locale. */
@@ -1474,6 +1550,19 @@ index 3b872f8..03bf52e 100644
 +  if (k && !result.includes(k)) result.push(k)
 +  return result
  }
+diff --git a/dsh-client-ui-responsive/src/client/index.ts b/dsh-client-ui-responsive/src/client/index.ts
+index f8e610c..5c351a1 100644
+--- a/dsh-client-ui-responsive/src/client/index.ts
++++ b/dsh-client-ui-responsive/src/client/index.ts
+@@ -331,7 +331,7 @@ export function apply(ctx: ClientContext): void {
+     name: 'settings.general.item',
+     id: 'android-general',
+     order: 90,
+-    label: () => tr('Android 显示', 'Android display'),
++    label: () => tr('Android 显示', 'Android display', 'Android 화면 설정'),
+   }, GeneralSettings))
+ 
+   ctx.inject(['resources', 'sidebarRight', 'sidebarRightTabs'], scope => { registerConversationDock(scope) })
 diff --git a/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx b/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx
 index 3a74a62..4ea50ca 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/OpenInFileManagerAction.tsx
@@ -1497,7 +1586,7 @@ index 3a74a62..4ea50ca 100644
            })
          }
 diff --git a/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx b/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
-index 993bba3..aee1e5c 100644
+index 993bba3..c448f01 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
 +++ b/dsh-client-ui-responsive/src/client/mobile/SidebarToggle.tsx
 @@ -19,7 +19,8 @@ import css from './MobileChrome.module.css'
@@ -1510,20 +1599,121 @@ index 993bba3..aee1e5c 100644
  
  /** The apply-world callbacks this entry may use. */
  export interface SidebarToggleInjected {
+@@ -108,7 +109,7 @@ export function SidebarToggle({ toggleSidebar }: SidebarToggleProps) {
+       data-dsh-sidebar-toggle=""
+       aria-label={
+         browserPending && !open
+-          ? tr('打开导航', 'Open navigation') + tr('（有一个浏览器标签在等你展开侧栏）', ' (a browser tab is waiting behind the sidebar)')
++          ? tr('打开导航', 'Open navigation', '내비게이션 열기') + tr('（有一个浏览器标签在等你展开侧栏）', ' (a browser tab is waiting behind the sidebar)', ' (열기를 기다리는 브라우저 탭이 있습니다)')
+           : toggleLabel(open)
+       }
+       aria-expanded={open}
+@@ -125,7 +126,7 @@ export function SidebarToggle({ toggleSidebar }: SidebarToggleProps) {
+         title row keeps its width the rest of the time. */}
+     {browserPending && !open && (
+       <span className={css.pendingHint} data-dsh-browser-pending-hint="">
+-        {tr('有浏览器标签待展开', 'A browser tab is ready')}
++        {tr('有浏览器标签待展开', 'A browser tab is ready', '대기 중인 브라우저 탭 있음')}
+       </span>
+     )}
+     </>
 diff --git a/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts b/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
-index fb1dd20..32321d5 100644
+index fb1dd20..0378248 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
 +++ b/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
-@@ -41,6 +41,9 @@ interface PickerCopy {
+@@ -25,6 +25,8 @@
+  * goes with the session; a failure to mount must never propagate into the plugin body, because that
+  * body is the phone runtime the user asked to keep alive.
+  */
++import { tr } from '../i18n.ts'
++
+ const MENU_ATTR = 'data-dsh-attachment-picker-menu'
+ const ITEM_ATTR = 'data-dsh-attachment-picker-item'
+ const TRIGGER_ATTR = 'data-dsh-attachment-picker-trigger'
+@@ -40,10 +42,10 @@ interface PickerCopy {
+ }
  
  function copyForDocument(): PickerCopy {
-   const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
-+  if (language.startsWith('ko')) {
-+    return { file: '첨부파일 업로드', image: '이미지 업로드' }
+-  const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
+-  return language.startsWith('zh')
+-    ? { file: '上传附件', image: '上传图片' }
+-    : { file: 'Upload attachment', image: 'Upload image' }
++  return {
++    file: tr('上传附件', 'Upload attachment', '첨부파일 업로드'),
++    image: tr('上传图片', 'Upload image', '이미지 업로드'),
 +  }
-   return language.startsWith('zh')
-     ? { file: '上传附件', image: '上传图片' }
-     : { file: 'Upload attachment', image: 'Upload image' }
+ }
+ 
+ /**
+diff --git a/dsh-client-ui-responsive/src/client/mobile/back-stack.ts b/dsh-client-ui-responsive/src/client/mobile/back-stack.ts
+index 5b1e526..fbef902 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/back-stack.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/back-stack.ts
+@@ -42,6 +42,8 @@
+  * service's own panel selection rather than consuming the press without effect.
+  */
+ 
++import { both } from '../i18n.ts'
++
+ /** Layer kinds, bottom to top as detected within one pass. */
+ export type BackLayerKind =
+   | 'drawer'
+@@ -79,7 +81,7 @@ const SIDEBAR_COLLAPSED_ATTR = 'data-sidebar-collapsed'
+ /** Every upstream modal surface (settings panel, ui-primitives Modal, image lightbox). */
+ const DIALOG_SELECTOR = '[role="dialog"][aria-modal="true"]'
+ /** Accessible names of the trajectory "Event details" side panel (zh + en dictionaries). */
+-const TRAJECTORY_LABELS = ['Event details', '事件详情']
++const TRAJECTORY_LABELS = both('事件详情', 'Event details', '이벤트 세부정보')
+ /**
+  * Right column in its fullscreen presentation **and actually shown**.
+  *
+diff --git a/dsh-client-ui-responsive/src/client/mobile/conversation-dock.tsx b/dsh-client-ui-responsive/src/client/mobile/conversation-dock.tsx
+index f9f174a..87db8ad 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/conversation-dock.tsx
++++ b/dsh-client-ui-responsive/src/client/mobile/conversation-dock.tsx
+@@ -5,6 +5,7 @@ import type { ResourceProvider } from '@deepseek-ai/dsh-client-resources/client'
+ import type { ConversationViewsProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+ import type { PropsRuntime, PropsRenderSlots, PropsRenderFactories } from '@deepseek-ai/dsh-client-ui-slots'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import { tr } from '../i18n.ts'
+ 
+ const ID = '@dsh-android/conversation-dock'
+ const PREFIX = 'dsh-resource://conversation/session/'
+@@ -85,7 +86,7 @@ function ChatTab({ useResource, useTabInfo, SessionProvider, renderSlot }: Props
+   const { tab } = useTabInfo()
+   const resource = useResource<'conversation'>(tab.contentId)
+   return <div data-sidebar-chat="" style={{ display: 'flex', width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
+-    {resource.value === undefined ? <div role="status">{resource.status === 'failed' ? '对话加载失败，请关闭标签后重试' : '正在加载对话…'}</div>
++    {resource.value === undefined ? <div role="status">{resource.status === 'failed' ? tr('对话加载失败，请关闭标签后重试', 'Failed to load conversation. Close tab and retry.', '대화 불러오기 실패, 탭을 닫은 후 다시 시도하세요') : tr('正在加载对话…', 'Loading conversation...', '대화 불러오는 중…')}</div>
+       : <SessionProvider session={resource.value.reference}>{renderSlot('android.dock.conversation', {})}</SessionProvider>}
+   </div>
+ }
+@@ -122,7 +123,7 @@ export function registerConversationDock(ctx: Context): void {
+           if (label) return label
+         }
+       }
+-      return (id === undefined ? undefined : snapshot.byId[id]?.title) ?? '对话'
++      return (id === undefined ? undefined : snapshot.byId[id]?.title) ?? tr('对话', 'Conversation', '대화')
+     },
+   }), 'ui-responsive: conversation tab')
+   ctx.effect(() => ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+@@ -189,10 +190,12 @@ export class ConversationDropZone {
+   private zone: HTMLDivElement | undefined
+   private readonly leaving = new Map<HTMLDivElement, number>()
+   /** 两种文案：拖动已开始但尚未进入接收区 / 手指已进入接收区可松手。 */
+-  private static readonly LABELS = {
+-    idle: '拖到此处以在侧边栏打开',
+-    over: '松开于侧边栏打开',
+-  } as const
++  private static get LABELS() {
++    return {
++      idle: tr('拖到此处以在侧边栏打开', 'Drag here to open in sidebar', '사이드바에서 열려면 여기로 드래그하세요'),
++      over: tr('松开于侧边栏打开', 'Release to open in sidebar', '사이드바에서 열려면 놓으세요'),
++    }
++  }
+   constructor(
+     private readonly open: (target: DockSessionTarget) => void,
+     private readonly current: () => string | undefined = () => undefined,
 diff --git a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx b/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
 index d86d288..85f5936 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
@@ -1564,6 +1754,25 @@ index d86d288..85f5936 100644
          )}
        {failure !== null && <p className={css.failure}>{failure.title}：{failure.detail}</p>}
      </div>
+diff --git a/dsh-client-ui-responsive/src/client/mobile/header-popups.ts b/dsh-client-ui-responsive/src/client/mobile/header-popups.ts
+index 0fbeb60..1176a52 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/header-popups.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/header-popups.ts
+@@ -1,3 +1,5 @@
++import { both } from '../i18n.ts'
++
+ /**
+  * Keep header action menus usable inside the mobile top bar fold.
+  *
+@@ -8,7 +10,7 @@
+  * overlay while it is open, keeping React's DOM ownership and dismissal logic.
+  */
+ const FOLD_SELECTOR = '[data-dsh-topbar-fold="open"]'
+-const JOBS_LIST_SELECTOR = 'ul[aria-label="后台任务"], ul[aria-label="Background jobs"]'
++const JOBS_LIST_SELECTOR = both('后台任务', 'Background jobs', '백그라운드 작업').map(l => `ul[aria-label="${l}"]`).join(', ')
+ const MARKER = 'data-dsh-header-popup'
+ const OWNED_STYLES = ['position', 'top', 'left', 'right', 'width', 'max-width', 'max-height', 'overflow-y', 'z-index'] as const
+ const VIEWPORT_MARGIN = 12
 diff --git a/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts b/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts
 index ba227fd..649fe3c 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/incoming-draft.ts
@@ -1640,7 +1849,7 @@ index d6a2542..9049b31 100644
      button.addEventListener('click', (event) => {
        event.preventDefault()
 diff --git a/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts b/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
-index c1f8d37..078d36e 100644
+index c1f8d37..b67d573 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
 +++ b/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
 @@ -1,6 +1,7 @@
@@ -1722,7 +1931,7 @@ index c1f8d37..078d36e 100644
 -    if (panes.length !== 1) return this.notify('已打开两个工作区')
 -    if (!active || !tabCapability(active).split) return this.notify('当前标签使用专用视图，不能进入通用分屏')
 +    if (panes.length !== 1) return this.notify(tr('已打开两个工作区', 'Two workspaces already open', '이미 두 개의 작업공간이 열려 있습니다'))
-+    if (!active || !tabCapability(active).split) return this.notify(tr('当前标签使用专用视图，不能进入通用分屏', 'Active tab uses dedicated view and cannot enter split screen', '현재 탭은 전용 뷰(专用视图)를 사용하므로 일반 분할 화면으로 전환할 수 없습니다'))
++    if (!active || !tabCapability(active).split) return this.notify(tr('当前标签使用专用视图，不能进入通用分屏', 'Active tab uses dedicated view and cannot enter split screen', '현재 탭은 전용 뷰를 사용하므로 일반 분할 화면으로 전환할 수 없습니다'))
      const bounds = this.panel!.getBoundingClientRect(), vertical = portraitWorkspace()
 -    if ((vertical ? bounds.height - 48 : bounds.width) < (vertical ? 300 : 400)) return this.notify('可用空间不足，请收起键盘或旋转屏幕')
 +    if ((vertical ? bounds.height - 48 : bounds.width) < (vertical ? 300 : 400)) return this.notify(tr('可用空间不足，请收起键盘或旋转屏幕', 'Insufficient space; collapse keyboard or rotate screen', '사용 가능한 공간이 부족합니다. 키보드를 접거나 화면을 회전하세요'))
@@ -1817,36 +2026,34 @@ index 2ddacff..fd65afd 100644
      for (const row of document.querySelectorAll<HTMLElement>(ROW_SELECTOR)) {
        if (sourceOfRow(row) !== REFERENCE_SOURCE) continue
 diff --git a/dsh-client-ui-responsive/src/client/mobile/settings-document.ts b/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
-index 49d067f..a09cd79 100644
+index 49d067f..5b60d26 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
 +++ b/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
 @@ -14,9 +14,10 @@
   */
  import { chooserAvailable, openPathChooser } from './open-path.ts'
  import { reportUserFacingResult } from '../export-result.ts'
-+import { isKorean } from '../i18n.ts'
++import { tr, both } from '../i18n.ts'
  
  /** Upstream action labels this handler claims (zh / en dictionaries). */
 -const ACTION_LABELS = ['打开配置文件', 'Open configuration file']
-+const ACTION_LABELS = ['打开配置文件', 'Open configuration file', '설정 파일 열기']
++const ACTION_LABELS = both('打开配置文件', 'Open configuration file', '설정 파일 열기')
  
  /** Host bridge surface this handler needs beyond the path chooser. */
  interface SettingsPathBridge {
-@@ -90,9 +91,14 @@ export class SettingsDocumentAction {
+@@ -90,9 +91,12 @@ export class SettingsDocumentAction {
        // （这条动作由上游按钮触发，我们无法在它旁边内联渲染文字）。
        reportUserFacingResult({
          ok: true,
 -        title: '已打开配置文件的副本',
 -        detail: '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；'
 -          + '改完请回到「设置 → 开发者选项 → 导入配置」。',
-+        title: isKorean()
-+          ? '설정 파일의 복사본(副本)을 열었습니다'
-+          : '已打开配置文件的副本',
-+        detail: isKorean()
-+          ? '이 파일은 내보낸 복사본(Documents/dshdata/exports/config/settings.yaml)입니다. 여기에서 수정해도 직접 적용되지 않으며, '
-+            + '수정 후 「설정 → 개발자 옵션 → 설정 가져오기(导入配置)」로 돌아오세요.'
-+          : '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；'
-+            + '改完请回到「设置 → 开发者选项 → 导入配置」。',
++        title: tr('已打开配置文件的副本', 'Configuration file copy opened', '설정 파일의 복사본을 열었습니다'),
++        detail: tr(
++          '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；改完请回到「设置 → 开发者选项 → 导入配置」。',
++          'This is an exported copy (Documents/dshdata/exports/config/settings.yaml); changes made here do not take effect directly. After editing, return to Settings → Developer options → Import configuration.',
++          '이 파일은 내보낸 복사본(Documents/dshdata/exports/config/settings.yaml)입니다. 여기에서 수정해도 직접 적용되지 않으며, 수정 후 「설정 → 개발자 옵션 → 설정 가져오기」로 돌아오세요.',
++        ),
        })
      }
    }
@@ -2147,16 +2354,25 @@ index a500e34..adf0794 100644
    }
    private readonly onPointerCancel = (): void => { this.cancelPress(); this.suppressClick = false }
 diff --git a/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts b/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
-index 04ae9af..d659845 100644
+index 04ae9af..819047b 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
 +++ b/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
-@@ -234,7 +234,8 @@ export class TopBarFold {
+@@ -1,4 +1,5 @@
+ import { HeaderPopups } from './header-popups.ts'
++import { tr } from '../i18n.ts'
+ 
+ /**
+  * 竖屏顶栏插件 UI 折叠（0.14.7 / Spec 2.6）。
+@@ -232,9 +233,9 @@ export class TopBarFold {
+ 
+   /** 本地化的箭头无障碍名（本插件自有文案，无上游文案依赖）。 */
    private foldLabel(): string {
-     const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
-     if (language.startsWith('zh')) return this.open ? '收起插件工具' : '展开插件工具'
+-    const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
+-    if (language.startsWith('zh')) return this.open ? '收起插件工具' : '展开插件工具'
 -    return this.open ? 'Collapse plugin tools' : 'Expand plugin tools'
-+    if (language.startsWith('en')) return this.open ? 'Collapse plugin tools' : 'Expand plugin tools'
-+    return this.open ? '플러그인 도구 접기' : '플러그인 도구 펼치기'
++    return this.open
++      ? tr('收起插件工具', 'Collapse plugin tools', '플러그인 도구 접기')
++      : tr('展开插件工具', 'Expand plugin tools', '플러그인 도구 펼치기')
    }
  
    private removeArrow(): void {
@@ -2289,6 +2505,26 @@ index f8766f6..3f9c3ef 100644
  
  declare module '@deepseek-ai/dsh-client-ui-slots' {
    interface LocaleNamespaceMap {
+diff --git a/dsh-client-ui-responsive/src/client/session-log-dialog.css.ts b/dsh-client-ui-responsive/src/client/session-log-dialog.css.ts
+index 177bedb..ca7fc60 100644
+--- a/dsh-client-ui-responsive/src/client/session-log-dialog.css.ts
++++ b/dsh-client-ui-responsive/src/client/session-log-dialog.css.ts
+@@ -25,11 +25,15 @@ export const SESSION_LOG_DIALOG_LABEL_PREFIXES: readonly string[] = [
+   'Exporting Session',
+   'Session download',
+   'Session export',
++  'Session 내보내는 중',
++  'Session 내보내기',
+ ]
+ 
+ export const SESSION_LOG_DIALOG_HIDE_CSS: string = `
+ [role="presentation"]:has([role="dialog"][aria-label^="正在导出 Session"]),
+ [role="presentation"]:has([role="dialog"][aria-label^="Session 导出"]),
++[role="presentation"]:has([role="dialog"][aria-label^="Session 내보내는 중"]),
++[role="presentation"]:has([role="dialog"][aria-label^="Session 내보내기"]),
+ [role="presentation"]:has([role="dialog"][aria-label^="Exporting Session"]),
+ [role="presentation"]:has([role="dialog"][aria-label^="Session download"]),
+ [role="presentation"]:has([role="dialog"][aria-label^="Session export"]) {
 diff --git a/dsh-client-ui-responsive/src/client/user-copy.ts b/dsh-client-ui-responsive/src/client/user-copy.ts
 index f270825..94f42e0 100644
 --- a/dsh-client-ui-responsive/src/client/user-copy.ts

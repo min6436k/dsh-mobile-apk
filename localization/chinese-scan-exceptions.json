@@ -1,3 +1,54 @@
 {
-  "exceptions": []
+  "exceptions": [
+    {
+      "file": "dsh-client-ui-responsive/src/client/composer-row.css.ts",
+      "text": "@media (max-width: 400px) {\n  [data-composer-card] [aria-label*='选择模型'],\n  [data-composer-card] [aria-label*='모델 선택'],\n  [data-composer-card] [aria-label*='model'] {\n    max-width: 104px;\n  }\n  [data-composer-card] [aria-label*='选择模型'] span",
+      "why": "CSS selector matching upstream model picker button aria-label across all locales (zh/en/ko) to constrain button width on narrow screens."
+    },
+    {
+      "file": "dsh-client-ui-responsive/src/client/session-log-dialog.css.ts",
+      "text": "正在导出 Session",
+      "why": "Upstream dialog title prefix pattern to match and hide Chinese export modals across locales on Android shell builds."
+    },
+    {
+      "file": "dsh-client-ui-responsive/src/client/session-log-dialog.css.ts",
+      "text": "Session 导出",
+      "why": "Upstream dialog title prefix pattern to match and hide Chinese export modals across locales on Android shell builds."
+    },
+    {
+      "file": "dsh-client-ui-responsive/src/client/session-log-dialog.css.ts",
+      "text": "[role=\"presentation\"]:has([role=\"dialog\"][aria-label^=\"正在导出 Session\"]),\n[role=\"presentation\"]:has([role=\"dialog\"][aria-label^=\"Session 导出\"]),\n[role=\"presentation\"]:has([role=\"dialog\"][aria-label^=\"Session 내보내는 중\"]),\n[role=\"presentation\"]:ha",
+      "why": "CSS selector matching upstream session log modal aria-label across Chinese and Korean locales to prevent modal duplication."
+    },
+    {
+      "file": "dsh-host-web-compat/lib/index.js",
+      "text": "<script>(function(){\nif(window.__dshBridge){return}\nwindow.__dshBridge={\nonDirectoryPicked:function(callbackId,path){\ntry{var h={'content-type':'application/json'};if(window.androidBridge&&window.androidBridge.getPickToken){h['x-dsh-pick-to",
+      "why": "Injected client bootstrap script containing localized fallback alerts; Korean locale is explicitly checked and returns Korean message."
+    },
+    {
+      "file": "app/src/main/java/com/dsharnessmobile/shell/OverlayService.kt",
+      "text": "临时工作区",
+      "why": "Storage lookup for workspace.json tables to find the ID of the incoming workspace."
+    },
+    {
+      "file": "plugins/dsh-android-file-open/src/index.ts",
+      "text": "临时工作区",
+      "why": "Internal workspace identity registered into the host workspace registry for incoming files."
+    },
+    {
+      "file": "app/src/main/java/com/dsharnessmobile/shell/UndoGate.kt",
+      "text": "完成：还原",
+      "why": "Exact stdout status prefix emitted by undo-emergency.mjs node script indicating successful restore."
+    },
+    {
+      "file": "app/src/main/java/com/dsharnessmobile/shell/UndoGate.kt",
+      "text": "恢复快照",
+      "why": "Exact stdout log marker emitted by undo-emergency.mjs node script identifying restored snapshot line."
+    },
+    {
+      "file": "app/src/main/java/com/dsharnessmobile/shell/UndoGate.kt",
+      "text": "恢复快照 (\\\\S+)",
+      "why": "Regex pattern matching the exact stdout log emitted by undo-emergency.mjs to extract restored snapshot ID."
+    }
+  ]
 }

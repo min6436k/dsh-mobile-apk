@@ -1,0 +1,218 @@
+diff --git a/app/src/main/assets/licenses/lucide-theme-icons.txt b/app/src/main/assets/licenses/lucide-theme-icons.txt
+new file mode 100644
+index 0000000..7c2f83d
+--- /dev/null
++++ b/app/src/main/assets/licenses/lucide-theme-icons.txt
+@@ -0,0 +1,45 @@
++Theme mode icons: sun, moon and monitor, adapted from Lucide SVG artwork.
++Source: https://github.com/lucide-icons/lucide/tree/main/icons
++License: https://github.com/lucide-icons/lucide/blob/main/LICENSE
++
++ISC License
++
++Copyright (c) 2026 Lucide Icons and Contributors
++
++Permission to use, copy, modify, and/or distribute this software for any
++purpose with or without fee is hereby granted, provided that the above
++copyright notice and this permission notice appear in all copies.
++
++THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
++WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
++MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
++ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
++WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
++ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
++OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
++
++---
++
++The moon and monitor icons are also derived from Feather Icons.
++
++The MIT License (MIT)
++
++Copyright (c) 2013-present Cole Bemis
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+index 113fa8e..845a4f3 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+@@ -170,12 +170,12 @@ internal class GuideManagementController(
+       setPadding(0, 0, 0, dp(12))
+     })
+     val choices = listOf(
+-      AppTheme.MODE_LIGHT to ("☀  " + t("浅色", "Light", "라이트")),
+-      AppTheme.MODE_DARK to ("☾  " + t("深色", "Dark", "다크")),
+-      AppTheme.MODE_SYSTEM to ("⚙  " + t("跟随系统", "System", "시스템")),
++      Triple(AppTheme.MODE_LIGHT, t("浅色", "Light", "라이트"), R.drawable.ds_theme_sun),
++      Triple(AppTheme.MODE_DARK, t("深色", "Dark", "다크"), R.drawable.ds_theme_moon),
++      Triple(AppTheme.MODE_SYSTEM, t("跟随系统", "System", "시스템"), R.drawable.ds_theme_monitor),
+     )
+     val strip = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
+-    val chips = mutableListOf<Pair<TextView, GradientDrawable>>()
++    val chips = mutableListOf<Triple<TextView, GradientDrawable, android.graphics.drawable.Drawable?>>()
+     val selectedFill = activity.getColor(R.color.ds_accent)
+     val selectedInk = activity.getColor(R.color.ds_text_on_accent)
+     val plainFill = activity.getColor(R.color.ds_chip)
+@@ -184,7 +184,7 @@ internal class GuideManagementController(
+     val outer = dp(11).toFloat()
+     var selected = AppTheme.mode(activity)
+     var switching = false
+-    choices.forEachIndexed { index, (mode, title) ->
++    choices.forEachIndexed { index, (mode, title, iconResource) ->
+       // Android's corner array is ordered TL, TR, BR, BL (x/y for each corner).
+       val left = if (index == 0) outer else middle
+       val right = if (index == choices.lastIndex) outer else middle
+@@ -192,11 +192,17 @@ internal class GuideManagementController(
+         cornerRadii = floatArrayOf(left, left, right, right, right, right, left, left)
+         setColor(if (selected == mode) selectedFill else plainFill)
+       }
++      // Lucide outline artwork is bundled as tintable Android vectors (no emoji/font fallback).
++      val icon = activity.getDrawable(iconResource)?.mutate()?.apply {
++        setTint(if (selected == mode) selectedInk else plainInk)
++      }
+       val chip = TextView(activity).apply {
+         text = title
+         gravity = Gravity.CENTER
+         textSize = 13f
+         setSingleLine(true)
++        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null)
++        compoundDrawablePadding = dp(6)
+         setTextColor(if (selected == mode) selectedInk else plainInk)
+         background = android.graphics.drawable.RippleDrawable(
+           android.content.res.ColorStateList.valueOf(activity.getColor(R.color.ds_accent_soft)),
+@@ -211,7 +217,7 @@ internal class GuideManagementController(
+         isSelected = selected == mode
+         contentDescription = t("色彩模式", "Color mode", "색상 모드") + ": " + title
+       }
+-      chips.add(chip to shape)
++      chips.add(Triple(chip, shape, icon))
+       strip.addView(chip, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+         if (index != 0) marginStart = dp(2)
+       })
+@@ -220,13 +226,13 @@ internal class GuideManagementController(
+         switching = true
+         val fromMode = selected
+         selected = mode
+-        chips.forEachIndexed { position, (view, _) -> view.isSelected = choices[position].first == mode }
++        chips.forEachIndexed { position, (view, _, _) -> view.isSelected = choices[position].first == mode }
+         val transition = ValueAnimator.ofFloat(0f, 1f).apply {
+           duration = 200
+           interpolator = DsUi.ease
+           addUpdateListener { frame ->
+             val fraction = frame.animatedValue as Float
+-            chips.forEachIndexed { position, (view, drawable) ->
++            chips.forEachIndexed { position, (view, drawable, vector) ->
+               val choice = choices[position].first
+               val startFill = if (choice == fromMode) selectedFill else plainFill
+               val endFill = if (choice == mode) selectedFill else plainFill
+@@ -234,6 +240,7 @@ internal class GuideManagementController(
+               val endInk = if (choice == mode) selectedInk else plainInk
+               drawable.setColor(ArgbEvaluator().evaluate(fraction, startFill, endFill) as Int)
+               view.setTextColor(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
++              vector?.setTint(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
+             }
+           }
+         }
+diff --git a/app/src/main/res/drawable/ds_theme_monitor.xml b/app/src/main/res/drawable/ds_theme_monitor.xml
+new file mode 100644
+index 0000000..662f3be
+--- /dev/null
++++ b/app/src/main/res/drawable/ds_theme_monitor.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Monitor by Lucide Icons: see assets/licenses/lucide-theme-icons.txt -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++  android:width="19dp" android:height="19dp"
++  android:viewportWidth="24" android:viewportHeight="24">
++  <path android:fillColor="@android:color/transparent"
++    android:strokeColor="#FF000000" android:strokeWidth="2"
++    android:strokeLineCap="round" android:strokeLineJoin="round"
++    android:pathData="M4,3h16a2,2 0,0 1,2 2v10a2,2 0,0 1,-2 2H4a2,2 0,0 1,-2 -2V5a2,2 0,0 1,2 -2zM8,21h8M12,17v4" />
++</vector>
+diff --git a/app/src/main/res/drawable/ds_theme_moon.xml b/app/src/main/res/drawable/ds_theme_moon.xml
+new file mode 100644
+index 0000000..081710e
+--- /dev/null
++++ b/app/src/main/res/drawable/ds_theme_moon.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Moon by Lucide Icons: see assets/licenses/lucide-theme-icons.txt -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++  android:width="19dp" android:height="19dp"
++  android:viewportWidth="24" android:viewportHeight="24">
++  <path android:fillColor="@android:color/transparent"
++    android:strokeColor="#FF000000" android:strokeWidth="2"
++    android:strokeLineCap="round" android:strokeLineJoin="round"
++    android:pathData="M20.985,12.486a9,9 0,1 1,-9.473 -9.472c0.405,-0.022 0.617,0.46 0.402,0.803a6,6 0,0 0,8.268 8.268c0.344,-0.215 0.825,-0.004 0.803,0.401" />
++</vector>
+diff --git a/app/src/main/res/drawable/ds_theme_sun.xml b/app/src/main/res/drawable/ds_theme_sun.xml
+new file mode 100644
+index 0000000..9ce56e1
+--- /dev/null
++++ b/app/src/main/res/drawable/ds_theme_sun.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Sun by Lucide Icons: see assets/licenses/lucide-theme-icons.txt -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++  android:width="19dp" android:height="19dp"
++  android:viewportWidth="24" android:viewportHeight="24">
++  <path android:fillColor="@android:color/transparent"
++    android:strokeColor="#FF000000" android:strokeWidth="2"
++    android:strokeLineCap="round" android:strokeLineJoin="round"
++    android:pathData="M16,12a4,4 0,1 1,-8 0a4,4 0,1 1,8 0M12,2v2M12,20v2M4.93,4.93l1.41,1.41M17.66,17.66l1.41,1.41M2,12h2M20,12h2M6.34,17.66l-1.41,1.41M19.07,4.93l-1.41,1.41" />
++</vector>
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+index 2e656a2..b3b240a 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+@@ -1,7 +1,10 @@
+ package com.dsharnessmobile.shell
+ 
+ import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
+ import org.junit.Test
++import java.io.File
+ 
+ class AppThemeTest {
+   @Test fun normalizesInvalidAndMissingModes() {
+@@ -17,4 +20,21 @@ class AppThemeTest {
+     assertEquals(true, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, true))
+     assertEquals(false, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, false))
+   }
++
++  @Test fun threeConnectedThemeOptionsUseTintableVectorArtInsteadOfEmoji() {
++    val root = listOf(File("src/main"), File("app/src/main")).first { it.exists() }
++    val controller = File(root, "java/com/dsharnessmobile/shell/GuideManagementController.kt").readText()
++    for (icon in listOf("sun", "moon", "monitor")) {
++      assertTrue(controller.contains("R.drawable.ds_theme_$icon"))
++      val vector = File(root, "res/drawable/ds_theme_$icon.xml")
++      assertTrue("missing vector for $icon", vector.exists())
++      assertTrue(vector.readText().contains("<vector"))
++    }
++    assertFalse("theme icons must not depend on font-specific emoji", controller.contains("☀"))
++    assertFalse(controller.contains("☾"))
++    assertFalse(controller.contains("⚙"))
++    assertTrue("vector and label colors must animate together", controller.contains("vector?.setTint"))
++    assertTrue("outer corners stay rounded independently", controller.contains("if (index == 0) outer else middle"))
++    assertTrue(File(root, "assets/licenses/lucide-theme-icons.txt").exists())
++  }
+ }
+Process exited with code 0.

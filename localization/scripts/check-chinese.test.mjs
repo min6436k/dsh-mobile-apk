@@ -7,13 +7,15 @@ import { scanTree } from './check-chinese.mjs'
 
 function withSource(files, run) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-chinese-audit-'))
+  const emptyExceptions = path.join(root, 'empty-exceptions.json')
+  fs.writeFileSync(emptyExceptions, JSON.stringify({ exceptions: [] }), 'utf8')
   try {
     for (const [name, source] of Object.entries(files)) {
       const full = path.join(root, name)
       fs.mkdirSync(path.dirname(full), { recursive: true })
       fs.writeFileSync(full, source, 'utf8')
     }
-    return run(root)
+    return run(root, emptyExceptions)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -41,8 +43,8 @@ test('comments, dictionary keys and translated helper arguments are excluded', (
     ].join('\n'),
     'plugins/dsh-android-file-open/src/index.ts':
       "const INCOMING_TITLE = '临时工作区'",
-  }, root => {
-    const items = scanTree(root).findings
+  }, (root, emptyExceptions) => {
+    const items = scanTree(root, { exceptionsFile: emptyExceptions }).findings
     const texts = items.map(f => f.text)
     assert.deepEqual(texts.sort(), ['遗漏中文', '界面硬编码', '硬编码错误', '临时工作区'].sort())
     assert.ok(items.some(f => f.reason === 'missing-korean-alternative'))
@@ -117,5 +119,62 @@ test('paired Chinese/Korean lookup tables are not mistaken for untranslated UI',
     assert.ok(!texts.includes('中文说明'))
     assert.ok(!texts.includes('中文索引'))
     assert.ok(!texts.includes('设置'))
+  })
+})
+
+test('template literal comments in CSS/JS are treated as comments', () => {
+  withSource({
+    'app/src/main/Dummy.kt': '// ok',
+    'dsh-client-ui-responsive/src/client/style.css.ts': [
+      'export const CSS = `',
+      '/* 纯注释内容 */',
+      '.selector { color: red; }',
+      '// 行内注释',
+      'const url = "https://example.com/path";',
+      '`',
+    ].join('\n'),
+    'dsh-client-ui-responsive/src/client/real.ts': [
+      'export const A = `未翻译内容`',
+    ].join('\n'),
+  }, root => {
+    const items = scanTree(root).findings
+    const texts = items.map(f => f.text)
+    assert.deepEqual(texts, ['未翻译内容'])
+  })
+})
+
+test('regex literals containing quotes do not break string lexing or comment handling', () => {
+  withSource({
+    'app/src/main/Dummy.kt': '// ok',
+    'plugins/example/src/index.ts': [
+      'const ATTR_RE = /([a-zA-Z-]+)="([^"]*)"/g',
+      '// 注释内中文不应被误判为字符串',
+      '/* 块注释内中文也不应被误判 */',
+      'const valid = "必须翻译的字符串"',
+    ].join('\n'),
+  }, root => {
+    const items = scanTree(root).findings
+    const texts = items.map(f => f.text)
+    assert.deepEqual(texts, ['必须翻译的字符串'])
+  })
+})
+
+test('template literals containing nested backticks inside expressions do not break comment lexing', () => {
+  withSource({
+    'app/src/main/Dummy.kt': '// ok',
+    'plugins/example/src/index.ts': [
+      'export function shellQuote(raw: string): string {',
+      "  return `'${raw.replace(/'/g, `'\\''`)}'`",
+      '}',
+      '/**',
+      ' * 构造一次键盘广播命令。',
+      ' * `-n` 是关键：注释内部包含反引号',
+      ' */',
+      'const untranslated = "遗漏的字符串"',
+    ].join('\n'),
+  }, root => {
+    const items = scanTree(root).findings
+    const texts = items.map(f => f.text)
+    assert.deepEqual(texts, ['遗漏的字符串'])
   })
 })

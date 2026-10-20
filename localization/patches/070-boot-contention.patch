@@ -1,0 +1,141 @@
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
+index 98cc27c..95894fb 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
+@@ -424,6 +424,10 @@ class EngineManager(private val context: Context, private val pickToken: String?
+   @Volatile
+   var lastRefreshDeferred: Boolean = false
+ 
++  /** An in-process refresh/update can own the trees before the on-disk journal appears. */
++  internal fun snapshotWorkInFlight(): Boolean =
++    snapshotRefreshing.get() || onlineUpdateActive.get()
++
+   /**
+    * 最近一次**拒绝启动**的可归因原因（issue #271 ④）：非空即表示上一次 `startEngine` 是被
+    * 前置条件挡下的（而不是 spawn 失败），boot 侧据此能给出「不用再等 90s」的文案。
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/EngineStartFlow.kt b/app/src/main/java/com/dsharnessmobile/shell/EngineStartFlow.kt
+index 407265a..0202696 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/EngineStartFlow.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/EngineStartFlow.kt
+@@ -743,6 +743,22 @@ internal class EngineStartFlow(private val activity: MainActivity) {
+           )
+           requireCurrentEngineFlow(generation)
+           if (!ok) {
++            if (activity.engineManager.lastRefreshDeferred) {
++              // Another startup/update already owns the snapshot. This is not an extraction
++              // failure: leave its data untouched and resume after that owner releases it.
++              Log.i("dsh-shell", "snapshot refresh deferred to active transaction; waiting for owner")
++              activity.runOnUiThread {
++                if (!isCurrentEngineFlow(generation)) return@runOnUiThread
++                activity.applyGuidePhase(GuidePhase.Extracting, UiText.t(activity,
++                  "另一项运行时更新正在进行，请稍候…",
++                  "Another runtime update is in progress. Waiting…",
++                  "다른 런타임 업데이트가 진행 중이에요. 완료되면 자동으로 이어집니다…"))
++                activity.showGuide()
++                engineMonitorHandler.removeCallbacks(deferredStartRunnable)
++                engineMonitorHandler.postDelayed(deferredStartRunnable, SNAPSHOT_TRANSACTION_WAIT_POLL_STEP_MS)
++              }
++              return@Thread
++            }
+             // 任务 19：失败终态落盘（快照解压失败是「启动起不来」的已知成因之一）。
+             // 【0.14.1 升级路径 P0】必须带上**真因**：`refreshSnapshot` 只回布尔值，真因挂在
+             // `EngineManager.lastRefreshFailure`。旧实现此处不传 error → boot-fail.log 只有
+@@ -1046,23 +1062,10 @@ internal class EngineStartFlow(private val activity: MainActivity) {
+     engineMonitorHandler.removeCallbacks(deferredStartRunnable)
+     val marker = SnapshotTransaction.readMarker(activity.filesDir)
+     LogCollector.log("dsh-shell", "engine start deferred: another start flow or a snapshot refresh owns the generation")
+-    if (marker == null) {
+-      // 所有权被占、但没有任何快照事务在场：这次丢弃没有客观依据可等（典型是同一实例里上一次
+-      // 启动流的收尾还没跑完）。如实记账，不制造一个注定空等的等待者。
+-      LogCollector.writeBootFail(
+-        activity, "engine-start-deferred-no-transaction",
+-        "启动请求未获世代所有权（另一次启动流仍在占用），且无快照事务在场：本次请求未被受理，未拉起引擎；"
+-          + "下一次入口（点按钮 / 回前台探活）会重试。",
+-      )
+-      return
+-    }
+-    LogCollector.writeBootFail(
+-      activity, "engine-start-deferred",
+-      "启动请求撞上正在进行的快照刷新，已转为有界等待（**非**静默丢弃）：事务 phase="
+-        + (marker.phase.name) + "，帐龄(自述)="
+-        + snapshotTransactionAccountedAgeMs(marker, System.currentTimeMillis()) / 1_000 + "s，预算 "
+-        + SNAPSHOT_TRANSACTION_WAIT_BUDGET_MS / 60_000 + " 分钟；事务收口后自动续跑一次启动。",
+-    )
++    // Duplicate lifecycle starts are normal, including the brief period before the owner
++    // writes its journal. They must neither show as boot failures nor be dropped forever.
++    Log.i("dsh-shell", if (marker == null) "engine startup already owned; waiting for completion"
++      else "snapshot transaction in progress (phase=${marker.phase}); waiting for completion")
+     engineMonitorHandler.postDelayed(deferredStartRunnable, SNAPSHOT_TRANSACTION_WAIT_POLL_STEP_MS)
+   }
+ 
+@@ -1080,7 +1083,8 @@ internal class EngineStartFlow(private val activity: MainActivity) {
+     private var waitedMs = 0L
+     override fun run() {
+       if (!canRunEngineWork()) { waitedMs = 0L; return }
+-      val transactionBusy = SnapshotTransaction.readMarker(activity.filesDir) != null
++      val transactionBusy = SnapshotTransaction.readMarker(activity.filesDir) != null ||
++        activity.engineManager.snapshotWorkInFlight()
+       if (!transactionBusy && !flowOwnership.running) {
+         waitedMs = 0L
+         LogCollector.log("dsh-shell", "deferred engine start resuming: snapshot transaction settled and ownership is free")
+@@ -1095,6 +1099,13 @@ internal class EngineStartFlow(private val activity: MainActivity) {
+             + "（快照事务在场=" + transactionBusy + "）：本次启动请求未执行，也未拉起引擎；"
+             + "事务仍在解压时可稍后重试或改用重启应用。",
+         )
++        activity.applyGuidePhase(GuidePhase.Error, UiText.t(activity,
++          "运行时更新等待超时", "Runtime update wait timed out", "런타임 업데이트 대기 시간 초과"),
++          UiText.t(activity,
++            "运行时更新长时间未完成。请稍后重试；无需清除应用数据。",
++            "The runtime update did not finish. Try again later; do not clear app data.",
++            "런타임 업데이트가 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요. 앱 데이터를 지울 필요는 없어요."))
++        activity.showGuide()
+         return
+       }
+       waitedMs += SNAPSHOT_TRANSACTION_WAIT_POLL_STEP_MS
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/DeferredEngineStartTest.kt b/app/src/test/java/com/dsharnessmobile/shell/DeferredEngineStartTest.kt
+index 1237113..eb2933e 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/DeferredEngineStartTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/DeferredEngineStartTest.kt
+@@ -233,8 +233,6 @@ class DeferredEngineStartTest {
+   fun deferralIsRecordedInBootFailNotOnlyInTheDisabledCollector() {
+     val flow = codeOnly(source("EngineStartFlow.kt"))
+     for (stage in listOf(
+-      "engine-start-deferred",              // 撞上刷新：转为有界等待
+-      "engine-start-deferred-no-transaction", // 所有权被占但无事务：如实记账（不空等）
+       "engine-start-deferred-timeout",      // 等待预算用尽：如实收手
+       "snapshot-transaction-wait",          // 安全模式重启的事务等待（进入面）
+       "snapshot-transaction-wait-failed",   // 事务未在预算内收口
+@@ -245,7 +243,11 @@ class DeferredEngineStartTest {
+     // 反证：不得只留一句 LogCollector.log 就算完（那正是「零回执」的形态）。
+     val defer = flow.substringAfter("private fun deferEngineStartWhileSnapshotTransactionBusy()")
+       .substringBefore("private val deferredStartRunnable")
+-    assertTrue("处置路径必须写 boot-fail", defer.contains("LogCollector.writeBootFail("))
++    assertFalse("정상적인 중복 시작은 실패 로그가 아니어야 함", defer.contains("LogCollector.writeBootFail("))
++    assertTrue("중복 시작 후에도 자동 이어서 시작해야 함", defer.contains("postDelayed(deferredStartRunnable"))
++    val waiting = flow.substringAfter("private val deferredStartRunnable")
++      .substringBefore("private fun canRunEngineWork")
++    assertTrue("제한 시간 초과는 실제 오류로 기록", waiting.contains("LogCollector.writeBootFail("))
+   }
+ 
+   /** 等待的判据必须是**跨进程真源** journal，而不是本 Activity 实例的内存态。 */
+@@ -266,6 +268,19 @@ class DeferredEngineStartTest {
+     val runnable = flow.substringAfter("private val deferredStartRunnable")
+       .substringBefore("private fun canRunEngineWork")
+     assertTrue("续跑必须同时判事务与所有权", runnable.contains("!transactionBusy && !flowOwnership.running"))
++    assertTrue("journal 쓰기 전의 메모리 내 업데이트도 대기", runnable.contains("snapshotWorkInFlight()"))
++  }
++
++  @Test
++  fun aContendedRefreshCannotBeReportedAsAnExtractionFailure() {
++    val flow = codeOnly(source("EngineStartFlow.kt"))
++    val branch = flow.substringAfter("if (!ok) {").substringBefore("val refreshCause =")
++    assertTrue("다른 트랜잭션은 오류 분기 전에 구분", branch.contains("if (activity.engineManager.lastRefreshDeferred)"))
++    assertTrue("다른 소유자가 끝나면 자동 재개", branch.contains("postDelayed(deferredStartRunnable"))
++    assertTrue("중복 압축 해제 대신 정상 대기 상태 유지", branch.contains("GuidePhase.Extracting"))
++    assertTrue("성공 경로와 명확히 분리", branch.contains("return@Thread"))
++    val manager = codeOnly(source("EngineManager.kt"))
++    assertTrue("journal 이전에 이미 진행 중인 트랜잭션도 감지", manager.contains("internal fun snapshotWorkInFlight()"))
+   }
+ 
+   /**
+Process exited with code 0.

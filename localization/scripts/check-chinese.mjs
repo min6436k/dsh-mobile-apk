@@ -101,19 +101,83 @@ function lex(source) {
       i = end < 0 ? source.length : end + 2
       continue
     }
+    if (a === '/' && b !== '/' && b !== '*') {
+      const last = out.length ? out[out.length - 1] : null
+      const isRegex = !last || (last.type === 'punct' && !')]}'.includes(last.value)) ||
+        (last.type === 'id' && ['return', 'typeof', 'case', 'delete', 'throw', 'void', 'yield', 'in', 'instanceof'].includes(last.value))
+      if (isRegex) {
+        let j = i + 1, inClass = false
+        while (j < source.length) {
+          if (source[j] === '\\') { j += 2; continue }
+          if (source[j] === '[') inClass = true
+          else if (source[j] === ']') inClass = false
+          else if (source[j] === '/' && !inClass) { j++; break }
+          else if (source[j] === '\n') break
+          j++
+        }
+        while (j < source.length && /[a-z]/i.test(source[j])) j++
+        out.push({ type: 'regex', value: source.slice(i, j), start: i, end: j })
+        i = j
+        continue
+      }
+    }
     const triple = source.startsWith('"""', i)
     if (triple || a === '"' || a === "'" || a === '\u0060') {
       const start = i
       const delimiter = triple ? '"""' : a
       i += delimiter.length
       const bodyStart = i
-      while (i < source.length) {
-        if (!triple && source[i] === '\\') { i += 2; continue }
-        if (source.startsWith(delimiter, i)) break
-        i++
+      if (delimiter === '\u0060') {
+        const stack = ['\u0060']
+        while (i < source.length && stack.length > 0) {
+          const top = stack[stack.length - 1]
+          if (top === '\u0060') {
+            if (source[i] === '\\') { i += 2; continue }
+            if (source[i] === '$' && source[i + 1] === '{') {
+              stack.push('{'); i += 2; continue
+            }
+            if (source[i] === '\u0060') {
+              stack.pop(); i++; continue
+            }
+            i++
+          } else if (top === '{') {
+            const c = source[i]
+            if (c === '\\') { i += 2; continue }
+            if (c === "'" || c === '"' || c === '\u0060') {
+              stack.push(c); i++; continue
+            }
+            if (c === '/') {
+              let j = i + 1, inClass = false
+              while (j < source.length) {
+                if (source[j] === '\\') { j += 2; continue }
+                if (source[j] === '[') inClass = true
+                else if (source[j] === ']') inClass = false
+                else if (source[j] === '/' && !inClass) { j++; break }
+                else if (source[j] === '\n') break
+                j++
+              }
+              while (j < source.length && /[a-z]/i.test(source[j])) j++
+              i = j
+              continue
+            }
+            if (c === '{') stack.push('{')
+            else if (c === '}') stack.pop()
+            i++
+          } else if (top === "'" || top === '"') {
+            if (source[i] === '\\') { i += 2; continue }
+            if (source[i] === top) stack.pop()
+            i++
+          }
+        }
+      } else {
+        while (i < source.length) {
+          if (!triple && source[i] === '\\') { i += 2; continue }
+          if (source.startsWith(delimiter, i)) break
+          i++
+        }
       }
-      const value = source.slice(bodyStart, i)
-      i = Math.min(source.length, i + delimiter.length)
+      const value = source.slice(bodyStart, delimiter === '\u0060' ? i - 1 : i)
+      if (delimiter !== '\u0060') i = Math.min(source.length, i + delimiter.length)
       // Strings may embed Kotlin/JS expressions: \${ko("原文", "번역")}.
       // Mask these expressions in the outer literal and tokenize the nested
       // expression independently, so its translation helper can be recognized.
@@ -139,6 +203,29 @@ function lex(source) {
         for (let p = j; p < k; p++) if (literal[p] !== '\n') literal[p] = ' '
         j = k - 1
       }
+      if (delimiter === '\u0060' || triple) {
+        let inBlock = false, inLine = false, inHtml = false
+        for (let p = 0; p < literal.length; p++) {
+          if (!inBlock && !inLine && !inHtml) {
+            if (literal[p] === '/' && literal[p + 1] === '*') { inBlock = true; literal[p] = ' '; literal[p + 1] = ' '; p++; continue }
+            if (literal[p] === '<' && literal[p + 1] === '!' && literal[p + 2] === '-' && literal[p + 3] === '-') {
+              inHtml = true; literal[p] = ' '; literal[p + 1] = ' '; literal[p + 2] = ' '; literal[p + 3] = ' '; p += 3; continue
+            }
+            if (literal[p] === '/' && literal[p + 1] === '/' && (p === 0 || /\s|[;{}(),]/.test(literal[p - 1]))) {
+              inLine = true; literal[p] = ' '; literal[p + 1] = ' '; p++; continue
+            }
+          } else if (inBlock) {
+            if (literal[p] === '*' && literal[p + 1] === '/') { inBlock = false; literal[p] = ' '; literal[p + 1] = ' '; p++; continue }
+            if (literal[p] !== '\n') literal[p] = ' '
+          } else if (inHtml) {
+            if (literal[p] === '-' && literal[p + 1] === '-' && literal[p + 2] === '>') { inHtml = false; literal[p] = ' '; literal[p + 1] = ' '; literal[p + 2] = ' '; p += 2; continue }
+            if (literal[p] !== '\n') literal[p] = ' '
+          } else if (inLine) {
+            if (literal[p] === '\n') { inLine = false; continue }
+            literal[p] = ' '
+          }
+        }
+      }
       out.push({ type: 'string', value: literal.join(''), start, end: i }, ...nested)
       continue
     }
@@ -148,7 +235,7 @@ function lex(source) {
       out.push({ type: 'id', value: source.slice(start, i), start, end: i })
       continue
     }
-    if ('()[]{},.:?='.includes(a)) out.push({ type: 'punct', value: a, start: i, end: i + 1 })
+    if ('()[]{},.:?=;!&|+-*<>'.includes(a)) out.push({ type: 'punct', value: a, start: i, end: i + 1 })
     i++
   }
   return out

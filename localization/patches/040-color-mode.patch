@@ -176,9 +176,12 @@ index aa1d441..93d1677 100644
  import android.os.Build
  import android.os.StatFs
  import android.view.Gravity
-@@ -53,6 +55,7 @@ internal class GuideManagementController(
+@@ -53,9 +55,10 @@ internal class GuideManagementController(
      })
      row(t("存储管理", "Storage", "저장소 관리"), t("数据、容量与导出", "Data, space, exports", "비공개 데이터, 용량 및 공용 내보내기 디렉터리")) { showStorage() }
+     // 启动页管理（0.14.9）：开屏视频与「打开应用后自动启动」属于启动面，
+     // 放进管理中心而不是引擎 Web UI 的设置中心——引擎没起来时也必须能改。
+     row(t("启动页管理", "Startup screen"), t("开屏视频与自动启动", "Launch video and auto start")) { showSplash() }
      languageRow()
 +    colorModeRow()
      feedback = label("", 14f)
