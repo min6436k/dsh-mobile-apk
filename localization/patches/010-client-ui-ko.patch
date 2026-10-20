@@ -381,6 +381,19 @@ index 603f351..9ef40ed 100644
        </p>
      </div>
    )
+diff --git a/dsh-client-ui-responsive/src/client/dev-section/dev-section.css.ts b/dsh-client-ui-responsive/src/client/dev-section/dev-section.css.ts
+index 0a8a8be..261095a 100644
+--- a/dsh-client-ui-responsive/src/client/dev-section/dev-section.css.ts
++++ b/dsh-client-ui-responsive/src/client/dev-section/dev-section.css.ts
+@@ -84,7 +84,7 @@ export const DEV_SECTION_CSS: string = `
+ .dsh-dev-btn-active {
+   border-color: var(--dsw-alias-state-success-primary, var(--dsw-alias-border-l3));
+   background: var(--dsw-alias-state-success-primary, var(--dsw-alias-button-elevated-fill));
+-  color: var(--dsw-alias-label-on-emphasis, var(--dsw-alias-label-primary));
++  color: var(--dsw-alias-label-primary-foreground, var(--dsw-alias-label-primary));
+ }
+ 
+ .dsh-dev-danger {
 diff --git a/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx b/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx
 index bd6c222..9054d09 100644
 --- a/dsh-client-ui-responsive/src/client/dev-section/notify-settings.tsx
