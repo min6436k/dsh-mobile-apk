@@ -405,6 +405,19 @@ index 97a9530..29ba926 100644
    </footer>
  
  </body>
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AdbKeyboardService.kt b/app/src/main/java/com/dsharnessmobile/shell/AdbKeyboardService.kt
+index 4d8440b..389c764 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/AdbKeyboardService.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/AdbKeyboardService.kt
+@@ -49,7 +49,7 @@ class AdbKeyboardService : InputMethodService() {
+ 
+   override fun onCreateInputView(): View {
+     val label = TextView(this).apply {
+-      text = "DeepSeek ADB 输入通道（点击收起键盘）"
++      text = if (DsLocale.isKo()) "DeepSeek ADB 입력 채널 (탭하여 키보드 접기)" else "DeepSeek ADB 输入通道（点击收起键盘）"
+       setPadding(dp(16), dp(8), dp(16), dp(8))
+       setTextColor(0xFF666666.toInt())
+       textSize = 12f
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt b/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt
 index f63ec7f..d4ca0a1 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt
@@ -809,6 +822,37 @@ index a7fe7e2..985aabf 100644
        .put("reason", "a11y-unavailable")
        .put("op", op)
    }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt b/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
+index af22dc5..7cb23d1 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
+@@ -215,18 +215,24 @@ class DeviceControlService : AccessibilityService() {
+       val restricted = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+       return JSONObject()
+         .put("enabled", enabled)
+-        .put("label", UiText.t(context, UserCopy.A11Y_SERVICE_NAME, UserCopy.A11Y_SERVICE_NAME_EN))
++        .put("label", UiText.t(context, UserCopy.A11Y_SERVICE_NAME, UserCopy.A11Y_SERVICE_NAME_EN, UserCopy.A11Y_SERVICE_NAME_KO))
+         .put("sdk", Build.VERSION.SDK_INT)
+         .put("restrictedSettingsApplies", restricted)
+         .put(
+           "hint",
+           if (enabled) {
+-            UiText.t(context, "无障碍服务已开启：设备控制走无障碍通道（语义树 + performAction）", "Accessibility is on: device control uses the semantic tree and performAction")
++            UiText.t(
++              context,
++              "无障碍服务已开启：设备控制走无障碍通道（语义树 + performAction）",
++              "Accessibility is on: device control uses the semantic tree and performAction",
++              "접근성 서비스가 켜져 있습니다: 기기 제어가 접근성 채널(시맨틱 트리 + performAction)을 사용합니다",
++            )
+           } else {
+             UiText.t(
+               context,
+               "未开启：到 系统设置 → 无障碍 → 已下载的服务 里开启「" + UserCopy.A11Y_SERVICE_NAME + "」",
+               "Off: open Settings → Accessibility → Downloaded services and turn on " + UserCopy.A11Y_SERVICE_NAME_EN,
++              "꺼짐: 시스템 설정 → 접근성 → 설치된 앱(또는 다운로드된 서비스)에서 「" + UserCopy.A11Y_SERVICE_NAME_KO + "」을(를) 켜세요",
+             )
+           },
+         )
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/DownloadSaver.kt b/app/src/main/java/com/dsharnessmobile/shell/DownloadSaver.kt
 index ddf744f..43b796b 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/DownloadSaver.kt
@@ -865,10 +909,10 @@ index ddf744f..43b796b 100644
        } finally {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
 new file mode 100644
-index 0000000..356f5ce
+index 0000000..eeba2ab
 --- /dev/null
 +++ b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
-@@ -0,0 +1,155 @@
+@@ -0,0 +1,165 @@
 +package com.dsharnessmobile.shell
 +
 +import java.util.Locale
@@ -1007,6 +1051,16 @@ index 0000000..356f5ce
 +    "停用" to "비활성화 예정",
 +    "未知" to "알 수 없음",
 +    "已启用 · " to "활성화됨 · ",
++
++    // SafeMode
++    "安全模式未生效：本版本插件归属清单缺失" to "안전 모드 미적용: 현재 버전의 플러그인 소유권 목록이 누락되어 제품 플러그인과 사용자 플러그인을 구분할 수 없습니다. 기존 설정은 변경되지 않았습니다.",
++    "安全模式已开启；保留现有恢复档，未重复改写。" to "안전 모드가 켜졌습니다. 기존 복구 아카이브를 유지하며 중복 덮어쓰기를 하지 않았습니다.",
++    "已进入安全模式" to "안전 모드로 진입했습니다",
++    "已退出安全模式" to "안전 모드를 종료했습니다",
++    "安全模式：未开启" to "안전 모드: 꺼짐",
++    "安全模式：开启中" to "안전 모드: 켜짐",
++    "进入安全模式失败" to "안전 모드 진입 실패",
++    "退出安全模式失败" to "안전 모드 종료 실패",
 +  )
 +
 +  @JvmStatic
@@ -1025,7 +1079,7 @@ index 0000000..356f5ce
 +/** Convenience shorthand for DsLocale.tr. */
 +internal inline fun ko(zh: String, ko: String): String = DsLocale.tr(zh, ko)
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
-index 41e834a..103caab 100644
+index 41e834a..98cc27c 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
 @@ -227,14 +227,14 @@ class EngineManager(private val context: Context, private val pickToken: String?
@@ -1072,16 +1126,29 @@ index 41e834a..103caab 100644
        // issue #271 ⑤：**事务自己**清理上一轮的失败残渣（不依赖 30 分钟年龄门槛）。
        // 上一轮已结束 ⇒ 它留下的 *.failed-* 确定不再被任何进行中事务引用；不清就会与本次事务
        // 争空间，形成「失败→残渣→空间紧→更易失败」的自我强化。
-@@ -339,7 +339,7 @@ class EngineManager(private val context: Context, private val pickToken: String?
+@@ -339,8 +339,20 @@ class EngineManager(private val context: Context, private val pickToken: String?
          preservedNames = SnapshotUserData.preservedNames.toSet(),
          fingerprint = fingerprint,
          startedAt = startedAt,
 -        onEntry = { onStage(UiText.t(context, "正在更新 ", "Updating ") + it) },
-+        onEntry = { onStage(UiText.t(context, "正在更新 ", "Updating ", "업데이트 중 ") + it) },
++        onEntry = { entry ->
++          val localizedEntry = if (UiText.isKorean(context)) {
++            entry
++              .replace("保留用户数据 ", "사용자 데이터 보존: ")
++              .replace("保留未分类DSH数据 ", "미분류 DSH 데이터 보존: ")
++              .replace("Keeping user data ", "사용자 데이터 보존: ")
++              .replace("Keeping unclassified dsh data ", "미분류 DSH 데이터 보존: ")
++              .replace("；工厂语义纠正 ", "；공장 시맨틱 수정 ")
++              .replace(" 处", "개소")
++          } else entry
++          onStage(UiText.t(context, "正在更新 ", "Updating ", "업데이트 중 ") + localizedEntry)
++        },
          english = UiText.isEnglish(context),
++        isKorean = UiText.isKorean(context),
          spaceCheck = { required -> insufficientSpaceReason(filesDir, required) },
        )
-@@ -352,7 +352,7 @@ class EngineManager(private val context: Context, private val pickToken: String?
+       // #214：profiles 合并期间的工厂语义纠正逐条留档（升级现场可追溯，不只依赖 UI 文案）。
+@@ -352,7 +364,7 @@ class EngineManager(private val context: Context, private val pickToken: String?
        return true
      } catch (t: Throwable) {
        Log.e(TAG, "snapshot refresh failed; rolling back", t)
@@ -1090,7 +1157,7 @@ index 41e834a..103caab 100644
        // 【0.14.1 升级路径 P0】把真因留存给 boot-fail.log。
        // 旧实现只 `return false`，调用方（EngineStartFlow）只能拿到一个布尔值 → boot-fail.log
        // 里 `error=none(boolean-failure-path)`、detail 只有「返回 false」。设备实测该形态下
-@@ -682,8 +682,12 @@ class EngineManager(private val context: Context, private val pickToken: String?
+@@ -682,8 +694,12 @@ class EngineManager(private val context: Context, private val pickToken: String?
        if (free >= requiredBytes) return null
        val needMb = requiredBytes / (1024 * 1024)
        val freeMb = free / (1024 * 1024)
@@ -1105,7 +1172,7 @@ index 41e834a..103caab 100644
      } catch (t: Throwable) {
        // 拿不到 StatFs 事实（异常挂载等）：不因测量失败而阻断更新，但留日志以便事后归因。
        Log.w(TAG, "snapshot space precheck unavailable", t)
-@@ -1555,11 +1559,11 @@ class EngineManager(private val context: Context, private val pickToken: String?
+@@ -1555,11 +1571,11 @@ class EngineManager(private val context: Context, private val pickToken: String?
        else SnapshotUserData.exportConfiguration(dshRoot, dshDataDir)
      LogCollector.log(TAG, "active configuration " + (if (importing) "imported: " else "exported: ") + file.name)
      org.json.JSONObject().put("ok", true).put("path", file.absolutePath)
@@ -1592,7 +1659,7 @@ index 893a9d8..aa1d441 100644
    }
    fun back(): Boolean = when (destination) {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt b/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
-index 452b6ff..6fbfb93 100644
+index 452b6ff..fd280b9 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
 @@ -98,6 +98,12 @@ internal val RUNTIME_STAGE_PHRASES: List<String> = listOf(
@@ -1764,7 +1831,24 @@ index 452b6ff..6fbfb93 100644
        startupRetryAction -> activity.getString(R.string.ds_start_retry)
        phase == GuidePhase.Recovering -> activity.getString(R.string.ds_recovering)
        phase == GuidePhase.Starting || phase == GuidePhase.Extracting -> activity.getString(R.string.ds_starting)
-@@ -679,19 +711,19 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -538,7 +570,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+     )
+     if (!result.ok) {
+       // 备份失败时 live 配置未动；marker 落盘后的 live 写失败可能部分生效，但恢复来源仍保留，回执必须带真因。
+-      applyGuideHint(activity.getString(R.string.ds_safe_failed, result.message))
++      applyGuideHint(activity.getString(R.string.ds_safe_failed, DsLocale.lookup(result.message, result.message)))
+       return@runOnUiThread
+     }
+     val prompt = buildSafeModePrompt(
+@@ -546,6 +578,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+       detail = result.message,
+       logTail = logTail,
+       safeModeActive = true,
++      isKo = UiText.isKorean(activity),
+     )
+     val copied = SafeMode.copyToClipboard(activity, prompt)
+     // 回执按「剪贴板成没成」分两句：prompt 的交付是这条路径的主要价值，不能含糊过去。
+@@ -679,19 +712,19 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
    }
  
    private fun defaultHint(phase: GuidePhase): String = when (phase) {
@@ -1791,7 +1875,7 @@ index 452b6ff..6fbfb93 100644
    }
  
    /**
-@@ -706,6 +738,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -706,6 +739,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
        activity,
        "正在解压运行时，需数分钟，请勿关闭。",
        "Unpacking the runtime; this takes a few minutes. Keep the app open.",
@@ -1799,7 +1883,7 @@ index 452b6ff..6fbfb93 100644
      )
  
    private fun setStatusPulse(on: Boolean) {
-@@ -893,7 +926,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -893,7 +927,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
        }
        ApkUpdateState.STATE_FAILED -> {
          // 失败如实报分类原因（UpdateChecker 的 8 类 + 下载/校验/安装器 3 类），不再链快照更新。
@@ -1808,7 +1892,7 @@ index 452b6ff..6fbfb93 100644
          setUpdateButton(activity.getString(R.string.ds_check_update), enabled = true)
          apkHint(reason)
        }
-@@ -979,7 +1012,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -979,7 +1013,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
      val crash = activity.crashInfo
      if (crash != null) {
        crashBanner.visibility = View.VISIBLE
@@ -1876,7 +1960,7 @@ index 031d995..408af13 100644
        }
      }, "dsh-log-share").apply { isDaemon = true }.start()
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
-index a469b2a..385406b 100644
+index a469b2a..defa14b 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
 @@ -237,8 +237,8 @@ class MainActivity : ComponentActivity() {
@@ -1901,6 +1985,17 @@ index a469b2a..385406b 100644
          )
          return
        }
+@@ -326,8 +326,8 @@ class MainActivity : ComponentActivity() {
+   /** Failed plugin ids in the active language; the hint template owns the surrounding sentence. */
+   private fun clientPluginFailureReason(): String {
+     val ids = engineFlow.clientPluginFailureIds
+-    if (ids.isEmpty()) return UiText.t(this, "未点名具体条目", "unnamed entries")
+-    return UiText.t(this, "条目 " + ids.joinToString(","), "entries " + ids.joinToString(","))
++    if (ids.isEmpty()) return UiText.t(this, "未点名具体条目", "unnamed entries", "구체적인 항목 미지정")
++    return UiText.t(this, "条目 " + ids.joinToString(","), "entries " + ids.joinToString(","), "항목 " + ids.joinToString(","))
+   }
+ 
+   /** Automatic page refreshes coalesce while paused and never issue background navigation. */
 @@ -360,8 +360,8 @@ class MainActivity : ComponentActivity() {
          showGuide()
          applyGuidePhase(
@@ -1963,7 +2058,15 @@ index a469b2a..385406b 100644
            }
          },
          onOpenNativePath = { path -> FileIncoming.openWithExternalReader(this, path) },
-@@ -1444,8 +1448,8 @@ class MainActivity : ComponentActivity() {
+@@ -1436,6 +1440,7 @@ class MainActivity : ComponentActivity() {
+         detail = "引擎主页面被 401 拒绝，所有权门控的自动认证重载 " + ENGINE_AUTH_RELOAD_MAX + " 次后仍未恢复（cookie 无法换出）。",
+         logTail = runCatching { PluginMounts.readEngineLogTail(this, 4_000) }.getOrDefault(""),
+         safeModeActive = false,
++        isKo = UiText.isKorean(this),
+       )
+       SafeMode.copyToClipboard(this, prompt)
+       runOnUiThread {
+@@ -1444,8 +1449,8 @@ class MainActivity : ComponentActivity() {
              showGuide()
              applyGuidePhase(
                GuidePhase.Error,
@@ -1974,7 +2077,7 @@ index a469b2a..385406b 100644
              )
            }
          } catch (t: Throwable) {
-@@ -1671,7 +1675,7 @@ class MainActivity : ComponentActivity() {
+@@ -1671,7 +1676,7 @@ class MainActivity : ComponentActivity() {
          Log.w(TAG, "openAccessibilitySettings failed: " + t.message)
        }
      }
@@ -1983,7 +2086,7 @@ index a469b2a..385406b 100644
    }
  
    private fun keepScreenOn(enable: Boolean) {
-@@ -1768,7 +1772,7 @@ class MainActivity : ComponentActivity() {
+@@ -1768,7 +1773,7 @@ class MainActivity : ComponentActivity() {
  
    /** 导出结果回传 WebView：UI 插件经 window.__dshExportResult 弹软件内结果框。 */
    internal fun pushExportResult(ok: Boolean, detail: String) {
@@ -1992,7 +2095,7 @@ index a469b2a..385406b 100644
      val payload = "{\"ok\":" + ok + ",\"title\":" + jsString(title) + ",\"detail\":" + jsString(detail) + "}"
      webView.post {
        webView.evaluateJavascript(
-@@ -1824,9 +1828,9 @@ class MainActivity : ComponentActivity() {
+@@ -1824,9 +1829,9 @@ class MainActivity : ComponentActivity() {
      )
      val ok = result.optBoolean("ok")
      val message = if (ok) {
@@ -3580,6 +3683,134 @@ index b998dc7..0dd87ad 100644
      val reasoning = listOf("reasoning_content", "reasoning", "reasoning_text")
        .firstNotNullOfOrNull { field -> message.optString(field).takeIf { it.isNotBlank() } }
      if (reasoning != null && message.optString("reasoning_content").isBlank()) {
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/RootAccess.kt b/app/src/main/java/com/dsharnessmobile/shell/RootAccess.kt
+index 1b5ba72..cc378c0 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/RootAccess.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/RootAccess.kt
+@@ -143,33 +143,42 @@ object RootAccess {
+    * 管理器名只在**识别到时**作为提示带上（识别不到就说"你使用的 Root 管理器"，不猜 ✗）。
+    */
+   private fun guidance(state: String, managerLabel: String?, english: Boolean): String {
+-    val manager = managerLabel ?: if (english) "your root manager" else "你使用的 Root 管理器"
++    val isKo = DsLocale.isKo()
++    val manager = managerLabel ?: when {
++      isKo -> "사용 중인 Root 관리자"
++      english -> "your root manager"
++      else -> "你使用的 Root 管理器"
++    }
+     return when (state) {
+-      STATE_GRANTED -> if (english) "Root access granted (uid 0)." else "已获得 root 授权（uid 0）。"
+-      STATE_REQUESTING -> if (english) {
+-        "Waiting for the root grant. If no dialog appeared, open $manager and allow this app."
+-      } else {
+-        "正在等待 root 授权结果——若管理器没有弹出授权框，请自己打开" + manager + "允许本应用。"
++      STATE_GRANTED -> when {
++        isKo -> "root 권한을 획득했습니다 (uid 0)."
++        english -> "Root access granted (uid 0)."
++        else -> "已获得 root 授权（uid 0）。"
+       }
+-      STATE_DENIED -> if (english) {
+-        "Root access was denied. Allow this app in $manager, then check again here."
+-      } else {
+-        "root 授权被拒绝——请在" + manager + "里允许本应用使用 root，然后回到本页重新检测。"
++      STATE_REQUESTING -> when {
++        isKo -> "root 권한 부여 결과를 기다리는 중입니다. 관리자에서 권한 요청 팝업이 뜨지 않으면 " + manager + " 앱을 열어 본 앱을 직접 허용해 주세요."
++        english -> "Waiting for the root grant. If no dialog appeared, open $manager and allow this app."
++        else -> "正在等待 root 授权结果——若管理器没有弹出授权框，请自己打开" + manager + "允许本应用。"
+       }
+-      STATE_TIMEOUT -> if (english) {
+-        "The root request returned no result. Allow this app in $manager and retry."
+-      } else {
+-        "root 授权没有结果——请在" + manager + "里允许本应用后重试。"
++      STATE_DENIED -> when {
++        isKo -> "root 권한이 거부되었습니다. " + manager + "에서 본 앱의 root 사용을 허용한 후 이 페이지로 돌아와 다시 확인하세요."
++        english -> "Root access was denied. Allow this app in $manager, then check again here."
++        else -> "root 授权被拒绝——请在" + manager + "里允许本应用使用 root，然后回到本页重新检测。"
+       }
+-      STATE_NO_SU -> if (english) {
+-        "No usable su on this device (not rooted or no root manager). Set up root in $manager, then return here."
+-      } else {
+-        "本机没有可用的 su（未 root 或未安装 Root 管理器）——请先在" + manager + "中完成 root，再回到本页。"
++      STATE_TIMEOUT -> when {
++        isKo -> "root 권한 요청 결과가 없습니다. " + manager + "에서 본 앱을 허용한 후 다시 시도하세요."
++        english -> "The root request returned no result. Allow this app in $manager and retry."
++        else -> "root 授权没有结果——请在" + manager + "里允许本应用后重试。"
+       }
+-      else -> if (english) {
+-        "Not checked yet. Check root access tries once; most managers need you to allow this app yourself."
+-      } else {
+-        "尚未检测——点「检测 root 授权」会尝试取一次 root 身份（多数管理器不会自动弹授权框，需你在管理器里允许）。"
++      STATE_NO_SU -> when {
++        isKo -> "기기에 사용 가능한 su가 없습니다 (루팅되지 않았거나 Root 관리자가 설치되지 않음). 먼저 " + manager + "에서 루팅을 완료한 후 이 페이지로 돌아오세요."
++        english -> "No usable su on this device (not rooted or no root manager). Set up root in $manager, then return here."
++        else -> "本机没有可用的 su（未 root 或未安装 Root 管理器）——请先在" + manager + "中完成 root，再回到本页。"
++      }
++      else -> when {
++        isKo -> "아직 확인되지 않음 — 'root 권한 확인'을 누르면 root 권한 획득을 한 번 시도합니다 (대부분의 관리자는 권한 팝업을 자동으로 띄우지 않으므로 관리자에서 직접 허용해야 합니다)."
++        english -> "Not checked yet. Check root access tries once; most managers need you to allow this app yourself."
++        else -> "尚未检测——点「检测 root 授权」会尝试取一次 root 身份（多数管理器不会自动弹授权框，需你在管理器里允许）。"
+       }
+     }
+   }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/RootGrant.kt b/app/src/main/java/com/dsharnessmobile/shell/RootGrant.kt
+index b22b687..c4883b0 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/RootGrant.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/RootGrant.kt
+@@ -96,11 +96,11 @@ object RootGrant {
+     if (!wantOn) return null // 关闭永远允许（撤销不是需要资格的动作）
+     if (channelUid != ROOT_UID && !rootGranted) {
+       return JSONObject().put("ok", false).put("code", CODE_NOT_ROOT_CHANNEL)
+-        .put("guidance", UiText.t(context, "无法在未 root 的设备上赋予该权限", "This permission needs a rooted device"))
++        .put("guidance", UiText.t(context, "无法在未 root 的设备上赋予该权限", "This permission needs a rooted device", "루팅되지 않은 기기에서는 이 권한을 부여할 수 없습니다"))
+     }
+     if (!consentValidFor(consentRevision, currentRevision)) {
+       return JSONObject().put("ok", false).put("code", CODE_CONSENT_REQUIRED)
+-        .put("guidance", UiText.t(context, "先阅读并同意免责声明，才能开启 AI root 权限。", "Read and accept the disclaimer to enable AI root access."))
++        .put("guidance", UiText.t(context, "先阅读并同意免责声明，才能开启 AI root 权限。", "Read and accept the disclaimer to enable AI root access.", "면책 조항을 읽고 동의해야 AI root 권한을 켤 수 있습니다."))
+     }
+     // Shizuku-root and explicitly granted su are independent root transports.
+     // Neither route bypasses the effective current-revision AI consent at dispatch.
+@@ -218,7 +218,7 @@ object RootGrant {
+       // 诚实性说明（issue 要求：做不到技术隔离时不得把不成立的隔离写成事实）：
+       .put(
+         "honesty",
+-        UiText.t(context, "这是知情同意门，不是沙箱：root 通道下的命令不受限制。", "This is a consent gate, not a sandbox: commands over the root channel are unrestricted."),
++        UiText.t(context, "这是知情同意门，不是沙箱：root 通道下的命令不受限制。", "This is a consent gate, not a sandbox: commands over the root channel are unrestricted.", "이는 고지 동의 절차이며 샌드박스가 아닙니다: root 채널의 명령은 제한되지 않습니다."),
+       )
+   }
+ 
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/SafeMode.kt b/app/src/main/java/com/dsharnessmobile/shell/SafeMode.kt
+index abbd04a..0b870cf 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/SafeMode.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/SafeMode.kt
+@@ -687,7 +687,27 @@ internal fun buildSafeModePrompt(
+   detail: String?,
+   logTail: String?,
+   safeModeActive: Boolean,
++  isKo: Boolean = false,
+ ): String {
++  if (isKo) {
++    val sb = StringBuilder()
++    sb.append("DeepCode 시작 실패, 안전 모드로 진입했습니다 (타사 플러그인만 제거되고 앱 기본 플러그인은 모두 유지됨). 문제 진단 및 수정을 도와주세요.").append('\n')
++    sb.append('\n')
++    sb.append("【제약 사항】").append('\n')
++    sb.append("1. 먼저 근본 원인을 파악한 후 조치하세요: 아래 오류 현장을 확인하고 근본 원인을 파악한 후 수정하세요. 동일한 로그를 반복해서 다시 읽지 마세요.").append('\n')
++    sb.append("2. 제품 자체 플러그인(@dsh-android/* 10개 + dsh-undo-savepoint + dshmarketplace-plugin)은 반드시 유지해야 하며, 시작 성공을 위해 삭제해서는 안 됩니다.").append('\n')
++    sb.append("3. 안전 모드 현재 상태: ").append(if (safeModeActive) "활성화됨 (타사 플러그인 항목이 제거되었으며, 설정 변경 후 앱을 재시작하면 적용됩니다)." else "활성화 예정.").append('\n')
++    sb.append("4. 수정 후 어디서 무엇을 변경했는지, 그리고 안전 모드를 종료하는 방법(dsh safe off)을 알려주세요.").append('\n')
++    sb.append('\n')
++    sb.append("【시작 실패 현장】").append('\n')
++    sb.append("stage: ").append(stage?.takeIf { it.isNotBlank() } ?: "(기록 없음)").append('\n')
++    sb.append("detail: ").append(detail?.takeIf { it.isNotBlank() } ?: "(기록 없음)").append('\n')
++    val tail = logTail?.trim().orEmpty()
++    sb.append('\n')
++    sb.append("【로그 끝부분】").append('\n')
++    sb.append(if (tail.isEmpty()) "(로그 끝부분을 가져오지 못했습니다. 콘솔을 열고 dsh safe status를 실행한 후 다시 가져올 수 있습니다)" else tail).append('\n')
++    return sb.toString()
++  }
+   val sb = StringBuilder()
+   sb.append("DSH 启动失败，我已进入安全模式（仅摘除第三方插件，产品自有插件全部保留）。请帮我定位并修复。").append('\n')
+   sb.append('\n')
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt b/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt
 index e52976d..c495cd0 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt
@@ -3694,6 +3925,50 @@ index 23cca2c..a597436 100644
      }
    }
  }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt b/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
+index f6a4967..f41e248 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
+@@ -212,10 +212,10 @@ object ShizukuTransport {
+       // 不是能力门——binder 一旦连上就走下面的就绪路径；包名不在表内的分支同样不受影响。
+       return if (managerPresent) {
+         out.put("ok", false).put("code", "shizuku-not-running")
+-          .put("guidance", UiText.t(context, "Shizuku 已安装但服务未运行。非 root 设备可通过 USB/有线 ADB 或无线调试启动它；重启设备后需再次启动。", "Shizuku is installed but not running. Start it over USB or wireless debugging; do this again after a reboot."))
++          .put("guidance", UiText.t(context, "Shizuku 已安装但服务未运行。非 root 设备可通过 USB/有线 ADB 或无线调试启动它；重启设备后需再次启动。", "Shizuku is installed but not running. Start it over USB or wireless debugging; do this again after a reboot.", "Shizuku가 설치되어 있으나 서비스가 실행 중이지 않습니다. 비 root 기기는 USB/유선 ADB 또는 무선 디버깅으로 시작할 수 있으며, 기기 재부팅 후 다시 시작해야 합니다."))
+       } else {
+         out.put("ok", false).put("code", "shizuku-absent")
+-          .put("guidance", UiText.t(context, "未检测到 Shizuku 及其兼容实现；虚拟屏需要用户安装、启动并授权其中之一。", "No Shizuku-compatible service was found; install, start, and grant one to use virtual screens."))
++          .put("guidance", UiText.t(context, "未检测到 Shizuku 及其兼容实现；虚拟屏需要用户安装、启动并授权其中之一。", "No Shizuku-compatible service was found; install, start, and grant one to use virtual screens.", "Shizuku 및 호환 구현이 감지되지 않았습니다. 가상 디스플레이를 사용하려면 해당 서비스를 설치, 시작 및 승인해야 합니다."))
+       }
+     }
+ 
+@@ -224,7 +224,7 @@ object ShizukuTransport {
+     out.put("version", version).put("uid", uid)
+     if (version < 12) {
+       return out.put("ok", false).put("code", "shizuku-prev11")
+-        .put("guidance", UiText.t(context, "Shizuku 版本过低，虚拟屏需要 v12 及以上的 UserService 支持。", "Shizuku is too old; virtual screens need UserService v12 or later."))
++        .put("guidance", UiText.t(context, "Shizuku 版本过低，虚拟屏需要 v12 及以上的 UserService 支持。", "Shizuku is too old; virtual screens need UserService v12 or later.", "Shizuku 버전이 너무 낮습니다. 가상 디스플레이는 v12 이상의 UserService 지원이 필요합니다."))
+     }
+ 
+     val granted = runCatching {
+@@ -233,7 +233,7 @@ object ShizukuTransport {
+     out.put("granted", granted)
+     if (!granted) {
+       return out.put("ok", false).put("code", "shizuku-denied")
+-        .put("guidance", UiText.t(context, "尚未获得 Shizuku 授权。点击创建虚拟屏后会由 Shizuku 管理器显示用户确认；DSH 不会自行授予权限。", "Shizuku access is not granted yet. Creating a virtual screen asks Shizuku for confirmation; DSH never grants it by itself."))
++        .put("guidance", UiText.t(context, "尚未获得 Shizuku 授权。点击创建虚拟屏后会由 Shizuku 管理器显示用户确认；DSH 不会自行授予权限。", "Shizuku access is not granted yet. Creating a virtual screen asks Shizuku for confirmation; DSH never grants it by itself.", "아직 Shizuku 권한을 획득하지 못했습니다. 가상 디스플레이를 생성하면 Shizuku 관리자에서 사용자 확인 대화상자가 표시됩니다. DSH는 스스로 권한을 부여하지 않습니다."))
+     }
+     if (service?.asBinder()?.pingBinder() != true) {
+       // 三态化（0.14.1）：code 只报「正在建立」当且仅当确有 bind 在飞。
+@@ -248,7 +248,7 @@ object ShizukuTransport {
+       return answer
+     }
+     return out.put("ok", true).put("code", "shizuku-ready")
+-      .put("guidance", UiText.t(context, "Shizuku shell UserService 已就绪（uid=$uid）。", "The Shizuku shell UserService is ready (uid=$uid)."))
++      .put("guidance", UiText.t(context, "Shizuku shell UserService 已就绪（uid=$uid）。", "The Shizuku shell UserService is ready (uid=$uid).", "Shizuku 셸 UserService가 준비되었습니다 (uid=$uid)."))
+   }
+ 
+   /**
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/SnapshotFs.kt b/app/src/main/java/com/dsharnessmobile/shell/SnapshotFs.kt
 index 174ae05..c344822 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/SnapshotFs.kt
@@ -3729,6 +4004,114 @@ index 174ae05..c344822 100644
        )
      }
      try {
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/SnapshotRecoveryNotice.kt b/app/src/main/java/com/dsharnessmobile/shell/SnapshotRecoveryNotice.kt
+index 4f0a762..8f8e296 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/SnapshotRecoveryNotice.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/SnapshotRecoveryNotice.kt
+@@ -165,9 +165,15 @@ internal object SnapshotRecoveryNotice {
+    * @returns 可直接交给 `evaluateJavascript` 的脚本。
+    */
+   internal fun injectionScript(title: String, body: String): String {
++    val isKo = DsLocale.isKo()
++    val t = jsString(if (isKo && title == "运行时更新被拒绝") "런타임 업데이트 거부됨" else title)
++    val localizedBody = if (isKo) {
++      body
++        .replace("已保留现有运行时与你的数据，未做任何替换。原因：", "기존 런타임과 사용자 데이터를 보존했으며, 아무것도 변경하지 않았습니다. 원인: ")
++        .replace("。可打开控制台查看日志，或复制诊断包路径反馈；本轮不会自动重试替换。", ". 콘솔을 열어 로그를 확인하거나 진단 번들 경로를 복사하여 문의하세요. 이번에는 자동으로 재시도하지 않습니다.")
++    } else body
+     val id = jsString(DOM_ID)
+-    val t = jsString(title)
+-    val b = jsString(body)
++    val b = jsString(localizedBody)
+     return "(function(){" +
+       "var old=document.getElementById(" + id + ");if(old&&old.parentNode)old.parentNode.removeChild(old);" +
+       "var d=document.createElement('div');d.id=" + id + ";" +
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt b/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
+index f04bddd..e60ef00 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
+@@ -480,6 +480,7 @@ internal object SnapshotTransaction {
+     onEntry: (String) -> Unit = {},
+     /** UI language for the entries reported through [onEntry]; defaults to Chinese. */
+     english: Boolean = false,
++    isKorean: Boolean = false,
+     /**
+      * 空间前置检查（审查 §7.2-F-4 / B12）：入参是**本次交换需要保留的可用字节**，
+      * 返回拒绝文案（null = 放行）。注入式而非直接调 Android StatFs，是为了让事务保持纯 JVM 可测
+@@ -563,7 +564,13 @@ internal object SnapshotTransaction {
+             val liveChild = File(liveDsh, child.name)
+             if (child.name in preservedNames && SnapshotFs.exists(liveChild)) {
+               // User data stays exactly where it is.
+-              onEntry(if (english) "Keeping user data " + child.name else "保留用户数据 " + child.name)
++              onEntry(
++                when {
++                  isKorean -> "사용자 데이터 보존: " + child.name
++                  english -> "Keeping user data " + child.name
++                  else -> "保留用户数据 " + child.name
++                },
++              )
+               continue
+             }
+             if (child.name == "profiles" && SnapshotFs.exists(liveChild)) {
+@@ -571,13 +578,19 @@ internal object SnapshotTransaction {
+               // 更新、用户条目（第三方依赖/.npmrc/自打补丁/追加块）保留。
+               // 0.14.0 #214：工厂对同 id 的 disabled 语义改为权威（旧规则「以 live 为基」使
+               // 旧版遗留的 ui-layout disable 永不被纠正 → 根服务 layout 不 activate）。
+-              mergeProfiles(filesDir, moved, fingerprint, startedAt, child, liveChild, File(previousDsh, "profiles"), onEntry, notes, links)
++              mergeProfiles(filesDir, moved, fingerprint, startedAt, child, liveChild, File(previousDsh, "profiles"), onEntry, notes, links, isKorean, english)
+               continue
+             }
+             if (SnapshotFs.exists(liveChild) && child.name !in SnapshotUserData.factorySnapshotNames) {
+               // Unknown .dsh entries can belong to newer app versions or user extensions.
+               // Seed absent paths, but never let a factory archive erase an unclassified collision.
+-              onEntry(if (english) "Keeping unclassified dsh data " + child.name else "保留未分类DSH数据 " + child.name)
++              onEntry(
++                when {
++                  isKorean -> "미분류 DSH 데이터 보존: " + child.name
++                  english -> "Keeping unclassified dsh data " + child.name
++                  else -> "保留未分类DSH数据 " + child.name
++                },
++              )
+               continue
+             }
+             replaceEntry(
+@@ -592,7 +605,13 @@ internal object SnapshotTransaction {
+           // （白名单机制只作用于 .dsh 子项，对本分支无效，见坑 67 之前的取证）。
+           val liveEntry = File(homeDir, entry.name)
+           if (SnapshotFs.exists(liveEntry)) {
+-            onEntry(if (english) "Keeping user data home/" + entry.name else "保留用户数据 home/" + entry.name)
++            onEntry(
++              when {
++                isKorean -> "사용자 데이터 보존: home/" + entry.name
++                english -> "Keeping user data home/" + entry.name
++                else -> "保留用户数据 home/" + entry.name
++              },
++            )
+             continue
+           }
+           replaceEntry(
+@@ -738,6 +757,8 @@ internal object SnapshotTransaction {
+     onEntry: (String) -> Unit,
+     notes: MutableList<String>,
+     links: LinkPrimitives = PRODUCTION_LINKS,
++    isKorean: Boolean = false,
++    english: Boolean = false,
+   ) {
+     // ① 备份先写临时名（拷贝失败/被杀 = live 与 journal 都不受影响）
+     val copying = File(previousProfiles.parentFile, previousProfiles.name + ".copying")
+@@ -768,7 +789,11 @@ internal object SnapshotTransaction {
+       }
+       mergeTree(stagedProfiles, liveProfiles, notes, userFacingFiles)
+       reconcileRemovedProfilePlugins(liveProfiles, notes)
+-      val suffix = if (notes.isEmpty()) "" else "；工厂语义纠正 " + notes.size + " 处"
++      val suffix = if (notes.isEmpty()) "" else when {
++        isKorean -> "；공장 시맨틱 수정 " + notes.size + "개소"
++        english -> "；corrected factory semantics at " + notes.size + " places"
++        else -> "；工厂语义纠正 " + notes.size + " 处"
++      }
+       onEntry("home/.dsh/profiles (merged" + suffix + ")")
+     } catch (t: Throwable) {
+       // 合并失败：整目录回滚到 live 原状，再把异常抛给调用方（中止启动，正常 recover）。
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt b/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
 index d778af9..7103a12 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
@@ -3851,11 +4234,144 @@ index 1c3d6b2..3e3a247 100644
          CheckResult.FailureKind.RELEASE_DATA_BROKEN,
        )
      }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/UpdateManager.kt b/app/src/main/java/com/dsharnessmobile/shell/UpdateManager.kt
+index a02b5b6..135f5cf 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/UpdateManager.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/UpdateManager.kt
+@@ -36,7 +36,7 @@ class UpdateManager(private val context: Context) {
+   /** 未配置可信发布源时的文案（中性事实 + 下一步，不含内部术语）。 */
+   val notConfiguredStatus = UpdateStatus(
+     UpdateOutcome.NotConfigured,
+-    "本版不提供在线更新",
++    ko("本版不提供在线更新", "현재 버전에서는 온라인 업데이트를 제공하지 않습니다"),
+   )
+ 
+   /**
+@@ -57,7 +57,7 @@ class UpdateManager(private val context: Context) {
+       var ownsTransactionStage = false
+       var probationStarted = false
+       try {
+-        onStatus(UpdateStatus(UpdateOutcome.Working, "检查更新…"))
++        onStatus(UpdateStatus(UpdateOutcome.Working, ko("检查更新…", "업데이트 확인 중…")))
+         // S-10：未配置可信发布源 = 未启用（不再对着模拟器别名超时，也不再给出「可用」的错觉）。
+         // 0.14.1 批 2（P0-2）：这是**能力缺失**，不是故障——如实回一个中性终态，界面据此走 Info 相位。
+         if (manifestUrl.isBlank()) {
+@@ -76,16 +76,16 @@ class UpdateManager(private val context: Context) {
+         val expectedSha = manifest.getString("sha256")
+         val declaredSize = manifest.optLong("size", 0)
+ 
+-        onStatus(UpdateStatus(UpdateOutcome.Working, "下载快照（" + (declaredSize / 1024 / 1024) + " MB）…"))
++        onStatus(UpdateStatus(UpdateOutcome.Working, if (DsLocale.isKo()) "스냅샷 다운로드 중(" + (declaredSize / 1024 / 1024) + " MB)…" else "下载快照（" + (declaredSize / 1024 / 1024) + " MB）…"))
+         download(url, archive, declaredSize)
+ 
+-        onStatus(UpdateStatus(UpdateOutcome.Working, "校验…"))
++        onStatus(UpdateStatus(UpdateOutcome.Working, ko("校验…", "검증 중…")))
+         val actual = sha256(archive)
+         if (!actual.equals(expectedSha, ignoreCase = true)) {
+           throw IllegalStateException("SHA256 不匹配: " + actual.take(12) + "…")
+         }
+ 
+-        onStatus(UpdateStatus(UpdateOutcome.Working, "解压新快照…"))
++        onStatus(UpdateStatus(UpdateOutcome.Working, ko("解压新快照…", "새 스냅샷 압축 해제 중…")))
+         val priorFingerprint = File(context.filesDir, ".snapshot-fingerprint")
+           .takeIf { it.exists() }?.readText()?.trim().orEmpty()
+         if (!priorFingerprint.matches(Regex("[0-9a-fA-F]{64}"))) {
+@@ -116,7 +116,7 @@ class UpdateManager(private val context: Context) {
+         }
+         if (!File(context.filesDir, "usr/bin/node").isFile) throw IllegalStateException("当前运行时缺少 node，拒绝在线替换")
+ 
+-        onStatus(UpdateStatus(UpdateOutcome.Working, "切换运行时…"))
++        onStatus(UpdateStatus(UpdateOutcome.Working, ko("切换运行时…", "런타임 전환 중…")))
+         // Stop only an engine child held by this app process; never broad-match a listener by argv.
+         if (!manager.stopOwnedEngine()) {
+           throw IllegalStateException("运行时更新已拒绝：3080 监听进程未归属到本壳，未停止外部进程")
+@@ -136,7 +136,7 @@ class UpdateManager(private val context: Context) {
+         probationStarted = true
+         File(context.filesDir, ".update-pending").writeText("1")
+         File(context.filesDir, ".update-pending-at").writeText(System.currentTimeMillis().toString())
+-        onStatus(UpdateStatus(UpdateOutcome.Verifying, "运行时已切换，正在等待启动与健康验证…"))
++        onStatus(UpdateStatus(UpdateOutcome.Verifying, ko("运行时已切换，正在等待启动与健康验证…", "런타임이 전환되었습니다. 시작 및 상태 검증 대기 중…")))
+         val settlement = awaitOnlineSettlement(expectedSha, baseFingerprint, priorFingerprint)
+         probationStarted = SnapshotTransaction.readMarker(context.filesDir) != null ||
+           File(context.filesDir, ".update-pending").exists()
+@@ -152,7 +152,7 @@ class UpdateManager(private val context: Context) {
+         }
+         // 失败文案也要能读懂：异常自带的内部措辞（HTTP 码、Java 类名）不上屏，只进日志。
+         Log.w("dsh-update", "update failed: " + t.message)
+-        onStatus(UpdateStatus(UpdateOutcome.Failed, "更新失败：" + UpdateFailures.humanize(t)))
++        onStatus(UpdateStatus(UpdateOutcome.Failed, if (DsLocale.isKo()) "업데이트 실패: " + UpdateFailures.humanize(t, isKo = true) else "更新失败：" + UpdateFailures.humanize(t)))
+       } finally {
+         // The archive is never a recovery source; the stage is retained only while its journal needs it.
+         SnapshotFs.deletePath(archive)
+@@ -171,9 +171,29 @@ class UpdateManager(private val context: Context) {
+    * 纯函数（不碰 context / 网络），可直接 JVM 单测。
+    */
+   internal object UpdateFailures {
+-    fun humanize(t: Throwable): String {
++    fun humanize(t: Throwable, isKo: Boolean = false): String {
+       val m = (t.message ?: "").trim()
+       val code = Regex("HTTP (\\d{3})").find(m)?.groupValues?.get(1)
++      if (isKo) {
++        return when {
++          m.startsWith("manifest HTTP") ->
++            "업데이트 서비스에 일시적으로 연결할 수 없습니다 (서버 응답 $code) — 배포 소스가 오프라인이거나 네트워크가 차단되었을 수 있습니다. 잠시 후 다시 시도하세요"
++          m.startsWith("下载 HTTP") ->
++            "다운로드가 중단되었습니다 (서버 응답 $code) — 다시 시도하세요. 반복 실패 시 다른 네트워크를 이용해 보세요"
++          m.startsWith("下载体积超限") ->
++            "다운로드된 파일 크기가 비정상적입니다 (명시된 크기와 불일치) — 삭제되었습니다. 다시 시도하세요"
++          m.startsWith("SHA256 不匹配") ->
++            "다운로드된 파일 검증에 실패했습니다 (내용이 배포 정보와 불일치) — 삭제되었습니다. 다시 시도하세요"
++          m.startsWith("新快照缺少") ->
++            "새 버전 런타임 패키지가 불완전합니다 (핵심 구성 요소 누락) — 이번 업데이트가 취소되었으며 현재 버전은 영향을 받지 않습니다"
++          m.startsWith("切换失败") ->
++            "런타임 전환에 실패하여 원래 버전으로 자동 롤백되었습니다 — 잠시 후 다시 시도하거나 콘솔을 열어 로그를 확인하세요"
++          isNetworkError(t) ->
++            "네트워크에 연결할 수 없습니다 — 네트워크 확인 후 다시 시도하세요"
++          else ->
++            "업데이트가 완료되지 않았습니다 (자세한 원인은 로그에 기록됨) — 다시 시도하거나 로그를 복사하여 문의하세요"
++        }
++      }
+       return when {
+         m.startsWith("manifest HTTP") ->
+           "暂时无法连接更新服务（服务返回 $code）——可能是发布源已下线或网络被拦截，请稍后再试"
+@@ -214,17 +234,17 @@ class UpdateManager(private val context: Context) {
+         markerPresent, pendingPresent, liveFingerprint, onlineIdentity.first, onlineIdentity.second,
+         expectedFingerprint, baseFingerprint, priorFingerprint,
+       )) {
+-        OnlineSettlement.State.COMMITTED -> return UpdateStatus(UpdateOutcome.Done, "更新已通过启动与健康验证")
+-        OnlineSettlement.State.ROLLED_BACK -> return UpdateStatus(UpdateOutcome.Failed, "新版本未通过健康验证，已自动回退到原版本；用户数据已保留")
+-        OnlineSettlement.State.INCONSISTENT -> return UpdateStatus(UpdateOutcome.Failed, "更新状态无法确认；恢复现场已保留，请打开控制台检查日志")
++        OnlineSettlement.State.COMMITTED -> return UpdateStatus(UpdateOutcome.Done, ko("更新已通过启动与健康验证", "업데이트가 시작 및 상태 검증을 통과했습니다"))
++        OnlineSettlement.State.ROLLED_BACK -> return UpdateStatus(UpdateOutcome.Failed, ko("新版本未通过健康验证，已自动回退到原版本；用户数据已保留", "새 버전이 상태 검증을 통과하지 못해 이전 버전으로 자동 롤백되었습니다. 사용자 데이터는 보존되었습니다"))
++        OnlineSettlement.State.INCONSISTENT -> return UpdateStatus(UpdateOutcome.Failed, ko("更新状态无法确认；恢复现场已保留，请打开控制台检查日志", "업데이트 상태를 확인할 수 없습니다. 복구 현장이 보존되었으니 콘솔을 열어 로그를 확인하세요"))
+         OnlineSettlement.State.PENDING -> Unit
+       }
+       try { Thread.sleep(UPDATE_SETTLEMENT_POLL_MS) } catch (_: InterruptedException) {
+         Thread.currentThread().interrupt()
+-        return UpdateStatus(UpdateOutcome.Failed, "健康验证等待已中断；恢复现场已保留，请重新启动应用完成恢复")
++        return UpdateStatus(UpdateOutcome.Failed, ko("健康验证等待已中断；恢复现场已保留，请重新启动应用完成恢复", "상태 검증 대기가 중단되었습니다. 복구 현장이 보존되었으니 앱을 다시 시작하여 복구를 완료하세요"))
+       }
+     }
+-    return UpdateStatus(UpdateOutcome.Failed, "启动与健康验证超时；恢复现场已保留，请重新启动应用并查看控制台日志")
++    return UpdateStatus(UpdateOutcome.Failed, ko("启动与健康验证超时；恢复现场已保留，请重新启动应用并查看控制台日志", "시작 및 상태 검증 시간이 초과되었습니다. 복구 현장이 보존되었으니 앱을 다시 시작하고 콘솔 로그를 확인하세요"))
+   }
+ 
+   private fun readOnlineIdentity(file: File): Pair<String, String> {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt b/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
-index 60b9f38..f59b702 100644
+index 60b9f38..78a92b8 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
-@@ -47,8 +47,17 @@ internal object UserCopy {
+@@ -35,6 +35,9 @@ internal object UserCopy {
+   /** English form of [A11Y_SERVICE_NAME], matching `values-en` `a11y_service_label`. */
+   const val A11Y_SERVICE_NAME_EN = "$APP_NAME device control"
+ 
++  /** Korean form of [A11Y_SERVICE_NAME], matching `values-ko` `a11y_service_label`. */
++  const val A11Y_SERVICE_NAME_KO = "$APP_NAME 기기 제어"
++
+   // ── 通知类别（唯一用词；同时是系统渠道名与设置页标签）──────────────────
+   //
+   // 五类与 `NotifyCenter.Face` 一一对应。旧形态：「需要回答」（渠道名）vs 「提问」（设置页），
+@@ -47,8 +50,17 @@ internal object UserCopy {
      "approval" to "授权请求",
    )
  
@@ -3873,7 +4389,7 @@ index 60b9f38..f59b702 100644
  
    /**
     * 通知类别码 → 中文用词（唯一真源）。
-@@ -56,7 +65,11 @@ internal object UserCopy {
+@@ -56,7 +68,11 @@ internal object UserCopy {
     * @returns 该类别的中文用词；未登记类别回 [NOTIFY_CATEGORY_UNKNOWN]。
     */
    fun notifyCategory(category: String): String =
@@ -3886,7 +4402,7 @@ index 60b9f38..f59b702 100644
  
    // ── 渠道重要性（用户看的是「会不会响/会不会弹」，不是数字档位）──────────
  
-@@ -65,13 +78,24 @@ internal object UserCopy {
+@@ -65,13 +81,24 @@ internal object UserCopy {
     * @param importance - `NotificationManager.IMPORTANCE_*` 的整数。
     * @returns 人话描述；未知档位回空串（调用方整段省略，不打印 `?`）。
     */
@@ -3918,7 +4434,7 @@ index 60b9f38..f59b702 100644
    }
  
    // ── 时长（唯一口径，P3-3）──────────────────────────────────────────────
-@@ -90,14 +114,25 @@ internal object UserCopy {
+@@ -90,14 +117,25 @@ internal object UserCopy {
    fun durationText(ms: Long): String {
      if (ms <= 0L) return ""
      val totalSec = (ms + 500L) / 1000L
@@ -3948,7 +4464,7 @@ index 60b9f38..f59b702 100644
    }
  
    /**
-@@ -117,7 +152,9 @@ internal object UserCopy {
+@@ -117,7 +155,9 @@ internal object UserCopy {
    }
  
    /** 「用时 X」整段（`durationText` 为空时返回空串，调用方据此省略整段）。 */
@@ -3959,7 +4475,7 @@ index 60b9f38..f59b702 100644
  
    /**
     * 汇报元信息行（`用时 X · 工具 ×N`），回报条与通知同用一份（P3-2 / P3-3）。
-@@ -131,8 +168,9 @@ internal object UserCopy {
+@@ -131,8 +171,9 @@ internal object UserCopy {
     */
    fun reportMetaLine(durationLabel: String, toolCount: Int): String {
      val parts = ArrayList<String>(2)
@@ -3971,7 +4487,7 @@ index 60b9f38..f59b702 100644
      return parts.joinToString(" · ")
    }
  
-@@ -147,11 +185,21 @@ internal object UserCopy {
+@@ -147,11 +188,21 @@ internal object UserCopy {
     * @param status - HTTP 状态码（仅用于分档）。
     * @returns 用户可读的一句话（含下一步）。
     */
@@ -3999,6 +4515,22 @@ index 60b9f38..f59b702 100644
 +    }
    }
  }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/WatchdogV2.kt b/app/src/main/java/com/dsharnessmobile/shell/WatchdogV2.kt
+index 08f3f7e..38bf020 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/WatchdogV2.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/WatchdogV2.kt
+@@ -487,9 +487,9 @@ object WatchdogV2 {
+           // 如实说明代价：旧信道**没有**会话可分性（本项目 `legacyFallback` 一律走 `kind="silent"`、
+           // dedupeKey 固定，所有帧覆盖同一条通知），所以哈希带来的「可区分」本来就只在**覆盖前后**可见，
+           // 不值得为它把机器码留在屏上。会话可分性由 `.notify.ndjson` 新信道（按会话分桶）提供。
+-          val title = j.optString("title").ifBlank { "一轮任务已完成" }
++          val title = j.optString("title").ifBlank { ko("一轮任务已完成", "한 차례의 작업이 완료되었습니다") }
+           dbg("legacy title fallback session=" + markerTag(j.optString("sessionId")))
+-          val snippet = j.optString("text").ifBlank { "引擎已完成一轮任务处理" }
++          val snippet = j.optString("text").ifBlank { ko("引擎已完成一轮任务处理", "엔진이 한 차례의 작업 처리를 완료했습니다") }
+           // NT-09 双读不双发：.notify.ndjson 已服役时旧信道只做回退（不在两处重复投递）
+           val posted = NotifyStore.legacyFallback(context, title, snippet)
+           if (posted) notified++
 diff --git a/app/src/main/res/values-ko/strings.xml b/app/src/main/res/values-ko/strings.xml
 new file mode 100644
 index 0000000..cc57b71

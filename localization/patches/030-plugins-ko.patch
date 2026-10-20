@@ -52,3 +52,301 @@ index 201173b..7c550ab 100644
      ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
      platform: 'Win32',
      mobile: false,
+diff --git a/plugins/dsh-android-vdisplay/src/client/index.ts b/plugins/dsh-android-vdisplay/src/client/index.ts
+index 98bb68c..58f3557 100644
+--- a/plugins/dsh-android-vdisplay/src/client/index.ts
++++ b/plugins/dsh-android-vdisplay/src/client/index.ts
+@@ -27,17 +27,36 @@ import { watchTerminalKeybars } from '../keybar/mount.ts'
+ 
+ import type {} from '@deepseek-ai/dsh-client-ui-slots'
+ 
++/** True when the dsh page language is Korean. */
++function isKorean(): boolean {
++  try {
++    const mode = (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.()
++    if (mode === 'ko') return true
++    if (mode === 'zh' || mode === 'en') return false
++    const lang = document.documentElement.lang.toLowerCase()
++    if (lang.startsWith('ko')) return true
++    if (lang.startsWith('zh') || lang.startsWith('en')) return false
++    return true
++  } catch {
++    return true
++  }
++}
++
+ /** True when the dsh page language is English. */
+ function isEnglish(): boolean {
+   try {
++    const mode = (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.()
++    if (mode === 'en') return true
++    if (mode === 'zh' || mode === 'ko') return false
+     return document.documentElement.lang.toLowerCase().startsWith('en')
+   } catch {
+     return false
+   }
+ }
+ 
+-/** Chinese or English copy for the active page language. */
+-function tr(zh: string, en: string): string {
++/** Chinese, English, or Korean copy for the active page language. */
++function tr(zh: string, en: string, ko?: string): string {
++  if (isKorean()) return ko ?? en
+   return isEnglish() ? en : zh
+ }
+ 
+@@ -215,7 +234,7 @@ function VdPanel(props: { sessionId?: unknown }): ReactElement {
+   const stageRef = useRef<HTMLDivElement>(null)
+   const [snap, setSnap] = useState<VdPanelState>({
+   state: 'blocked', code: VD_STATUS_UNAVAILABLE,
+-  detail: tr('正在读取状态…', 'Reading status...'), ops: [...VD_OPS], screens: [], viewers: [],
++  detail: tr('正在读取状态…', 'Reading status...', '상태를 읽는 중…'), ops: [...VD_OPS], screens: [], viewers: [],
+   })
+   const [tick, setTick] = useState(0)
+   const occupied = snap.ownerSessionId !== undefined && sessionKey !== '' && snap.ownerSessionId !== sessionKey
+@@ -340,13 +359,14 @@ function VdPanel(props: { sessionId?: unknown }): ReactElement {
+   if (occupied) {
+     return createElement('div', { className: 'dsh-vdisplay-panel', 'data-state': snap.state },
+       createElement('p', { className: 'dsh-vdisplay-empty' },
+-        tr('由会话 ', 'In use by session ') + String(snap.ownerSessionId ?? '').slice(-6)
+-          + tr(' 使用中', '')))
++        isKorean()
++          ? ('세션 ' + String(snap.ownerSessionId ?? '').slice(-6) + '에서 사용 중')
++          : (tr('由会话 ', 'In use by session ') + String(snap.ownerSessionId ?? '').slice(-6) + tr(' 使用中', ''))))
+   }
+ 
+   return createElement('div', { className: 'dsh-vdisplay-panel', 'data-state': snap.state },
+     screens.length === 0
+-      ? createElement('p', { className: 'dsh-vdisplay-empty' }, tr('暂无虚拟屏', 'No virtual screens'))
++      ? createElement('p', { className: 'dsh-vdisplay-empty' }, tr('暂无虚拟屏', 'No virtual screens', '가상 화면 없음'))
+       : createElement('div', { className: 'dsh-vdisplay-list' },
+         screens.map((screen) => createElement('button', {
+           key: screen.alias,
+@@ -361,18 +381,18 @@ function VdPanel(props: { sessionId?: unknown }): ReactElement {
+           key: '__shutdown__',
+           type: 'button',
+           className: 'dsh-vdisplay-item dsh-vdisplay-shutdown',
+-          'aria-label': tr('关闭全部虚拟屏', 'Close all virtual screens'),
+-          title: tr('关闭全部虚拟屏（释放系统资源）', 'Close all virtual screens (frees system resources)'),
++          'aria-label': tr('关闭全部虚拟屏', 'Close all virtual screens', '모든 가상 화면 닫기'),
++          title: tr('关闭全部虚拟屏（释放系统资源）', 'Close all virtual screens (frees system resources)', '모든 가상 화면 닫기 (시스템 리소스 해제)'),
+           'data-action': 'shutdown-all',
+           onClick: shutdownAll,
+-        }, tr('关闭全部', 'Close all'))),
++        }, tr('关闭全部', 'Close all', '모두 닫기'))),
+     createElement('div', { ref: stageRef, className: 'dsh-vdisplay-stage', 'data-testid': 'vdisplay-stage' }),
+   )
+ }
+ 
+ /** chip 标题：与「工作区文件」同类。 */
+ function VdTitle(): ReactElement {
+-  return createElement('span', { className: 'dsh-vdisplay-title' }, tr('虚拟屏', 'Virtual screen'))
++  return createElement('span', { className: 'dsh-vdisplay-title' }, tr('虚拟屏', 'Virtual screen', '가상 화면'))
+ }
+ 
+ /**
+@@ -440,21 +460,22 @@ export function apply(ctx: ClientContext): void {
+   ctx.effect(() => {
+     const tabs = ctx.get('sidebarRightTabs') as TabRegistry | undefined
+     if (!tabs) {
+-      ctx.logger?.('dsh-android-vdisplay')?.warn?.('sidebarRightTabs 服务缺席——虚拟屏 Tab 未注册（fail-closed）')
++      ctx.logger?.('dsh-android-vdisplay')?.warn?.(isKorean() ? 'sidebarRightTabs 서비스 누락: 가상 화면 Tab이 등록되지 않았습니다 (fail-closed)' : 'sidebarRightTabs 服务缺席——虚拟屏 Tab 未注册（fail-closed）')
+       return () => {}
+     }
+     return tabs.register({
+       id: VD_TAB_ID,
+       kind: VD_TAB_KIND,
+       priority: 'extension',
+-    title: () => tr('虚拟屏', 'Virtual screen'),
++    title: () => tr('虚拟屏', 'Virtual screen', '가상 화면'),
+       guide: [{
+         // 0.1.7 起 guide 条目必填 id（上游按 [providerId, entry.id] 键控，唯一性只在 provider 内判定）
+         id: 'open',
+         order: 40,
+-    title: () => tr('虚拟屏', 'Virtual screen'),
++    title: () => tr('虚拟屏', 'Virtual screen', '가상 화면'),
+     description: () => tr('在独立屏幕上运行第三方 App（Shizuku 特权通道），不挤占用户前台。',
+-      'Run third-party apps on a separate display through Shizuku without taking over the foreground.'),
++      'Run third-party apps on a separate display through Shizuku without taking over the foreground.',
++      '독립된 화면에서 타사 앱을 실행(Shizuku 특권 채널)하여 사용자 포그라운드를 차지하지 않습니다.'),
+       }],
+     })
+   }, 'dsh-android-vdisplay: tab type')
+@@ -488,7 +509,7 @@ export function apply(ctx: ClientContext): void {
+     } catch (error) {
+       // 注入失败必须可见（不得让用户以为键条只是「没做」）。
+       ctx.logger?.('dsh-android-vdisplay')?.warn?.(
+-        '终端九键条注入失败：' + ((error as Error)?.message ?? String(error)),
++        (isKorean() ? '터미널 9키 바 주입 실패: ' : '终端九键条注入失败：') + ((error as Error)?.message ?? String(error)),
+       )
+     }
+     return () => { watch?.dispose() }
+diff --git a/plugins/dsh-android-vdisplay/src/keybar/keymap.ts b/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
+index 6961a86..77154b6 100644
+--- a/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
++++ b/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
+@@ -45,10 +45,14 @@ export interface KeySpec {
+   readonly label: string
+   /** English visible text; absent when the label is a symbol. */
+   readonly labelEn?: string
++  /** Korean visible text; absent when the label is a symbol. */
++  readonly labelKo?: string
+   /** 无障碍名（与 label 分开：label 可能是紧凑符号）。 */
+   readonly ariaLabel: string
+   /** English accessible name. */
+   readonly ariaLabelEn?: string
++  /** Korean accessible name. */
++  readonly ariaLabelKo?: string
+   readonly sends: boolean
+   /** 优先通路用的 xterm 键身份；null = 该键不产字节。 */
+   readonly xterm: XtermKey | null
+@@ -65,39 +69,39 @@ export interface KeySpec {
+  */
+ export const KEYBAR_SPECS: Readonly<Record<KeybarKey, KeySpec>> = {
+   keyboard: {
+-    id: 'keyboard', label: '键盘', labelEn: 'Keys', ariaLabel: '唤起软键盘', ariaLabelEn: 'Show keyboard',
++    id: 'keyboard', label: '键盘', labelEn: 'Keys', labelKo: '키보드', ariaLabel: '唤起软键盘', ariaLabelEn: 'Show keyboard', ariaLabelKo: '화상 키보드 열기',
+     sends: false, xterm: null, csi: null, ss3: null,
+   },
+   tab: {
+-    id: 'tab', label: 'Tab', ariaLabel: 'Tab 键，补全', ariaLabelEn: 'Tab key, complete',
++    id: 'tab', label: 'Tab', ariaLabel: 'Tab 键，补全', ariaLabelEn: 'Tab key, complete', ariaLabelKo: 'Tab 키, 자동 완성',
+     sends: true, xterm: { key: 'Tab', code: 'Tab', keyCode: 9 }, csi: '\t', ss3: '\t',
+   },
+   ctrl: {
+-    id: 'ctrl', label: 'Ctrl', ariaLabel: 'Ctrl 组合键，粘滞', ariaLabelEn: 'Ctrl combination, sticky',
++    id: 'ctrl', label: 'Ctrl', ariaLabel: 'Ctrl 组合键，粘滞', ariaLabelEn: 'Ctrl combination, sticky', ariaLabelKo: 'Ctrl 조합 키, 고정',
+     sends: false, xterm: null, csi: null, ss3: null,
+   },
+   esc: {
+-    id: 'esc', label: 'Esc', ariaLabel: 'Esc 键，取消', ariaLabelEn: 'Esc key, cancel',
++    id: 'esc', label: 'Esc', ariaLabel: 'Esc 键，取消', ariaLabelEn: 'Esc key, cancel', ariaLabelKo: 'Esc 키, 취소',
+     sends: true, xterm: { key: 'Escape', code: 'Escape', keyCode: 27 }, csi: '\u001b', ss3: '\u001b',
+   },
+   left: {
+-    id: 'left', label: '\u2190', ariaLabel: '光标左移', ariaLabelEn: 'Move cursor left',
++    id: 'left', label: '\u2190', ariaLabel: '光标左移', ariaLabelEn: 'Move cursor left', ariaLabelKo: '커서 왼쪽 이동',
+     sends: true, xterm: { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }, csi: '\u001b[D', ss3: '\u001bOD',
+   },
+   right: {
+-    id: 'right', label: '\u2192', ariaLabel: '光标右移', ariaLabelEn: 'Move cursor right',
++    id: 'right', label: '\u2192', ariaLabel: '光标右移', ariaLabelEn: 'Move cursor right', ariaLabelKo: '커서 오른쪽 이동',
+     sends: true, xterm: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }, csi: '\u001b[C', ss3: '\u001bOC',
+   },
+   up: {
+-    id: 'up', label: '\u2191', ariaLabel: '上一条历史', ariaLabelEn: 'Previous history entry',
++    id: 'up', label: '\u2191', ariaLabel: '上一条历史', ariaLabelEn: 'Previous history entry', ariaLabelKo: '이전 명령 기록',
+     sends: true, xterm: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }, csi: '\u001b[A', ss3: '\u001bOA',
+   },
+   down: {
+-    id: 'down', label: '\u2193', ariaLabel: '下一条历史', ariaLabelEn: 'Next history entry',
++    id: 'down', label: '\u2193', ariaLabel: '下一条历史', ariaLabelEn: 'Next history entry', ariaLabelKo: '다음 명령 기록',
+     sends: true, xterm: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }, csi: '\u001b[B', ss3: '\u001bOB',
+   },
+   enter: {
+-    id: 'enter', label: '\u23ce', ariaLabel: '回车', ariaLabelEn: 'Enter',
++    id: 'enter', label: '\u23ce', ariaLabel: '回车', ariaLabelEn: 'Enter', ariaLabelKo: 'Enter (줄바꿈)',
+     sends: true, xterm: { key: 'Enter', code: 'Enter', keyCode: 13 }, csi: '\r', ss3: '\r',
+   },
+ }
+diff --git a/plugins/dsh-android-vdisplay/src/keybar/mount.ts b/plugins/dsh-android-vdisplay/src/keybar/mount.ts
+index d214a8c..a95368e 100644
+--- a/plugins/dsh-android-vdisplay/src/keybar/mount.ts
++++ b/plugins/dsh-android-vdisplay/src/keybar/mount.ts
+@@ -66,22 +66,47 @@ export interface KeybarHandle {
+   notice(): string | undefined
+ }
+ 
++/** True when the page language is Korean. */
++function isKorean(doc: Document | undefined): boolean {
++  try {
++    const mode = (typeof window !== 'undefined' ? (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.() : undefined)
++    if (mode === 'ko') return true
++    if (mode === 'zh' || mode === 'en') return false
++    const lang = (doc?.documentElement.lang ?? '').toLowerCase()
++    if (lang.startsWith('ko')) return true
++    if (lang.startsWith('zh') || lang.startsWith('en')) return false
++    return true
++  } catch {
++    return true
++  }
++}
++
+ /** True when the page language is English (dsh writes it on the root element). */
+ function isEnglish(doc: Document | undefined): boolean {
+   try {
++    const mode = (typeof window !== 'undefined' ? (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.() : undefined)
++    if (mode === 'en') return true
++    if (mode === 'zh' || mode === 'ko') return false
+     return (doc?.documentElement.lang ?? '').toLowerCase().startsWith('en')
+   } catch {
+     return false
+   }
+ }
+ 
+-/** Chinese or English copy for the active page language. */
+-export function keybarText(zh: string, en: string, doc?: Document): string {
++/** Chinese, English, or Korean copy for the active page language. */
++export function keybarText(zh: string, en: string, doc?: Document, ko?: string): string {
++  if (isKorean(doc)) return ko ?? en
+   return isEnglish(doc) ? en : zh
+ }
+ 
+ /** Visible and accessible label for one key in the active language. */
+ export function keybarLabel(spec: KeySpec, doc?: Document): { label: string; ariaLabel: string } {
++  if (isKorean(doc)) {
++    return {
++      label: spec.labelKo ?? spec.label,
++      ariaLabel: spec.ariaLabelKo ?? spec.ariaLabel,
++    }
++  }
+   const english = isEnglish(doc)
+   return {
+     label: english ? (spec.labelEn ?? spec.label) : spec.label,
+@@ -92,10 +117,13 @@ export function keybarLabel(spec: KeySpec, doc?: Document): { label: string; ari
+ const KEYBAR_NOTICES = {
+   unsupported: '该组合不支持：Ctrl 只能与字母或 @ [ \\ ] ^ _ ? 组合。',
+   unsupportedEn: 'Unsupported: Ctrl only combines with a letter or @ [ \\ ] ^ _ ?.',
++  unsupportedKo: '지원되지 않는 조합: Ctrl 키는 문자 또는 @ [ \\ ] ^ _ ? 와만 조합할 수 있습니다.',
+   keyboardFailed: '无法唤起软键盘，请直接点终端区域。',
+   keyboardFailedEn: 'Could not open the keyboard. Tap the terminal directly.',
++  keyboardFailedKo: '화상 키보드를 열 수 없습니다. 터미널 영역을 직접 탭하세요.',
+   noPath: '终端输入面尚未就绪，按键未发送。请点一下终端区域后重试。',
+   noPathEn: 'Terminal input is not ready, so the key was not sent. Tap the terminal and try again.',
++  noPathKo: '터미널 입력면이 아직 준비되지 않아 키가 전송되지 않았습니다. 터미널 영역을 탭한 후 다시 시도해 주세요.',
+ } as const
+ 
+ /** Chinese notice copy; kept for existing importers and tests. */
+@@ -160,7 +188,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+     if (textarea === null || textarea === undefined) {
+       // 连输入面都没有：仍然试着走桥，但无论如何都要给可见提示。
+       try { host.bridge?.showSoftInput?.() } catch { /* 已是失败路径，提示优先 */ }
+-      return keybarText(KEYBAR_NOTICES.keyboardFailed, KEYBAR_NOTICES.keyboardFailedEn, doc)
++      return keybarText(KEYBAR_NOTICES.keyboardFailed, KEYBAR_NOTICES.keyboardFailedEn, doc, KEYBAR_NOTICES.keyboardFailedKo)
+     }
+     textarea.focus()
+     // 三态：'ok' 桥明确成功 / 'unavailable' 没有桥 / 'failed' 桥抛错或明确返回 false。
+@@ -174,12 +202,12 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+       }
+     }
+     if (bridgeOutcome === 'failed') {
+-      return keybarText(KEYBAR_NOTICES.keyboardFailed, KEYBAR_NOTICES.keyboardFailedEn, doc)
++      return keybarText(KEYBAR_NOTICES.keyboardFailed, KEYBAR_NOTICES.keyboardFailedEn, doc, KEYBAR_NOTICES.keyboardFailedKo)
+     }
+     // 无桥时：focus 已落在 textarea 上（真手势下 IME 会弹出），不吓用户。
+     return undefined
+   }
+-  if (effect.type === 'reject') return keybarText(KEYBAR_NOTICES.unsupported, KEYBAR_NOTICES.unsupportedEn, doc)
++  if (effect.type === 'reject') return keybarText(KEYBAR_NOTICES.unsupported, KEYBAR_NOTICES.unsupportedEn, doc, KEYBAR_NOTICES.unsupportedKo)
+   if (effect.type !== 'send') return undefined
+ 
+   // 优先通路 (c)：合成 keydown，让 xterm 自己映射（跟随 DECCKM）。
+@@ -212,7 +240,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+     ? effect.data  // 拿不到模式：CSI 是普通模式的默认（实测当前即 CSI）
+     : (acck ? (KEYBAR_SPECS[effect.key].ss3 ?? effect.data) : (KEYBAR_SPECS[effect.key].csi ?? effect.data))
+   // 两条通路都不可用（无 textarea 且无兜底写回调）：必须**可见提示**，绝不静默丢键。
+-  return host.write(data) ? undefined : keybarText(KEYBAR_NOTICES.noPath, KEYBAR_NOTICES.noPathEn, doc)
++  return host.write(data) ? undefined : keybarText(KEYBAR_NOTICES.noPath, KEYBAR_NOTICES.noPathEn, doc, KEYBAR_NOTICES.noPathKo)
+ }
+ 
+ /**

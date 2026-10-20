@@ -1510,6 +1510,20 @@ index 993bba3..aee1e5c 100644
  
  /** The apply-world callbacks this entry may use. */
  export interface SidebarToggleInjected {
+diff --git a/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts b/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
+index fb1dd20..32321d5 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/attachment-picker-menu.ts
+@@ -41,6 +41,9 @@ interface PickerCopy {
+ 
+ function copyForDocument(): PickerCopy {
+   const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
++  if (language.startsWith('ko')) {
++    return { file: '첨부파일 업로드', image: '이미지 업로드' }
++  }
+   return language.startsWith('zh')
+     ? { file: '上传附件', image: '上传图片' }
+     : { file: 'Upload attachment', image: 'Upload image' }
 diff --git a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx b/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
 index d86d288..85f5936 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/external-open.tsx
@@ -1588,6 +1602,456 @@ index ba227fd..649fe3c 100644
        }
      } finally {
        this.hydrating.delete(item.entryId)
+diff --git a/dsh-client-ui-responsive/src/client/mobile/main-panel-back.ts b/dsh-client-ui-responsive/src/client/mobile/main-panel-back.ts
+index d6a2542..9049b31 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/main-panel-back.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/main-panel-back.ts
+@@ -19,6 +19,8 @@
+  * a one-shot insert: a button React removed is re-inserted on the next batch, and a
+  * button whose level gained its own crumb is removed again.
+  */
++import { tr } from '../i18n.ts'
++
+ const PANEL_SELECTOR = '[data-plugin-panel]'
+ /** The page head row; `data-window-drag` separates it from the intro/status siblings. */
+ const HEAD_SELECTOR = ':scope > header[data-window-drag]'
+@@ -38,7 +40,9 @@ export const PANEL_DETAIL_SELECTORS = [
+ /** The phone form gate (mobile/form-marker.ts); the control is a phone affordance. */
+ const MOBILE_FORM_ATTR = 'data-dsh-mobile-form'
+ /** Back to the Conversation. */
+-const BACK_LABEL = '返回会话'
++function backLabel(): string {
++  return tr('返回会话', 'Back to conversation', '대화로 돌아가기')
++}
+ 
+ /** A chevron pointing left; drawn here so no icon package is pulled into this plugin. */
+ function chevronLeft(): SVGSVGElement {
+@@ -184,10 +188,10 @@ export class MainPanelBackMount {
+     button.type = 'button'
+     button.className = 'dsh-main-panel-back'
+     button.setAttribute(MAIN_PANEL_BACK_ATTR, '')
+-    button.setAttribute('aria-label', BACK_LABEL)
++    button.setAttribute('aria-label', backLabel())
+     button.appendChild(chevronLeft())
+     const text = document.createElement('span')
+-    text.textContent = '返回'
++    text.textContent = tr('返回', 'Back', '뒤로')
+     button.appendChild(text)
+     button.addEventListener('click', (event) => {
+       event.preventDefault()
+diff --git a/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts b/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
+index c1f8d37..078d36e 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/mobile-workspaces.ts
+@@ -1,6 +1,7 @@
+ /** Versioned Android presentation over the existing Sidebar store. Never reparent a tab body. */
+ import type { LayoutState, PaneId, PaneNode, TabId, TabRecord, FloatRect, SplitId } from '@deepseek-ai/dsh-client-ui-dockkit'
+ import type { SessionId } from '@deepseek-ai/dsh-session/types'
++import { tr } from '../i18n.ts'
+ 
+ export const WORKSPACE_MAX_WIDTH = 1100
+ export const DRAG_SAFE_PX = 24
+@@ -213,7 +214,7 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+         divider.setAttribute('role', 'separator'); divider.setAttribute('aria-orientation', vertical ? 'horizontal' : 'vertical')
+         const bounds = grid.getBoundingClientRect(), extent = vertical ? bounds.height : bounds.width
+         divider.setAttribute('aria-valuenow', String(Math.round(sizes[0] * 100))); divider.setAttribute('aria-valuemin', String(Math.round(splitFraction(0, extent) * 100))); divider.setAttribute('aria-valuemax', String(Math.round(splitFraction(extent, extent) * 100)))
+-        divider.tabIndex = 0; divider.setAttribute('aria-label', '调整工作区比例；双击恢复均分')
++        divider.tabIndex = 0; divider.setAttribute('aria-label', tr('调整工作区比例；双击恢复均分', 'Adjust workspace ratio; double click to reset', '작업공간 비율 조정, 더블클릭 시 균등 분할로 복원'))
+         divider.ondblclick = () => { const current = this.layout(); if (current && current.nodes[current.rootId].kind === 'split') this.store()?.actions.resizeSplit(session, current.rootId as SplitId, [.5, .5]) }
+       }
+     }
+@@ -228,10 +229,10 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+       if (!chrome || chrome.parentElement !== section) {
+         chrome?.remove(); chrome = document.createElement('div'); chrome.className = 'dsh-workspace-bar'; chrome.setAttribute('data-dsh-workspace-chrome', '')
+         const grip = document.createElement('button'); grip.type = 'button'; grip.className = 'dsh-workspace-grip'; grip.dataset.workspaceGrip = pane.id
+-        grip.setAttribute('aria-label', '拖动交换工作区；按 Enter 交换'); grip.innerHTML = '<span></span>'
++        grip.setAttribute('aria-label', tr('拖动交换工作区；按 Enter 交换', 'Drag to swap workspaces; press Enter to swap', '드래그하여 작업공간 맞바꾸기, Enter 키로 맞바꾸기')); grip.innerHTML = '<span></span>'
+         const title = document.createElement('span'); title.className = 'dsh-workspace-title'
+         const close = document.createElement('button'); close.type = 'button'; close.className = 'dsh-workspace-close'; close.textContent = '×'
+-        close.setAttribute('aria-label', '关闭此工作区，恢复单屏')
++        close.setAttribute('aria-label', tr('关闭此工作区，恢复单屏', 'Close this workspace and restore single screen', '이 작업공간을 닫고 단일 화면으로 복원'))
+         close.onclick = () => { const other = this.panes().find(item => item.id !== pane.id); if (other?.activeTabId) this.single(other.activeTabId) }
+         chrome.append(grip, title, close); section.append(chrome); this.headers.set(pane.id, chrome)
+       }
+@@ -239,7 +240,8 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+       const tab = pane.activeTabId && layout.tabs[pane.activeTabId]
+       const nativeTitle = section.querySelector('[data-dockkit-tab][aria-selected="true"] [data-dockkit-tab-title]')?.textContent
+       const title = chrome.querySelector('.dsh-workspace-title')!
+-      const text = this.picker.has(pane.id) ? '选择标签' : nativeTitle || (tab ? tab.title : '选择标签')
++      const chooseLabel = tr('选择标签', 'Choose tab', '탭 선택')
++      const text = this.picker.has(pane.id) ? chooseLabel : nativeTitle || (tab ? tab.title : chooseLabel)
+       if (title.textContent !== text) title.textContent = text
+       this.renderPicker(section, pane, layout)
+     }
+@@ -268,7 +270,7 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+     if (picker?.dataset.signature === key) return
+     picker?.remove(); picker = document.createElement('div'); picker.className = 'dsh-workspace-picker'; picker.dataset.dshWorkspacePicker = ''; picker.dataset.signature = key
+     picker.setAttribute('data-dsh-workspace-chrome', '')
+-    const label = document.createElement('p'); label.textContent = '选择已有标签以打开此工作区'; picker.append(label)
++    const label = document.createElement('p'); label.textContent = tr('选择已有标签以打开此工作区', 'Choose an existing tab to open this workspace', '이 작업공간을 열려면 기존 탭을 선택하세요'); picker.append(label)
+     const other = this.panes(layout).find(item => item.id !== pane.id)
+     const otherTab = other?.activeTabId && layout.tabs[other.activeTabId]
+     let candidates = 0, incompatible = 0
+@@ -278,16 +280,16 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+       const button = document.createElement('button'); button.type = 'button'; button.textContent = tab.title
+       button.disabled = (otherTab ? !compatibleTabs(otherTab, tab) : !tabCapability(tab).float) || this.nativeSurfaceConflict(tab.id, layout)
+       if (button.disabled) incompatible++
+-      button.title = button.disabled ? '此标签不支持当前分屏组合' : tab.title
++      button.title = button.disabled ? tr('此标签不支持当前分屏组合', 'This tab does not support current split combination', '이 탭은 현재 분할 화면 조합을 지원하지 않습니다') : tab.title
+       button.setAttribute('aria-label', button.disabled ? button.title + '：' + tab.title : tab.title)
+       button.onclick = () => { this.place(tab.id, pane.id) }; picker.append(button)
+     }
+     if (candidates === 0) {
+       const empty = document.createElement('p'); empty.className = 'dsh-workspace-picker-empty'
+-      empty.setAttribute('role', 'status'); empty.textContent = '暂无可用于当前分屏的标签'; picker.append(empty)
++      empty.setAttribute('role', 'status'); empty.textContent = tr('暂无可用于当前分屏的标签', 'No tabs available for current split', '현재 분할 화면에 사용할 수 있는 탭이 없습니다'); picker.append(empty)
+     } else if (incompatible > 0) {
+       const note = document.createElement('p'); note.className = 'dsh-workspace-picker-note'
+-      note.textContent = '灰色标签与当前分屏不兼容'; picker.insertBefore(note, picker.children[1] ?? null)
++      note.textContent = tr('灰色标签与当前分屏不兼容', 'Grey tabs are incompatible with current split', '비활성화된 탭은 현재 분할 화면과 호환되지 않습니다'); picker.insertBefore(note, picker.children[1] ?? null)
+     }
+     section.append(picker)
+   }
+@@ -317,15 +319,15 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+   }
+   split(): boolean {
+     const layout = this.layout(), store = this.store(), session = this.session
+-    if (!store || !layout || !session) return this.notify('当前版本的工作区适配不可用')
++    if (!store || !layout || !session) return this.notify(tr('当前版本的工作区适配不可用', 'Workspace adapter not available for this version', '현재 버전에서는 작업공간 어댑터를 사용할 수 없습니다'))
+     const panes = this.panes(layout), active = this.activeId && layout.tabs[this.activeId]
+-    if (panes.length !== 1) return this.notify('已打开两个工作区')
+-    if (!active || !tabCapability(active).split) return this.notify('当前标签使用专用视图，不能进入通用分屏')
++    if (panes.length !== 1) return this.notify(tr('已打开两个工作区', 'Two workspaces already open', '이미 두 개의 작업공간이 열려 있습니다'))
++    if (!active || !tabCapability(active).split) return this.notify(tr('当前标签使用专用视图，不能进入通用分屏', 'Active tab uses dedicated view and cannot enter split screen', '현재 탭은 전용 뷰(专用视图)를 사용하므로 일반 분할 화면으로 전환할 수 없습니다'))
+     const bounds = this.panel!.getBoundingClientRect(), vertical = portraitWorkspace()
+-    if ((vertical ? bounds.height - 48 : bounds.width) < (vertical ? 300 : 400)) return this.notify('可用空间不足，请收起键盘或旋转屏幕')
++    if ((vertical ? bounds.height - 48 : bounds.width) < (vertical ? 300 : 400)) return this.notify(tr('可用空间不足，请收起键盘或旋转屏幕', 'Insufficient space; collapse keyboard or rotate screen', '사용 가능한 공간이 부족합니다. 키보드를 접거나 화면을 회전하세요'))
+     let created: PaneId | undefined
+     store.actions.splitPane(session, panes[0].id, id => { created = id })
+-    if (!created) return this.notify('无法创建工作区')
++    if (!created) return this.notify(tr('无法创建工作区', 'Cannot create workspace', '작업공간을 생성할 수 없습니다'))
+     const node = this.layout()?.nodes[created]
+     if (node?.kind === 'pane') this.picker.set(created, node.activeTabId && !layout.tabs[node.activeTabId] ? node.activeTabId : undefined)
+     this.refresh(); return true
+@@ -333,22 +335,22 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+   private place(tabId: TabId, paneId: PaneId): boolean {
+     const layout = this.layout(), store = this.store(), session = this.session
+     if (!layout || !store || !session || !layout.tabs[tabId]) return false
+-    if (!this.panes(layout).some(pane => pane.id === paneId)) return this.notify('工作区已变更，请重新选择标签')
++    if (!this.panes(layout).some(pane => pane.id === paneId)) return this.notify(tr('工作区已变更，请重新选择标签', 'Workspace changed, please reselect tab', '작업공간이 변경되었습니다. 탭을 다시 선택하세요'))
+     if (this.panes(layout).length === 1) return this.single(tabId)
+     const other = this.panes(layout).find(pane => pane.id !== paneId), otherTab = other?.activeTabId && layout.tabs[other.activeTabId]
+-    if (this.nativeSurfaceConflict(tabId, layout)) return this.notify('已有浏览器小窗，请先将其放回工作区')
+-    if (!otherTab || !compatibleTabs(otherTab, layout.tabs[tabId])) return this.notify('此标签不支持当前分屏组合')
++    if (this.nativeSurfaceConflict(tabId, layout)) return this.notify(tr('已有浏览器小窗，请先将其放回工作区', 'Browser float already exists, return it to workspace first', '이미 브라우저 팝업창이 있습니다. 먼저 작업공간으로 되돌려 놓으세요'))
++    if (!otherTab || !compatibleTabs(otherTab, layout.tabs[tabId])) return this.notify(tr('此标签不支持当前分屏组合', 'This tab does not support current split combination', '이 탭은 현재 분할 화면 조합을 지원하지 않습니다'))
+     const placeholder = this.picker.get(paneId)
+     store.actions.placeTab(session, tabId, paneId, this.panes().find(p => p.id === paneId)?.tabs.length ?? 0)
+     const placed = this.layout()?.nodes[paneId]
+-    if (placed?.kind !== 'pane' || !placed.tabs.includes(tabId)) return this.notify('标签未能放入工作区，请重试')
++    if (placed?.kind !== 'pane' || !placed.tabs.includes(tabId)) return this.notify(tr('标签未能放入工作区，请重试', 'Failed to place tab into workspace, please retry', '탭을 작업공간에 배치하지 못했습니다. 다시 시도하세요'))
+     this.picker.delete(paneId)
+     if (placeholder && placeholder !== tabId && this.layout()?.tabs[placeholder]) store.actions.closeTab(session, placeholder)
+     this.refresh(); return true
+   }
+   float(): boolean {
+     const layout = this.layout(), store = this.store(), session = this.session, id = this.activeId
+-    if (!layout || !store || !session || !id || !tabCapability(layout.tabs[id]).float) return this.notify('当前标签不支持小窗；虚拟屏请使用原有专用浮窗入口')
++    if (!layout || !store || !session || !id || !tabCapability(layout.tabs[id]).float) return this.notify(tr('当前标签不支持小窗；虚拟屏请使用原有专用浮窗入口', 'Active tab does not support floating; use dedicated float entry for virtual screen', '현재 탭은 팝업창을 지원하지 않습니다. 가상 화면은 기존 전용 플로팅 진입점을 사용하세요'))
+     const node = Object.values(layout.nodes).find(node => node.kind === 'pane' && node.tabs.includes(id))
+     if (node?.kind !== 'pane' || node.host === 'float') return false
+     const recent = (this.history.get(session) ?? []).find(candidate => candidate !== id && layout.tabs[candidate]
+@@ -390,7 +392,7 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+     this.previewPane = pane.id
+     const preview = this.previewElement = document.createElement('div'); preview.className = 'dsh-workspace-drop-preview'
+     preview.setAttribute('data-dsh-workspace-chrome', ''); preview.setAttribute('role', 'status')
+-    preview.textContent = panes.length === 1 ? '松开创建分屏' : '松开在此工作区打开'
++    preview.textContent = panes.length === 1 ? tr('松开创建分屏', 'Release to split', '손을 떼면 분할 화면 생성') : tr('松开在此工作区打开', 'Release to open in this workspace', '손을 떼면 이 작업공간에서 열기')
+     const rect = this.previewNew ? panel : [...this.panel.querySelectorAll<HTMLElement>('[data-dockkit-pane]')].find(node => node.dataset.dockkitPane === pane.id)!.getBoundingClientRect()
+     Object.assign(preview.style, { left: rect.left + 'px', top: (this.previewNew && vertical ? rect.top + rect.height / 2 : rect.top) + 'px',
+       width: (this.previewNew && !vertical ? rect.width / 2 : rect.width) + 'px', height: (this.previewNew && vertical ? rect.height / 2 : rect.height) + 'px' })
+@@ -399,7 +401,7 @@ export class MobileWorkspaces implements WorkspaceNavigation {
+     document.body.append(preview); return true
+   }
+   drop(tab: TabId, x: number, y: number): boolean {
+-    if (!this.preview(tab, x, y)) return this.notify('此位置不能放置标签，已取消')
++    if (!this.preview(tab, x, y)) return this.notify(tr('此位置不能放置标签，已取消', 'Cannot place tab at this position, cancelled', '이 위치에는 탭을 배치할 수 없어 취소되었습니다'))
+     let pane = this.previewPane
+     if (this.previewNew) {
+       if (!this.split()) { this.clearPreview(); return false }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/reference-menu.ts b/dsh-client-ui-responsive/src/client/mobile/reference-menu.ts
+index 2ddacff..fd65afd 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/reference-menu.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/reference-menu.ts
+@@ -26,6 +26,8 @@
+  * 6. **按行去抖 + 关菜单即清态**：去抖按「目标行」而非全局时间戳（400ms 内点第二行不再被吞）；
+  *    菜单关闭时清空集合与底部条，重开不会出现幻影「已选 N 项」。
+  */
++import { tr } from '../i18n.ts'
++
+ const ROW_SELECTOR = '[data-trigger-menu] [role="option"]'
+ const MENU_SELECTOR = '[data-trigger-menu]'
+ /** 行元素 id 的固定前缀（上游 MenuView 的 optionId(source, index)）。 */
+@@ -380,8 +382,8 @@ export class ReferenceMenuEnhancer {
+     }
+     const count = bar.querySelector<HTMLElement>('[' + COUNT_ATTR + ']')
+     const add = bar.querySelector<HTMLButtonElement>('[' + ADD_ATTR + ']')
+-    if (count !== null) count.textContent = this.statusText('已选 ' + String(this.checked.size) + ' 项')
+-    if (add !== null) add.textContent = '添加 ' + String(this.checked.size) + ' 项'
++    if (count !== null) count.textContent = this.statusText(tr('已选 ' + String(this.checked.size) + ' 项', 'Selected ' + String(this.checked.size) + ' items', String(this.checked.size) + '개 선택됨'))
++    if (add !== null) add.textContent = tr('添加 ' + String(this.checked.size) + ' 项', 'Add ' + String(this.checked.size) + ' items', String(this.checked.size) + '개 추가')
+   }
+ 
+   /** 上一次插入的残留提示（#169-3：失败要如实说，不能无声清空选择）。 */
+@@ -408,7 +410,11 @@ export class ReferenceMenuEnhancer {
+     }
+     // 未能插入的（多为目录行：F6 下钻改变了候选列表）**保留在选择里**并如实报告，
+     // 用户可以逐个手动处理，而不是被无声丢弃（#169-3）。
+-    this.lastReport = '已插入 ' + String(inserted) + ' 项，' + String(this.checked.size) + ' 项未找到（可能已下钻目录）'
++    this.lastReport = tr(
++      '已插入 ' + String(inserted) + ' 项，' + String(this.checked.size) + ' 项未找到（可能已下钻目录）',
++      String(inserted) + ' inserted, ' + String(this.checked.size) + ' not found',
++      String(inserted) + '개 삽입됨, ' + String(this.checked.size) + '개 찾을 수 없음 (디렉터리 이동 가능성)',
++    )
+     // 同步视觉：已插入的取消勾选，剩下的保持勾选。
+     for (const row of document.querySelectorAll<HTMLElement>(ROW_SELECTOR)) {
+       if (sourceOfRow(row) !== REFERENCE_SOURCE) continue
+diff --git a/dsh-client-ui-responsive/src/client/mobile/settings-document.ts b/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
+index 49d067f..a09cd79 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/settings-document.ts
+@@ -14,9 +14,10 @@
+  */
+ import { chooserAvailable, openPathChooser } from './open-path.ts'
+ import { reportUserFacingResult } from '../export-result.ts'
++import { isKorean } from '../i18n.ts'
+ 
+ /** Upstream action labels this handler claims (zh / en dictionaries). */
+-const ACTION_LABELS = ['打开配置文件', 'Open configuration file']
++const ACTION_LABELS = ['打开配置文件', 'Open configuration file', '설정 파일 열기']
+ 
+ /** Host bridge surface this handler needs beyond the path chooser. */
+ interface SettingsPathBridge {
+@@ -90,9 +91,14 @@ export class SettingsDocumentAction {
+       // （这条动作由上游按钮触发，我们无法在它旁边内联渲染文字）。
+       reportUserFacingResult({
+         ok: true,
+-        title: '已打开配置文件的副本',
+-        detail: '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；'
+-          + '改完请回到「设置 → 开发者选项 → 导入配置」。',
++        title: isKorean()
++          ? '설정 파일의 복사본(副本)을 열었습니다'
++          : '已打开配置文件的副本',
++        detail: isKorean()
++          ? '이 파일은 내보낸 복사본(Documents/dshdata/exports/config/settings.yaml)입니다. 여기에서 수정해도 직접 적용되지 않으며, '
++            + '수정 후 「설정 → 개발자 옵션 → 설정 가져오기(导入配置)」로 돌아오세요.'
++          : '这是导出副本（Documents/dshdata/exports/config/settings.yaml），在它上面修改不会直接生效；'
++            + '改完请回到「设置 → 开发者选项 → 导入配置」。',
+       })
+     }
+   }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/settings-nav.ts b/dsh-client-ui-responsive/src/client/mobile/settings-nav.ts
+index 59bae9d..c1d7ee9 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/settings-nav.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/settings-nav.ts
+@@ -21,6 +21,7 @@
+  *
+  * 只作用于手机形态：`html[data-dsh-mobile-form]` 缺席时本模块不写任何东西，横屏布局与行为不变。
+  */
++import { tr } from '../i18n.ts'
+ 
+ /** 手机形态标记（`mobile/form-marker.ts` 写在 `<html>` 上，判据同上游 768px 断点）。 */
+ const MOBILE_FORM_ATTR = 'data-dsh-mobile-form'
+@@ -61,6 +62,14 @@ const OWN_SECTION_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
+   ['手机控制', '屏幕、虚拟屏与特权通道'],
+   ['通知', '任务提醒与授权请求'],
+   ['模型能力', '补齐第三方模型的思考档位'],
++  ['Developer options', '控制台、日志与更新'],
++  ['Phone control', '屏幕、虚拟屏与特权通道'],
++  ['Notifications', '任务提醒与授权请求'],
++  ['Model capabilities', '补齐第三方模型的思考档位'],
++  ['개발자 옵션', '控制台、日志与更新'],
++  ['휴대폰 제어', '屏幕、虚拟屏与特权通道'],
++  ['알림', '任务提醒与授权请求'],
++  ['모델 기능', '补齐第三方模型的思考档位'],
+ ])
+ 
+ /** English descriptions for the same own sections; the keys stay the registered labels. */
+@@ -69,6 +78,30 @@ const OWN_SECTION_DESCRIPTIONS_EN: ReadonlyMap<string, string> = new Map([
+   ['手机控制', 'Screen, virtual displays, and privileged channels'],
+   ['通知', 'Task alerts and approval requests'],
+   ['模型能力', 'Thinking levels for third-party models'],
++  ['Developer options', 'Console, logs, and updates'],
++  ['Phone control', 'Screen, virtual displays, and privileged channels'],
++  ['Notifications', 'Task alerts and approval requests'],
++  ['Model capabilities', 'Thinking levels for third-party models'],
++  ['개발자 옵션', 'Console, logs, and updates'],
++  ['휴대폰 제어', 'Screen, virtual displays, and privileged channels'],
++  ['알림', 'Task alerts and approval requests'],
++  ['모델 기능', 'Thinking levels for third-party models'],
++])
++
++/** Korean descriptions for the same own sections. */
++const OWN_SECTION_DESCRIPTIONS_KO: ReadonlyMap<string, string> = new Map([
++  ['开发者选项', '콘솔, 로그 및 업데이트'],
++  ['手机控制', '화면, 가상 화면 및 특권 채널'],
++  ['通知', '작업 알림 및 승인 요청'],
++  ['模型能力', '서드파티 모델 사고(Thinking) 모드 보완'],
++  ['Developer options', '콘솔, 로그 및 업데이트'],
++  ['Phone control', '화면, 가상 화면 및 특권 채널'],
++  ['Notifications', '작업 알림 및 승인 요청'],
++  ['Model capabilities', '서드파티 모델 사고(Thinking) 모드 보완'],
++  ['개발자 옵션', '콘솔, 로그 및 업데이트'],
++  ['휴대폰 제어', '화면, 가상 화면 및 특권 채널'],
++  ['알림', '작업 알림 및 승인 요청'],
++  ['모델 기능', '서드파티 모델 사고(Thinking) 모드 보완'],
+ ])
+ 
+ /**
+@@ -87,53 +120,6 @@ const OWN_SECTION_DESCRIPTIONS_EN: ReadonlyMap<string, string> = new Map([
+  * 边界：**只装饰本表登记的 label**。上游内置 id 与第三方/未知行一律不碰——上游不认识
+  * 的 id 继续用上游自己的齿轮降级，本表绝不按「凡是齿轮就替换」去猜。
+  */
+-const OWN_SECTION_ICONS: ReadonlyMap<string, SectionIcon> = new Map([
+-  // IconCodeOutlineMedium：对应「控制台、日志与更新」。
+-  ['开发者选项', {
+-    viewBox: '0 0 16 16',
+-    paths: [
+-      'M6.27612 1.5L4.52612 14.5',
+-      'M11.4739 1.5L9.72388 14.5',
+-      'M2.39868 5.5H14.0681',
+-      'M1.93188 10.5H13.6013',
+-    ],
+-  }],
+-  // IconFullscreenOutlineMedium：对应「屏幕、虚拟屏与特权通道」。
+-  ['手机控制', {
+-    viewBox: '0 0 16 16',
+-    paths: [
+-      'M2.33154 9.40576V13.1685C2.3318 13.4444 2.55556 13.6685 2.83154 13.6685H6.49463V14.6685H2.83154C2.00328 14.6685 1.3318 13.9967 1.33154 13.1685V9.40576H2.33154ZM13.1685 1.33154C13.9964 1.33199 14.6683 2.00352 14.6685 2.83154V6.40576H13.6685V2.83154C13.6683 2.5558 13.4441 2.33199 13.1685 2.33154H9.49463V1.33154H13.1685Z',
+-      'M9.4292 6.57077L13.914 2.08594',
+-      'M6.57077 9.4292L2.08594 13.914',
+-    ],
+-    // 上游此图标首段是填充路径（`fill: currentColor`），其余为描边。
+-    filledFirstPath: true,
+-  }],
+-  // IconAlarmClockOutlineMedium：对应「任务提醒与授权请求」。
+-  ['通知', {
+-    viewBox: '0 0 17 17',
+-    paths: [
+-      'M4.09372 11.9895L3.11865 14.0387',
+-      'M12.1392 11.9895L13.1143 14.0387',
+-      'M8.11646 4.78442V8.03442L10.6165 9.53442',
+-      'M8.11646 13.4094C11.154 13.4094 13.6165 10.947 13.6165 7.90942C13.6165 4.87186 11.154 2.40942 8.11646 2.40942C5.07889 2.40942 2.61646 4.87186 2.61646 7.90942C2.61646 10.947 5.07889 13.4094 8.11646 13.4094Z',
+-      'M1.75952 4.74323C2.30657 3.65639 3.12646 2.73047 4.12926 2.05542',
+-      'M14.3345 4.74323C13.7874 3.65639 12.9675 2.73047 11.9647 2.05542',
+-    ],
+-  }],
+-  // IconSparkleMedium：对应「补齐第三方模型的思考档位」。选它而不是 IconThinkOutlineMedium，
+-  // 是因为本模块的 `sectionIcon` 只支持「**首段**填充、其余描边」，而 Think 图标的填充段在第三段
+-  // （其中心圆点 `fill: currentColor`），表达不了；Sparkle 三段全为描边，与本模块能力相符。
+-  ['模型能力', {
+-    viewBox: '0 0 16 16',
+-    paths: [
+-      'M5.875 3C5.875 6.33333 7.54167 8 10.875 8C7.54167 8 5.875 9.66667 5.875 13C5.875 9.66667 4.20833 8 0.875 8C4.20833 8 5.875 6.33333 5.875 3Z',
+-      'M12.375 1.55823C12.375 3.39156 13.2917 4.30823 15.125 4.30823C13.2917 4.30823 12.375 5.22489 12.375 7.05823C12.375 5.22489 11.4583 4.30823 9.625 4.30823C11.4583 4.30823 12.375 3.39156 12.375 1.55823Z',
+-      'M12.375 10.4418C12.375 11.7751 13.0417 12.4418 14.375 12.4418C13.0417 12.4418 12.375 13.1084 12.375 14.4418C12.375 13.1084 11.7083 12.4418 10.375 12.4418C11.7083 12.4418 12.375 11.7751 12.375 10.4418Z',
+-    ],
+-  }],
+-])
+-
+ /** 一个内联图标的几何定义：viewBox、各 `path` 的 `d`，以及首段是否走上游的填充路径。 */
+ interface SectionIcon {
+   viewBox: string
+@@ -141,6 +127,66 @@ interface SectionIcon {
+   filledFirstPath?: boolean
+ }
+ 
++const DEV_SECTION_ICON: SectionIcon = {
++  viewBox: '0 0 16 16',
++  paths: [
++    'M6.27612 1.5L4.52612 14.5',
++    'M11.4739 1.5L9.72388 14.5',
++    'M2.39868 5.5H14.0681',
++    'M1.93188 10.5H13.6013',
++  ],
++}
++
++const PHONE_CONTROL_ICON: SectionIcon = {
++  viewBox: '0 0 16 16',
++  paths: [
++    'M2.33154 9.40576V13.1685C2.3318 13.4444 2.55556 13.6685 2.83154 13.6685H6.49463V14.6685H2.83154C2.00328 14.6685 1.3318 13.9967 1.33154 13.1685V9.40576H2.33154ZM13.1685 1.33154C13.9964 1.33199 14.6683 2.00352 14.6685 2.83154V6.40576H13.6685V2.83154C13.6683 2.5558 13.4441 2.33199 13.1685 2.33154H9.49463V1.33154H13.1685Z',
++    'M9.4292 6.57077L13.914 2.08594',
++    'M6.57077 9.4292L2.08594 13.914',
++  ],
++  filledFirstPath: true,
++}
++
++const NOTIFY_ICON: SectionIcon = {
++  viewBox: '0 0 17 17',
++  paths: [
++    'M4.09372 11.9895L3.11865 14.0387',
++    'M12.1392 11.9895L13.1143 14.0387',
++    'M8.11646 4.78442V8.03442L10.6165 9.53442',
++    'M8.11646 13.4094C11.154 13.4094 13.6165 10.947 13.6165 7.90942C13.6165 4.87186 11.154 2.40942 8.11646 2.40942C5.07889 2.40942 2.61646 4.87186 2.61646 7.90942C2.61646 10.947 5.07889 13.4094 8.11646 13.4094Z',
++    'M1.75952 4.74323C2.30657 3.65639 3.12646 2.73047 4.12926 2.05542',
++    'M14.3345 4.74323C13.7874 3.65639 12.9675 2.73047 11.9647 2.05542',
++  ],
++}
++
++const MODEL_CAPABILITY_ICON: SectionIcon = {
++  viewBox: '0 0 16 16',
++  paths: [
++    'M5.875 3C5.875 6.33333 7.54167 8 10.875 8C7.54167 8 5.875 9.66667 5.875 13C5.875 9.66667 4.20833 8 0.875 8C4.20833 8 5.875 6.33333 5.875 3Z',
++    'M12.375 1.55823C12.375 3.39156 13.2917 4.30823 15.125 4.30823C13.2917 4.30823 12.375 5.22489 12.375 7.05823C12.375 5.22489 11.4583 4.30823 9.625 4.30823C11.4583 4.30823 12.375 3.39156 12.375 1.55823Z',
++    'M12.375 10.4418C12.375 11.7751 13.0417 12.4418 14.375 12.4418C13.0417 12.4418 12.375 13.1084 12.375 14.4418C12.375 13.1084 11.7083 12.4418 10.375 12.4418C11.7083 12.4418 12.375 11.7751 12.375 10.4418Z',
++  ],
++}
++
++const OWN_SECTION_ICONS: ReadonlyMap<string, SectionIcon> = new Map([
++  // IconCodeOutlineMedium：对应「控制台、日志与更新」。
++  ['开发者选项', DEV_SECTION_ICON],
++  ['Developer options', DEV_SECTION_ICON],
++  ['개발자 옵션', DEV_SECTION_ICON],
++  // IconFullscreenOutlineMedium：对应「屏幕、虚拟屏与特权通道」。
++  ['手机控制', PHONE_CONTROL_ICON],
++  ['Phone control', PHONE_CONTROL_ICON],
++  ['휴대폰 제어', PHONE_CONTROL_ICON],
++  // IconAlarmClockOutlineMedium：对应「任务提醒与授权请求」。
++  ['通知', NOTIFY_ICON],
++  ['Notifications', NOTIFY_ICON],
++  ['알림', NOTIFY_ICON],
++  // IconSparkleMedium：对应「补齐第三方模型的思考档位」。
++  ['模型能力', MODEL_CAPABILITY_ICON],
++  ['Model capabilities', MODEL_CAPABILITY_ICON],
++  ['모델 기능', MODEL_CAPABILITY_ICON],
++])
++
+ /**
+  * 画一个自有分区图标：几何取自上游 artwork（见 `OWN_SECTION_ICONS`），描边宽度同上游中档图标 1.3。
+  *
+@@ -431,7 +477,7 @@ export class MobileSettingsNav {
+     const back = document.createElement('button')
+     back.type = 'button'
+     back.setAttribute(BACK_ATTR, '')
+-    back.setAttribute('aria-label', '返回')
++    back.setAttribute('aria-label', tr('返回', 'Back', '뒤로'))
+     back.appendChild(strokeArrow('M11 4 6 9l5 5'))
+     bar.appendChild(back)
+ 
+@@ -463,9 +509,11 @@ export class MobileSettingsNav {
+         row.appendChild(chevron)
+       }
+       const label = rowLabel(row)
+-      const description = (document.documentElement.lang.toLowerCase().startsWith('en')
++      const lang = document.documentElement.lang.toLowerCase()
++      const descMap = lang.startsWith('en')
+         ? OWN_SECTION_DESCRIPTIONS_EN
+-        : OWN_SECTION_DESCRIPTIONS).get(label)
++        : (lang.startsWith('zh') ? OWN_SECTION_DESCRIPTIONS : OWN_SECTION_DESCRIPTIONS_KO)
++      const description = descMap.get(label)
+       const existing = row.querySelector<HTMLElement>(':scope > [' + DESC_ATTR + ']')
+       if (description === undefined) {
+         // 未知 / 上游 / 第三方 id：只有上游本来的 icon + label 与我们的箭头，一个字都不加。
 diff --git a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts b/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts
 index 0f669d8..28531fd 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts
@@ -1636,6 +2100,66 @@ index 0f669d8..28531fd 100644
  declare module '@deepseek-ai/dsh-client-ui-slots' {
    interface LocaleNamespaceMap { androidSidebarBubbles: BubbleKey }
  }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.ts b/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.ts
+index a500e34..adf0794 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.ts
+@@ -4,6 +4,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+ import { WORKSPACE_MAX_WIDTH, DRAG_SAFE_PX, DRAG_DWELL_MS, type WorkspaceNavigation } from './mobile-workspaces.ts'
+ import type {} from './sidebar-bubbles.locales.ts'
++import { tr } from '../i18n.ts'
+ 
+ const PANEL = '[data-sidebar-right-panel][data-sidebar-right-open]:not([aria-hidden="true"])'
+ const STRIP = '[data-dockkit-host="dock"] [data-dockkit-strip]'
+@@ -350,10 +351,10 @@ export class SidebarBubbles {
+       row.element.toggleAttribute('data-selected', tab.selected)
+       const focused = tab.record.id === this.options.workspaces?.activeId
+       row.element.toggleAttribute('data-focused', focused)
+-      row.select.setAttribute('aria-description', tab.selected ? (focused ? '当前输入工作区' : '另一工作区显示中') : '')
++      row.select.setAttribute('aria-description', tab.selected ? (focused ? tr('当前输入工作区', 'Current input workspace', '현재 입력 작업공간') : tr('另一工作区显示中', 'Another workspace visible', '다른 작업공간 표시 중')) : '')
+       let focusLabel = row.select.querySelector<HTMLElement>('.dsh-bubble-focus-label')
+       if (!focusLabel && this.options.workspaces) { focusLabel = element('small', 'dsh-bubble-focus-label'); row.select.append(focusLabel) }
+-      if (focusLabel) focusLabel.textContent = focused && tab.selected ? '当前' : ''
++      if (focusLabel) focusLabel.textContent = focused && tab.selected ? tr('当前', 'Current', '현재') : ''
+       row.element.toggleAttribute('data-group-start', index > 0 && this.tabs[index - 1].pane !== tab.pane)
+       row.element.style.setProperty('--dsh-bubble-index', String(index))
+       row.element.style.setProperty('--dsh-bubble-delay', Math.min(index, 7) * 8 + 'ms')
+@@ -396,9 +397,9 @@ export class SidebarBubbles {
+       else this.actions.append(proxy)
+     }
+     if (this.options.workspaces) {
+-      const split = button('dsh-bubble-control'); split.textContent = '分栏'; split.setAttribute('aria-label', '创建双工作区'); split.dataset.dshWorkspaceSplit = '';
++      const split = button('dsh-bubble-control'); split.textContent = tr('分栏', 'Split', '분할'); split.setAttribute('aria-label', tr('创建双工作区', 'Create dual workspaces', '듀얼 작업공간 생성')); split.dataset.dshWorkspaceSplit = '';
+       split.addEventListener('click', () => { if (this.options.workspaces?.split()) this.setOpen(false) })
+-      const float = button('dsh-bubble-control'); float.textContent = '小窗'; float.setAttribute('aria-label', '将当前标签小窗化'); float.dataset.dshWorkspaceFloat = '';
++      const float = button('dsh-bubble-control'); float.textContent = tr('小窗', 'Float', '팝업창'); float.setAttribute('aria-label', tr('将当前标签小窗化', 'Make active tab floating', '현재 탭을 팝업창으로 전환')); float.dataset.dshWorkspaceFloat = '';
+       float.addEventListener('click', () => { if (this.options.workspaces?.float()) this.setOpen(false) })
+       this.actions.append(split, float)
+     }
+@@ -562,7 +563,7 @@ export class SidebarBubbles {
+       this.cancelPress()
+       if (workspaceDrop) { this.options.workspaces?.drop(tab, latestX, latestY); this.setOpen(false) }
+       else if (valid) this.reorder(tab, before)
+-      else if (this.status) this.status.textContent = '未放置标签，已恢复原布局'
++      else if (this.status) this.status.textContent = tr('未放置标签，已恢复原布局', 'No tab placed, original layout restored', '탭을 배치하지 않아 원래 레이아웃으로 복원했습니다')
+     } else this.cancelPress()
+   }
+   private readonly onPointerCancel = (): void => { this.cancelPress(); this.suppressClick = false }
+diff --git a/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts b/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
+index 04ae9af..d659845 100644
+--- a/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
++++ b/dsh-client-ui-responsive/src/client/mobile/top-bar-fold.ts
+@@ -234,7 +234,8 @@ export class TopBarFold {
+   private foldLabel(): string {
+     const language = (document.documentElement.lang || navigator.language || '').toLowerCase()
+     if (language.startsWith('zh')) return this.open ? '收起插件工具' : '展开插件工具'
+-    return this.open ? 'Collapse plugin tools' : 'Expand plugin tools'
++    if (language.startsWith('en')) return this.open ? 'Collapse plugin tools' : 'Expand plugin tools'
++    return this.open ? '플러그인 도구 접기' : '플러그인 도구 펼치기'
+   }
+ 
+   private removeArrow(): void {
 diff --git a/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts b/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
 index f8766f6..3f9c3ef 100644
 --- a/dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
@@ -2261,6 +2785,28 @@ index ce6a317..e68980e 100644
      expect(hint).toContain('APK')
    })
  })
+diff --git a/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts b/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
+index 2d88633..02a4775 100644
+--- a/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
++++ b/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
+@@ -248,6 +248,17 @@ describe('own paperclip entry', () => {
+     expect(menu()?.textContent).toContain('Upload attachment')
+     expect(menu()?.textContent).toContain('Upload image')
+   })
++
++  it('uses Korean copy when the document language is Korean', () => {
++    enhancer.detach()
++    document.body.innerHTML = ''
++    mountComposer('ko-KR')
++    enhancer = new AttachmentPickerMenuEnhancer()
++    enhancer.attach()
++    triggerOrThrow().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
++    expect(menu()?.textContent).toContain('첨부파일 업로드')
++    expect(menu()?.textContent).toContain('이미지 업로드')
++  })
+ })
+ 
+ describe('source selection delegates to the upstream input', () => {
 diff --git a/dsh-client-ui-responsive/tests/browser-tab.spec.tsx b/dsh-client-ui-responsive/tests/browser-tab.spec.tsx
 index 5a5f9f9..f0f7260 100644
 --- a/dsh-client-ui-responsive/tests/browser-tab.spec.tsx
@@ -3590,6 +4136,19 @@ index 799f542..2d20b37 100644
 +    expect(malformed.text).toContain('검사 알 수 없음개 / 복구 알 수 없음개 / 실패 알 수 없음개')
    })
  })
+diff --git a/dsh-client-ui-responsive/tests/reference-menu.spec.ts b/dsh-client-ui-responsive/tests/reference-menu.spec.ts
+index 12e0adc..4cc3c95 100644
+--- a/dsh-client-ui-responsive/tests/reference-menu.spec.ts
++++ b/dsh-client-ui-responsive/tests/reference-menu.spec.ts
+@@ -73,7 +73,7 @@ describe('ReferenceMenuEnhancer', () => {
+     const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+     box.dispatchEvent(event)
+     expect(event.defaultPrevented).toBe(true)
+-    expect(document.querySelector('[data-dsh-ref-bar]')?.textContent).toContain('已选 1 项')
++    expect(document.querySelector('[data-dsh-ref-bar]')?.textContent).toMatch(/已选 1 项|1개 선택됨/)
+   })
+ 
+   it('claims the checkbox gesture before upstream settle-pick', () => {
 diff --git a/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx b/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx
 index 0e6fdb2..1f621dd 100644
 --- a/dsh-client-ui-responsive/tests/runtime-cache.spec.tsx

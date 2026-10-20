@@ -1,5 +1,5 @@
 diff --git a/dsh-host-web-compat/lib/index.js b/dsh-host-web-compat/lib/index.js
-index 0973bd4..071f3ee 100644
+index 0973bd4..f4a2ca7 100644
 --- a/dsh-host-web-compat/lib/index.js
 +++ b/dsh-host-web-compat/lib/index.js
 @@ -421,22 +421,22 @@ function show(report){
@@ -31,7 +31,20 @@ index 0973bd4..071f3ee 100644
      var pre=document.createElement('pre');
      pre.style.cssText='white-space:pre-wrap;word-break:break-all;background:#111;border:1px solid #333;border-radius:8px;padding:10px;margin-top:8px;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace';
      pre.textContent=JSON.stringify(report,null,2);
-@@ -692,12 +692,12 @@ function isPathText(text){
+@@ -549,7 +549,11 @@ onDirectoryPicked:function(callbackId,path){
+ try{var h={'content-type':'application/json'};if(window.androidBridge&&window.androidBridge.getPickToken){h['x-dsh-pick-token']=window.androidBridge.getPickToken()}fetch('/api/android/dir-pick/result',{method:'POST',headers:h,body:JSON.stringify({requestId:callbackId,path:path})})}catch(e){}
+ },
+ onPermissionRequired:function(){
+-try{alert('需要\u300c所有文件访问\u300d权限才能使用外部目录。请在系统设置中允许后重试。')}catch(e){}
++try{
++  var l=(document.documentElement.lang||'').toLowerCase();
++  var m=l.startsWith('zh')?'需要\u300c所有文件访问\u300d权限才能使用外部目录。请在系统设置中允许后重试。':(l.startsWith('en')?'"All files access" permission is required to use external directories. Please grant it in system settings and retry.':'외부 디렉터리를 사용하려면 \u300c모든 파일에 대한 접근\u300d 권한이 필요합니다. 시스템 설정에서 허용한 후 다시 시도해 주세요.');
++  alert(m);
++}catch(e){}
+ },
+ };
+ // 2026-09-10 原生「打开方式」：壳新增 androidBridge.openPathChooser(path, mode)，
+@@ -692,12 +696,12 @@ function isPathText(text){
  // 症状是引擎启动时报 SyntaxError: Unexpected identifier）——本轮踩过一次，别再踩。
  // 表外的码走兜底句，**绝不把码印给用户**（正文）。新增码时此处与页面侧表同批补。
  var OPEN_PATH_ERROR_TEXT={
@@ -50,7 +63,7 @@ index 0973bd4..071f3ee 100644
  };
  function openViaReader(text){
    if(text.charAt(0)==='/'){
-@@ -721,8 +721,8 @@ function openViaReader(text){
+@@ -721,8 +725,8 @@ function openViaReader(text){
          //  3) 会话 id 与 HTTP 状态码只进 console（壳侧 LogCollector 会收走），不上屏。
          var code=j&&(j.reason||j.error)?String(j.reason||j.error):'';
          var known=j&&j.reason?String(j.reason):OPEN_PATH_ERROR_TEXT[code];
@@ -61,7 +74,7 @@ index 0973bd4..071f3ee 100644
          try{
            if(window.console&&console.warn){
              console.warn('[dsh-open-path] detail code='+code+' status='+result.status
-@@ -730,8 +730,8 @@ function openViaReader(text){
+@@ -730,8 +734,8 @@ function openViaReader(text){
            }
          }catch(e){}
        })
@@ -72,7 +85,7 @@ index 0973bd4..071f3ee 100644
  }
  document.addEventListener('click',function(e){
    var el=e.target;
-@@ -825,7 +825,7 @@ function failed(){
+@@ -825,7 +829,7 @@ function failed(){
      var el=document.createElement('div')
      el.id='dsh-clipboard-failed'
      el.setAttribute('role','status')
@@ -81,7 +94,7 @@ index 0973bd4..071f3ee 100644
      el.style.cssText='position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);z-index:2147483647;max-width:86vw;padding:8px 14px;border-radius:999px;background:rgba(0,0,0,.86);color:#fff;font-size:13px;line-height:1.4;text-align:center'
      document.body.appendChild(el)
      setTimeout(function(){try{el.remove()}catch(e){}},3000)
-@@ -895,7 +895,7 @@ const POLYFILL_SCRIPT =
+@@ -895,7 +899,7 @@ const POLYFILL_SCRIPT =
   * `[dsh-boot-stall]` 前缀的行），不吞异常、不改控制流；壳侧 `onConsoleMessage` 会把它落进
   * `boot-diag.log`（§2.3 的壳侧半边），于是「纯白下台」变成可诊断下台。
   */
@@ -90,7 +103,7 @@ index 0973bd4..071f3ee 100644
  <script>(function(){
  if(window.__dshStaticFallback){return}window.__dshStaticFallback=true;
  window.__dshStaticErrors=[];
-@@ -1047,10 +1047,10 @@ class AndroidDirectoryPicker extends Service {
+@@ -1047,10 +1051,10 @@ class AndroidDirectoryPicker extends Service {
      if (typeof path === 'string' && path.startsWith(REFUSED)) {
        const reason = path.slice(REFUSED.length)
        const message = reason === 'permission-denied'
@@ -104,7 +117,7 @@ index 0973bd4..071f3ee 100644
        entry.settle?.(new Error(message)) ?? entry.resolve(null)
        return true
      }
-@@ -1224,13 +1224,13 @@ export function apply(ctx) {
+@@ -1224,13 +1228,13 @@ export function apply(ctx) {
   * @returns `{ abs }` on success, `{ error }` when nothing resolves.
   */
  function resolveSessionPath(rel, ctx, sessionId) {
@@ -121,7 +134,7 @@ index 0973bd4..071f3ee 100644
    }
    let sessions
    try { sessions = ctx.get('sessions') } catch { sessions = undefined }
-@@ -1250,13 +1250,13 @@ function resolveSessionPath(rel, ctx, sessionId) {
+@@ -1250,13 +1254,13 @@ function resolveSessionPath(rel, ctx, sessionId) {
        }
      }
      if (typeof cwd !== 'string' || cwd === '') {
@@ -137,7 +150,7 @@ index 0973bd4..071f3ee 100644
    }
    // 兼容旧页面（无 sessionId）：保留存在性消歧，但显式标记 guessed——不静默把猜解当权威。
    let list = []
-@@ -1267,5 +1267,5 @@ function resolveSessionPath(rel, ctx, sessionId) {
+@@ -1267,5 +1271,5 @@ function resolveSessionPath(rel, ctx, sessionId) {
      const abs = resolvePath(cwd, rel)
      try { if (existsSync(abs)) return { abs, guessed: true } } catch { /* permission/race: try next */ }
    }
