@@ -94,6 +94,19 @@ jobs:
           git diff --check
           git diff --stat
 
+      - name: Stamp Korean release identity for secure in-app updates
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -1)"
+          test -n "$version"
+          # Keep exactly the same 12-character identities used by the draft release tag.
+          printf 'ko-v%s-u%s-p%s\n' "$version" \
+            "$(echo "${{ steps.sources.outputs.upstream_sha }}" | cut -c1-12)" \
+            "$(echo "${{ steps.sources.outputs.locale_sha }}" | cut -c1-12)" \
+            > app/src/main/assets/ko-build-tag.txt
+
       - name: Cache upstream base archives
         if: steps.decision.outputs.build == 'true'
         id: base-cache
@@ -242,6 +255,7 @@ jobs:
             '${{ steps.sources.outputs.upstream_sha }}' '${{ steps.sources.outputs.locale_sha }}' \
             > release-out/KO-BUILD-SOURCES.txt
           sha256sum release-out/dsh-ko-arm64.apk >> release-out/KO-BUILD-SOURCES.txt
+          (cd release-out && sha256sum dsh-ko-arm64.apk > dsh-ko-arm64.apk.sha256)
 
       - name: Upload arm64 APK to draft GitHub Release
         if: steps.decision.outputs.build == 'true'
@@ -263,7 +277,7 @@ jobs:
               --title "Korean arm64 v${version} ($tag)" \
               --notes "Unverified Korean arm64 APK. Check on a device before publishing. Source SHAs and signature are in KO-BUILD-SOURCES.txt."
           fi
-          gh release upload "$tag" release-out/dsh-ko-arm64.apk release-out/KO-BUILD-SOURCES.txt --repo "$REPO" --clobber
+          gh release upload "$tag" release-out/dsh-ko-arm64.apk release-out/dsh-ko-arm64.apk.sha256 release-out/KO-BUILD-SOURCES.txt --repo "$REPO" --clobber
           echo "Draft Release: https://github.com/${REPO}/releases/tag/${tag}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Mark this exact input set as successfully built
