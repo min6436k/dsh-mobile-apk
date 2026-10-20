@@ -263,8 +263,8 @@ index aa1d441..93d1677 100644
 +              val endFill = if (choice == mode) selectedFill else plainFill
 +              val startInk = if (choice == fromMode) selectedInk else plainInk
 +              val endInk = if (choice == mode) selectedInk else plainInk
-+              drawable.setColor(ArgbEvaluator.getInstance().evaluate(fraction, startFill, endFill) as Int)
-+              view.setTextColor(ArgbEvaluator.getInstance().evaluate(fraction, startInk, endInk) as Int)
++              drawable.setColor(ArgbEvaluator().evaluate(fraction, startFill, endFill) as Int)
++              view.setTextColor(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
 +            }
 +          }
 +        }
