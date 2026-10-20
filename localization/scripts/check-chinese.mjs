@@ -545,9 +545,22 @@ export function scanTree(root, options = {}) {
     } else unresolved.push(item)
   }
   const staleExceptions = parsed.exceptions.filter((_, index) => !matched.has(index))
+  // IMPORTANT: reviewed exceptions are STILL detections. In particular, an
+  // internal identifier that also becomes a workspace title must not disappear
+  // from the report merely because another agent has called it "internal".
+  // Strict acceptance requires a concrete regression-test file for every
+  // detected exception, not just an unverified prose explanation.
+  const unverifiedExceptions = parsed.exceptions.filter(ex =>
+    !['protocol-only', 'selector-only', 'display-identity', 'localized-fallback'].includes(ex.category) ||
+    typeof ex.verifiedBy !== 'string' ||
+    !/^(?:app\/src\/test\/|plugins\/[^/]+\/test\/|dsh-client-ui-responsive\/tests\/|dsh-host-web-compat\/(?:test|scripts)\/)/.test(ex.verifiedBy) ||
+    !fs.existsSync(path.join(absolute, ex.verifiedBy)) ||
+    (ex.category === 'display-identity' && !fs.readFileSync(path.join(absolute, ex.verifiedBy), 'utf8').includes(ex.text))
+  )
   return {
     root: absolute, filesScanned: files.length, excludedDictionaryFiles: DICTIONARIES.map(String),
-    count: unresolved.length, auditedExceptions: excluded, staleExceptions,
+    count: unresolved.length, totalDetected: unique.length,
+    auditedExceptions: excluded, staleExceptions, unverifiedExceptions,
     findings: unresolved.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line),
   }
 }
@@ -560,7 +573,9 @@ export function formatMarkdown(report) {
     '- 검사 소스: ' + report.root,
     '- 검사 파일 수: ' + report.filesScanned,
     '- 검토할 후보: ' + report.count,
-    '- 코드 근거로 승인한 예외: ' + report.auditedExceptions.length,
+    '- 검출된 전체 원문(검증된 내부 식별자 포함): ' + report.totalDetected,
+    '- 코드 근거로 승인한 예외(검출 결과에서 제거되지 않음): ' + report.auditedExceptions.length,
+    '- 검증 테스트가 없는 예외(허용 불가): ' + report.unverifiedExceptions.length,
     '- 더 이상 일치하지 않는 예외(정리 필수): ' + report.staleExceptions.length,
     '- 범위: Android 앱 / 앱 내 WebView / 내장 플러그인 소스',
     '- 제외: 주석, 중국어 번역 조회 사전, 완성된 다국어 호출, 한국어 리소스가 있는 기본 Android 문자열',
@@ -574,6 +589,10 @@ export function formatMarkdown(report) {
     '',
     ...report.auditedExceptions.map(item =>
       '- ' + escape(item.file + ':' + item.line) + ' / ' + escape(item.text) + ': ' + escape(item.why)),
+    '',
+    '## 근거 테스트가 없는 예외 (엄격 검사 실패)',
+    '',
+    ...report.unverifiedExceptions.map(item => '- ' + escape(item.file) + ': ' + escape(item.text)),
     '',
     '## 제거해야 할 오래된 예외',
     '',
@@ -593,5 +612,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const report = scanTree(root)
   if (args.includes('--json')) console.log(JSON.stringify(report, null, 2))
   else console.log(formatMarkdown(report))
-  if (args.includes('--strict') && (report.count > 0 || report.staleExceptions.length > 0)) process.exitCode = 1
+  if (args.includes('--strict') && (
+    report.count > 0 || report.staleExceptions.length > 0 || report.unverifiedExceptions.length > 0
+  )) process.exitCode = 1
 }
