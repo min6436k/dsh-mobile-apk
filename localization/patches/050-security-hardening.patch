@@ -75,7 +75,7 @@ index d2318ec..9d5a373 100644
  
    /** 已登记 key 一览（供门禁与测试枚举，避免「加了 key 忘了接线」这类漏项）。 */
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
-index 93d1677..1a7d8b9 100644
+index e337da3..113fa8e 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
 @@ -13,6 +13,7 @@ import android.widget.Button
@@ -178,7 +178,7 @@ index 72daa84..5e01e3f 100644
      activeConnection = connection
      val effort = selectedEffort.takeIf { id ->
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/UpdateChecker.kt b/app/src/main/java/com/dsharnessmobile/shell/UpdateChecker.kt
-index 3e3a247..206382d 100644
+index 3e3a247..8c835af 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/UpdateChecker.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/UpdateChecker.kt
 @@ -14,11 +14,11 @@ import java.net.URL
@@ -233,7 +233,7 @@ index 3e3a247..206382d 100644
      val latest = try {
        parseLatestRelease(body)
      } catch (e: Exception) {
-@@ -284,20 +283,40 @@ object UpdateChecker {
+@@ -284,20 +283,47 @@ object UpdateChecker {
        )
      }
      val byName = latest.assets.associateBy { it.name }
@@ -242,11 +242,16 @@ index 3e3a247..206382d 100644
 +    }
      val hit = assetNameCandidates(latest.tag, family).firstNotNullOfOrNull { byName[it] }
        ?: return classifyAssetFailure(latest.tag, family, deviceAbis, latest.assets.map { it.name })
--    if (hit.url.isEmpty()) {
-+    if (hit.url.isEmpty() || (installedKoTag != null && !isTrustedAssetUrl(hit.url, latest.tag))) {
+     if (hit.url.isEmpty()) {
        return CheckResult.Failed(
--        ko("检查失败：发布数据异常——资产 ${hit.name} 缺下载地址（发布可能未完成）",
+         ko("检查失败：发布数据异常——资产 ${hit.name} 缺下载地址（发布可能未完成）",
 -           "업데이트 확인 실패: 릴리스 데이터 이상 - 파일 ${hit.name}의 다운로드 주소가 누락되었습니다 (릴리스가 아직 완료되지 않았을 수 있음)"),
++           "업데이트 확인 실패: 릴리스 파일 ${hit.name}의 다운로드 주소가 누락되었습니다"),
++        CheckResult.FailureKind.RELEASE_DATA_BROKEN,
++      )
++    }
++    if (installedKoTag != null && !isTrustedAssetUrl(hit.url, latest.tag)) {
++      return CheckResult.Failed(
 +        "업데이트 확인 실패: 릴리스 APK 다운로드 주소가 신뢰할 수 있는 포크 주소가 아닙니다",
          CheckResult.FailureKind.RELEASE_DATA_BROKEN,
        )
@@ -278,7 +283,7 @@ index 3e3a247..206382d 100644
    /**
     * 查 latest release；资产按 [assetNameCandidates] 匹配（发布链口径优先，兼容历史口径）。
     * 版本比较：tag（去 v 前缀）与 BuildConfig.VERSION_NAME 语义比较（点分段数值）；
-@@ -307,7 +326,9 @@ object UpdateChecker {
+@@ -307,7 +333,9 @@ object UpdateChecker {
     * API 不可达 / 限流 / 接口异常 / 解析失败 / 发布数据异常 / 本机 ABI 读不到，**各自如实分类**，
     * 不得一律说成"没有 arm64 资产"（0.14.6 功能 C：C1/C2）。
     */
@@ -289,7 +294,7 @@ index 3e3a247..206382d 100644
      val abis = deviceAbis()
      val family = abiFrom(abis)
      var conn: HttpURLConnection? = null
-@@ -327,7 +348,7 @@ object UpdateChecker {
+@@ -327,7 +355,7 @@ object UpdateChecker {
          return classifyHttpFailure(httpCode, rateLimited)
        }
        val raw = conn.inputStream.use { it.readBytes() }
@@ -298,7 +303,7 @@ index 3e3a247..206382d 100644
      } catch (e: Exception) {
        android.util.Log.w(TAG, "check via $API failed: " + (e.message ?: e.javaClass.simpleName))
        return classifyTransportFailure(e)
-@@ -368,8 +389,9 @@ object UpdateChecker {
+@@ -368,8 +396,9 @@ object UpdateChecker {
      return false
    }
  
@@ -309,7 +314,7 @@ index 3e3a247..206382d 100644
      val path = url.removePrefix("https://github.com/")
      for (mirror in MIRRORS) {
        val candidate = if (mirror == MIRRORS[0]) url else mirror + path
-@@ -411,7 +433,7 @@ object UpdateChecker {
+@@ -411,7 +440,7 @@ object UpdateChecker {
      return null
    }
  
@@ -318,7 +323,7 @@ index 3e3a247..206382d 100644
    fun verifySha256(file: File, expected: String): Boolean = try {
      val md = java.security.MessageDigest.getInstance("SHA-256")
      file.inputStream().use { input ->
-@@ -422,8 +444,9 @@ object UpdateChecker {
+@@ -422,8 +451,9 @@ object UpdateChecker {
      actual.equals(expected.trim().substringBefore(' '), ignoreCase = true)
    } catch (_: Exception) { false }
  
@@ -329,7 +334,7 @@ index 3e3a247..206382d 100644
      val path = url.removePrefix("https://github.com/")
      for (mirror in MIRRORS) {
        val candidate = if (mirror == MIRRORS[0]) url else mirror + path
-@@ -442,6 +465,13 @@ object UpdateChecker {
+@@ -442,6 +472,13 @@ object UpdateChecker {
      return null
    }
  
@@ -343,6 +348,28 @@ index 3e3a247..206382d 100644
    /** 安装未知应用来源权限是否已持有（manifest 已声明 REQUEST_INSTALL_PACKAGES）。 */
    fun canInstall(context: Context): Boolean =
      if (android.os.Build.VERSION.SDK_INT >= 26) context.packageManager.canRequestPackageInstalls() else true
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/ExternalLinksTest.kt b/app/src/test/java/com/dsharnessmobile/shell/ExternalLinksTest.kt
+index 0363565..f0d80a3 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/ExternalLinksTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/ExternalLinksTest.kt
+@@ -40,14 +40,12 @@ class ExternalLinksTest {
+     }
+   }
+ 
+-  /** 教程链接按用户给定原样保留（含分享来源参数），不做任何清洗。 */
++  /** Tutorial URL should not include a reusable share tracking parameter. */
+   @Test
+-  fun tutorialLinkKeepsTheUserGivenShareParam() {
++  fun tutorialLinkDoesNotLeakShareTrackingParam() {
+     val verdict = ExternalLinks.classify(ExternalLinks.SHIZUKU_TUTORIAL)
+     assertEquals(
+-      ExternalLinkVerdict.Openable(
+-        "https://www.bilibili.com/video/BV1iFy7BpECf/?vd_source=f4d91092356f067f076eeacb3ff30380",
+-      ),
++      ExternalLinkVerdict.Openable("https://www.bilibili.com/video/BV1iFy7BpECf/"),
+       verdict,
+     )
+   }
 diff --git a/app/src/test/java/com/dsharnessmobile/shell/KoSecurityHardeningTest.kt b/app/src/test/java/com/dsharnessmobile/shell/KoSecurityHardeningTest.kt
 new file mode 100644
 index 0000000..dc117af
