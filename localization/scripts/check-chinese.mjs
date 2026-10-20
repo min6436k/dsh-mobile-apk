@@ -427,6 +427,25 @@ function pushFinding(results, file, content, offset, value, reason) {
   results.push({ file, line, text: value.trim().slice(0, 240), reason, snippet })
 }
 
+/**
+ * Immutable keybar semantics intentionally stores per-locale copy in separate
+ * sibling fields. It MUST NOT call navigator/window or run locale detection in
+ * that pure module (upstream tests enforce that). A Chinese label is translated
+ * only when its own object has the matching nonempty Korean sibling; ordinary
+ * strings and persistent identifiers still surface as findings.
+ */
+function localizedKeybarField(tokens, index, file) {
+  if (file !== 'plugins/dsh-android-vdisplay/src/keybar/keymap.ts') return false
+  const key = tokens[index - 2]?.value
+  if (!['label', 'ariaLabel'].includes(key) || tokens[index - 1]?.value !== ':') return false
+  for (let j = index + 1; j + 2 < tokens.length && j < index + 32; j++) {
+    if (tokens[j].value === '}' || tokens[j].value === '{') break
+    if (tokens[j].value === key + 'Ko' && tokens[j + 1]?.value === ':' &&
+        tokens[j + 2]?.type === 'string' && /[\uac00-\ud7a3]/u.test(tokens[j + 2].value)) return true
+  }
+  return false
+}
+
 function scanCode(file, content, dictionaries) {
   const results = []
   const tokens = lex(content)
@@ -438,6 +457,7 @@ function scanCode(file, content, dictionaries) {
     if (token.type !== 'string' || !HAN.test(token.value)) continue
     if (pairedRanges.some(([start, end]) => i > start && i < end)) continue
     if (multilingualKeys.has(i)) continue
+    if (localizedKeybarField(tokens, i, file)) continue
     const decision = helperDecision(tokens, i, calls, dictionaries, file)
     if (decision?.skip) continue
     pushFinding(results, file, content, token.start, token.value, decision?.reason ?? 'hardcoded-chinese')

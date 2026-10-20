@@ -68,6 +68,22 @@ test('Android default strings are omitted only if a Korean resource covers them'
   })
 })
 
+test('pure keybar localizable fields have Korean siblings but unrelated Chinese still appears', () => {
+  withSource({
+    'app/src/main/java/Example.kt': 'val label = "english"',
+    'plugins/dsh-android-vdisplay/src/keybar/keymap.ts': [
+      'export const entries = {',
+      "  keyboard: {label: '键盘', labelKo: '키보드', ariaLabel: '唤起软键盘', ariaLabelKo: '키보드 열기', tooltip: '漏译提示'},",
+      "  missing: {label: '缺失标签', labelKo: '', ariaLabel: '未翻译描述'},",
+      "  identity: {id: '临时工作区', label: '另一个未译', labelEn: 'other'},",
+      '}',
+    ].join('\n'),
+  }, root => {
+    const texts = scanTree(root).findings.map(x => x.text).sort()
+    assert.deepEqual(texts, ['漏译提示', '缺失标签', '未翻译描述', '临时工作区', '另一个未译'].sort())
+  })
+})
+
 test('HTML comments are excluded but visible nodes and labels are found', () => {
   withSource({
     'app/src/main/assets/page.html': [
