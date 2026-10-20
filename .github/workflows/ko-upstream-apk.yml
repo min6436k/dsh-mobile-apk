@@ -81,7 +81,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .deploy-tmp/ko-patches
-          git archive "${{ steps.sources.outputs.locale_sha }}" localization/patches \
+          git archive "${{ steps.sources.outputs.locale_sha }}" localization/patches localization/scripts localization/chinese-scan-exceptions.json \
             | tar -x -C .deploy-tmp/ko-patches
           patch_dir="$PWD/.deploy-tmp/ko-patches/localization/patches"
           mapfile -d '' patches < <(find "$patch_dir" -type f -name '*.patch' -print0 | sort -z)
@@ -93,6 +93,17 @@ jobs:
           done
           git diff --check
           git diff --stat
+
+      - name: Fail on untranslated Chinese and unverified internal identifiers
+        if: steps.decision.outputs.build == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          checker=".deploy-tmp/ko-patches/localization/scripts/check-chinese.mjs"
+          node --test .deploy-tmp/ko-patches/localization/scripts/check-chinese.test.mjs
+          node "$checker" "$PWD" --markdown > .deploy-tmp/ko-chinese-audit.md
+          cat .deploy-tmp/ko-chinese-audit.md >> "$GITHUB_STEP_SUMMARY"
+          node "$checker" "$PWD" --strict
 
       - name: Stamp Korean release identity for secure in-app updates
         if: steps.decision.outputs.build == 'true'

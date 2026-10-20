@@ -98,6 +98,32 @@ test('audited exact-string exceptions are reported; stale exceptions block stric
     assert.equal(report.count, 0)
     assert.equal(report.auditedExceptions.length, 1)
     assert.equal(report.staleExceptions.length, 1)
+    assert.equal(report.totalDetected, 1, 'internal identifiers must still be counted')
+    assert.equal(report.unverifiedExceptions.length, 2, 'prose-only exceptions are not verified')
+  })
+})
+
+test('visible Chinese identity cannot be suppressed without a regression test', () => {
+  withSource({
+    'app/src/main/java/com/example/Example.kt': 'val title = "临时工作区"',
+    'app/src/test/java/com/example/IdentityTest.kt': 'class IdentityTest { /* 临时工作区 -> 임시 작업 공간 */ }',
+  }, (root) => {
+    const exceptionsFile = path.join(root, 'verified.json')
+    const entry = {
+      file: 'app/src/main/java/com/example/Example.kt',
+      text: '临时工作区',
+      why: 'A persisted identifier must retain its old value, but a separate localized view is tested.',
+      category: 'display-identity',
+      verifiedBy: 'app/src/test/java/com/example/IdentityTest.kt',
+    }
+    fs.writeFileSync(exceptionsFile, JSON.stringify({ exceptions: [entry] }))
+    const report = scanTree(root, { exceptionsFile })
+    assert.equal(report.totalDetected, 1)
+    assert.equal(report.auditedExceptions.length, 1)
+    assert.equal(report.unverifiedExceptions.length, 0)
+    fs.unlinkSync(path.join(root, entry.verifiedBy))
+    const unverified = scanTree(root, { exceptionsFile })
+    assert.equal(unverified.unverifiedExceptions.length, 1)
   })
 })
 
