@@ -250,10 +250,10 @@ index 6961a86..77154b6 100644
    },
  }
 diff --git a/plugins/dsh-android-vdisplay/src/keybar/mount.ts b/plugins/dsh-android-vdisplay/src/keybar/mount.ts
-index d214a8c..a95368e 100644
+index d214a8c..a82c199 100644
 --- a/plugins/dsh-android-vdisplay/src/keybar/mount.ts
 +++ b/plugins/dsh-android-vdisplay/src/keybar/mount.ts
-@@ -66,22 +66,47 @@ export interface KeybarHandle {
+@@ -66,22 +66,46 @@ export interface KeybarHandle {
    notice(): string | undefined
  }
  
@@ -265,10 +265,9 @@ index d214a8c..a95368e 100644
 +    if (mode === 'zh' || mode === 'en') return false
 +    const lang = (doc?.documentElement.lang ?? '').toLowerCase()
 +    if (lang.startsWith('ko')) return true
-+    if (lang.startsWith('zh') || lang.startsWith('en')) return false
-+    return true
++    return false
 +  } catch {
-+    return true
++    return false
 +  }
 +}
 +
@@ -303,7 +302,7 @@ index d214a8c..a95368e 100644
    const english = isEnglish(doc)
    return {
      label: english ? (spec.labelEn ?? spec.label) : spec.label,
-@@ -92,10 +117,13 @@ export function keybarLabel(spec: KeySpec, doc?: Document): { label: string; ari
+@@ -92,10 +116,13 @@ export function keybarLabel(spec: KeySpec, doc?: Document): { label: string; ari
  const KEYBAR_NOTICES = {
    unsupported: '该组合不支持：Ctrl 只能与字母或 @ [ \\ ] ^ _ ? 组合。',
    unsupportedEn: 'Unsupported: Ctrl only combines with a letter or @ [ \\ ] ^ _ ?.',
@@ -317,7 +316,7 @@ index d214a8c..a95368e 100644
  } as const
  
  /** Chinese notice copy; kept for existing importers and tests. */
-@@ -160,7 +188,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+@@ -160,7 +187,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
      if (textarea === null || textarea === undefined) {
        // 连输入面都没有：仍然试着走桥，但无论如何都要给可见提示。
        try { host.bridge?.showSoftInput?.() } catch { /* 已是失败路径，提示优先 */ }
@@ -326,7 +325,7 @@ index d214a8c..a95368e 100644
      }
      textarea.focus()
      // 三态：'ok' 桥明确成功 / 'unavailable' 没有桥 / 'failed' 桥抛错或明确返回 false。
-@@ -174,12 +202,12 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+@@ -174,12 +201,12 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
        }
      }
      if (bridgeOutcome === 'failed') {
@@ -341,7 +340,7 @@ index d214a8c..a95368e 100644
    if (effect.type !== 'send') return undefined
  
    // 优先通路 (c)：合成 keydown，让 xterm 自己映射（跟随 DECCKM）。
-@@ -212,7 +240,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
+@@ -212,7 +239,7 @@ function applyEffect(host: KeybarHost, effect: KeyEffect): string | undefined {
      ? effect.data  // 拿不到模式：CSI 是普通模式的默认（实测当前即 CSI）
      : (acck ? (KEYBAR_SPECS[effect.key].ss3 ?? effect.data) : (KEYBAR_SPECS[effect.key].csi ?? effect.data))
    // 两条通路都不可用（无 textarea 且无兜底写回调）：必须**可见提示**，绝不静默丢键。
