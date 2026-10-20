@@ -40,3 +40,6 @@ out/
 
 # gh CLI 在 CWD 下落的设备状态（我这边只读调用产生，非仓库内容）
 .local/
+
+# Oracle local work: upstream checkout, scanner reports and recovery diffs
+.workspace/

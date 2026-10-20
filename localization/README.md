@@ -11,6 +11,33 @@
 
 > **가장 중요한 원칙:** `ko-patch`에는 번역을 완료한 소스 파일 자체가 아니라 **소스의 변경 사항을 기록한 `.patch` 파일**을 올립니다. 자동 빌드는 원본의 깨끗한 최신 소스에 패치를 덧씌웁니다. `main` 브랜치에 한국어 파일을 직접 수정해 넣지 마세요.
 
+## Oracle 로컬 통합 작업 경로
+
+**로컬에서 사용하는 단일 루트: /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch**
+
+이전의 /home/ubuntu/dsh-ko-* 및 /home/ubuntu/project/ko-patches, /home/ubuntu/project/ko-source 경로를 다시 만들지 마세요. 이 문서 뒤쪽의 ko-source / ko-patches는 개인 PC에서 별도로 클론하는 경우의 범용 예시입니다. Oracle에서는 다음 통합 경로를 사용합니다.
+
+| 용도 | 통합 루트 기준 경로 |
+| --- | --- |
+| Git 저장소 및 한국어 패치 | /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch |
+| 기존 패치 적용 업스트림 작업본 | .workspace/source/ |
+| 이전 검증 차분 및 조사 결과 | .workspace/archive/ |
+| 중국어 검사 스크립트 | localization/scripts/check-chinese.mjs |
+| 한국어 패치 파일 | localization/patches/*.patch |
+
+.workspace/는 Git 추적에서 제외합니다. 업스트림 전체 소스나 조사용 차분을 GitHub에 올리지 않고 경량 패치만 관리합니다.
+
+Oracle 환경의 검사 명령:
+
+~~~bash
+cd /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch
+node --test localization/scripts/check-chinese.test.mjs
+node localization/scripts/check-chinese.mjs .workspace/source --json > .workspace/archive/chinese-candidates.json
+node localization/scripts/check-chinese.mjs .workspace/source --strict
+~~~
+
+**주의:** .workspace/source/는 이전 패치가 적용된 작업본입니다. 최신 업스트림에 맞춰 패치를 검증하기 전에는 깨끗한 최신 원본이라고 가정하지 마세요. .workspace/archive/는 이전 실험의 차분을 보존한 복구용 자료이지, 현재 빌드에 무조건 적용할 패치 목록이 아닙니다.
+
 ## 0. 최우선 작업 규칙: 전수 조사 없이는 번역 완료가 아닙니다
 
 > **필수 지시:** 원본에서 한국어가 표시되어야 하는 모든 사용자 화면의 중국어·미번역 문자열을 **먼저 전수 조사**하세요. 몇 가지 예시 파일만 수정하거나 APK가 빌드됐다는 이유로 한국어화 완료라고 보고하면 안 됩니다. 조사·번역·재검색·화면 검수 중 하나라도 빠지면 결과는 **부분 번역**입니다.

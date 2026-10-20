@@ -1,5 +1,7 @@
 # Ko-KR-Patch: 한국어 패치 제작 가이드
 
+> **Oracle 로컬 통합 경로:** /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch. 업스트림 작업본은 그 안의 .workspace/source/에 놓고, 상세 안내는 [한국어 패치 가이드](localization/README.md)를 참고하세요.
+
 이 공개 포크는 [원본 dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 최신 `main`을 자동으로 받아, 별도 브랜치에서 관리하는 한국어 `.patch` 파일을 적용한 후 **arm64 APK 하나**를 빌드합니다.
 
 - 자동 빌드 설정: 이 저장소의 기본 브랜치 `ko-patch` → `.github/workflows/ko-upstream-apk.yml`
