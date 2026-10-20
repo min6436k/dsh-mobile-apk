@@ -1,0 +1,399 @@
+diff --git a/app/src/main/assets/console.html b/app/src/main/assets/console.html
+index 3ee2bc6..18ecf12 100644
+--- a/app/src/main/assets/console.html
++++ b/app/src/main/assets/console.html
+@@ -42,6 +42,39 @@
+       --ds-chip: #2C2C2E;
+     }
+   }
++  /* The native color-mode preference overrides the WebView's system CSS media query. */
++  :root[data-app-theme="dark"] {
++    color-scheme: dark;
++    --ds-bg: #000000;
++    --ds-surface: #1C1C1E;
++    --ds-input: #2C2C2E;
++    --ds-border: rgba(255, 255, 255, 0.16);
++    --ds-text-primary: #F5F5F7;
++    --ds-text-secondary: #98989D;
++    --ds-text-tertiary: #6E6E73;
++    --ds-accent: #F5F5F7;
++    --ds-accent-pressed: #C7C7CC;
++    --ds-text-on-accent: #1D1D1F;
++    --ds-danger: #FF6960;
++    --ds-danger-soft: rgba(255, 105, 96, 0.16);
++    --ds-chip: #2C2C2E;
++  }
++  :root[data-app-theme="light"] {
++    color-scheme: light;
++    --ds-bg: #F5F5F7;
++    --ds-surface: #FFFFFF;
++    --ds-input: #F5F5F7;
++    --ds-border: rgba(0, 0, 0, 0.10);
++    --ds-text-primary: #1D1D1F;
++    --ds-text-secondary: #6E6E73;
++    --ds-text-tertiary: #86868B;
++    --ds-accent: #1D1D1F;
++    --ds-accent-pressed: #3A3A3C;
++    --ds-text-on-accent: #FFFFFF;
++    --ds-danger: #D70015;
++    --ds-danger-soft: rgba(215, 0, 21, 0.08);
++    --ds-chip: #F2F2F4;
++  }
+   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+   html, body { height: 100%; margin: 0; }
+   body {
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AppTheme.kt b/app/src/main/java/com/dsharnessmobile/shell/AppTheme.kt
+new file mode 100644
+index 0000000..6612ab6
+--- /dev/null
++++ b/app/src/main/java/com/dsharnessmobile/shell/AppTheme.kt
+@@ -0,0 +1,56 @@
++package com.dsharnessmobile.shell
++
++import android.content.Context
++import android.content.res.Configuration
++
++/** Native and embedded-WebView color mode: follow the device, light, or dark. */
++internal object AppTheme {
++  private const val PREFS = "dsh_settings"
++  private const val KEY_MODE = "theme_mode"
++
++  const val MODE_LIGHT = "light"
++  const val MODE_DARK = "dark"
++  const val MODE_SYSTEM = "system"
++
++  internal fun normalize(value: String?): String = when (value) {
++    MODE_LIGHT, MODE_DARK -> value
++    else -> MODE_SYSTEM
++  }
++
++  fun mode(context: Context): String = try {
++    normalize(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_MODE, MODE_SYSTEM))
++  } catch (_: Exception) {
++    MODE_SYSTEM
++  }
++
++  fun setMode(context: Context, value: String) {
++    context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
++      .edit().putString(KEY_MODE, normalize(value)).apply()
++  }
++
++  internal fun resolveDark(value: String, systemDark: Boolean): Boolean = when (normalize(value)) {
++    MODE_LIGHT -> false
++    MODE_DARK -> true
++    else -> systemDark
++  }
++
++  /** Application resources are not wrapped, so they retain the actual device preference. */
++  fun isDark(context: Context): Boolean {
++    val systemNight = (context.applicationContext.resources.configuration.uiMode and
++      Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
++    return resolveDark(mode(context), systemNight)
++  }
++
++  fun wrap(base: Context): Context {
++    val selected = mode(base)
++    if (selected == MODE_SYSTEM) return base
++    val configuration = Configuration(base.resources.configuration)
++    configuration.uiMode = (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or
++      (if (selected == MODE_DARK) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
++    return try {
++      base.createConfigurationContext(configuration)
++    } catch (_: Exception) {
++      base
++    }
++  }
++}
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/ConsoleActivity.kt b/app/src/main/java/com/dsharnessmobile/shell/ConsoleActivity.kt
+index ef1a3e8..8b910eb 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/ConsoleActivity.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/ConsoleActivity.kt
+@@ -3,6 +3,7 @@ package com.dsharnessmobile.shell
+ import android.content.ClipData
+ import android.content.ClipboardManager
+ import android.content.Context
++import android.content.res.Configuration
+ import android.os.Bundle
+ import android.view.View
+ import android.view.ViewGroup
+@@ -22,6 +23,12 @@ import androidx.core.view.WindowInsetsControllerCompat
+  */
+ class ConsoleActivity : ComponentActivity() {
+ 
++  private var nativeNightAtInflation = false
++
++  override fun attachBaseContext(newBase: Context) {
++    super.attachBaseContext(AppLanguage.wrap(AppTheme.wrap(newBase)))
++  }
++
+   private lateinit var webView: WebView
+   private val session = ConsoleSession(this)
+   private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+@@ -80,6 +87,7 @@ class ConsoleActivity : ComponentActivity() {
+ 
+   override fun onCreate(savedInstanceState: Bundle?) {
+     super.onCreate(savedInstanceState)
++    nativeNightAtInflation = AppTheme.isDark(this)
+     WindowCompat.setDecorFitsSystemWindows(window, false)
+     window.statusBarColor = getColor(R.color.ds_bg)
+     window.navigationBarColor = getColor(R.color.ds_bg)
+@@ -104,6 +112,9 @@ class ConsoleActivity : ComponentActivity() {
+     webView.webViewClient = object : android.webkit.WebViewClient() {
+       override fun onPageFinished(view: android.webkit.WebView, url: String) {
+         super.onPageFinished(view, url)
++        // Console assets use CSS prefers-color-scheme by default; override only
++        // when the user explicitly selects light or dark in the native shell.
++        view.evaluateJavascript("document.documentElement.dataset.appTheme='${AppTheme.mode(this@ConsoleActivity)}'", null)
+         pageReady = true
+         lastStatus?.let { pushStatus(lastState, it) }
+         pushInsets()
+@@ -124,6 +135,14 @@ class ConsoleActivity : ComponentActivity() {
+     webView.loadUrl("file:///android_asset/console.html")
+   }
+ 
++  override fun onConfigurationChanged(newConfig: Configuration) {
++    super.onConfigurationChanged(newConfig)
++    val expectedDark = AppTheme.isDark(this)
++    val resourceDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
++      Configuration.UI_MODE_NIGHT_YES
++    if (nativeNightAtInflation != expectedDark || resourceDark != expectedDark) recreate()
++  }
++
+   override fun onStart() {
+     super.onStart()
+     if (sessionStarted) return
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+index aa1d441..93d1677 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+@@ -1,7 +1,9 @@
+ package com.dsharnessmobile.shell
+ 
+ import android.animation.ValueAnimator
++import android.animation.ArgbEvaluator
+ import android.content.Intent
++import android.graphics.drawable.GradientDrawable
+ import android.os.Build
+ import android.os.StatFs
+ import android.view.Gravity
+@@ -53,6 +55,7 @@ internal class GuideManagementController(
+     })
+     row(t("存储管理", "Storage", "저장소 관리"), t("数据、容量与导出", "Data, space, exports", "비공개 데이터, 용량 및 공용 내보내기 디렉터리")) { showStorage() }
+     languageRow()
++    colorModeRow()
+     feedback = label("", 14f)
+     management.addView(feedback)
+     val scroll = ScrollView(activity).apply {
+@@ -152,6 +155,97 @@ internal class GuideManagementController(
+     AppLanguage.MODE_KO -> "한국어"
+     else -> t("跟随系统", "Follow system", "시스템 설정 따름")
+   }
++
++  /** Connected selection: only the outermost ends have large rounded corners. */
++  private fun colorModeRow() {
++    val card = LinearLayout(activity).apply {
++      orientation = LinearLayout.VERTICAL
++      setPadding(dp(20), dp(14), dp(20), dp(16))
++      background = DsUi.roundRect(activity.getColor(R.color.ds_surface), dp(8).toFloat())
++      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) }
++    }
++    card.addView(label(t("色彩模式", "Color mode", "색상 모드"), 16f).apply {
++      setPadding(0, 0, 0, dp(12))
++    })
++    val choices = listOf(
++      AppTheme.MODE_LIGHT to ("☀  " + t("浅色", "Light", "라이트")),
++      AppTheme.MODE_DARK to ("☾  " + t("深色", "Dark", "다크")),
++      AppTheme.MODE_SYSTEM to ("⚙  " + t("跟随系统", "System", "시스템")),
++    )
++    val strip = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
++    val chips = mutableListOf<Pair<TextView, GradientDrawable>>()
++    val selectedFill = activity.getColor(R.color.ds_accent)
++    val selectedInk = activity.getColor(R.color.ds_text_on_accent)
++    val plainFill = activity.getColor(R.color.ds_chip)
++    val plainInk = activity.getColor(R.color.ds_text_primary)
++    val middle = dp(2).toFloat()
++    val outer = dp(11).toFloat()
++    var selected = AppTheme.mode(activity)
++    var switching = false
++    choices.forEachIndexed { index, (mode, title) ->
++      // Android's corner array is ordered TL, TR, BR, BL (x/y for each corner).
++      val left = if (index == 0) outer else middle
++      val right = if (index == choices.lastIndex) outer else middle
++      val shape = GradientDrawable().apply {
++        cornerRadii = floatArrayOf(left, left, right, right, right, right, left, left)
++        setColor(if (selected == mode) selectedFill else plainFill)
++      }
++      val chip = TextView(activity).apply {
++        text = title
++        gravity = Gravity.CENTER
++        textSize = 13f
++        setSingleLine(true)
++        setTextColor(if (selected == mode) selectedInk else plainInk)
++        background = android.graphics.drawable.RippleDrawable(
++          android.content.res.ColorStateList.valueOf(activity.getColor(R.color.ds_accent_soft)),
++          shape,
++          GradientDrawable().apply {
++            setColor(0xFFFFFFFF.toInt())
++            cornerRadii = floatArrayOf(left, left, right, right, right, right, left, left)
++          },
++        )
++        isClickable = true
++        isFocusable = true
++        isSelected = selected == mode
++        contentDescription = t("色彩模式", "Color mode", "색상 모드") + ": " + title
++      }
++      chips.add(chip to shape)
++      strip.addView(chip, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
++        if (index != 0) marginStart = dp(2)
++      })
++      chip.setOnClickListener {
++        if (switching || selected == mode) return@setOnClickListener
++        switching = true
++        val fromMode = selected
++        selected = mode
++        chips.forEachIndexed { position, (view, _) -> view.isSelected = choices[position].first == mode }
++        val transition = ValueAnimator.ofFloat(0f, 1f).apply {
++          duration = 200
++          interpolator = DsUi.ease
++          addUpdateListener { frame ->
++            val fraction = frame.animatedValue as Float
++            chips.forEachIndexed { position, (view, drawable) ->
++              val choice = choices[position].first
++              val startFill = if (choice == fromMode) selectedFill else plainFill
++              val endFill = if (choice == mode) selectedFill else plainFill
++              val startInk = if (choice == fromMode) selectedInk else plainInk
++              val endInk = if (choice == mode) selectedInk else plainInk
++              drawable.setColor(ArgbEvaluator.getInstance().evaluate(fraction, startFill, endFill) as Int)
++              view.setTextColor(ArgbEvaluator.getInstance().evaluate(fraction, startInk, endInk) as Int)
++            }
++          }
++        }
++        AppTheme.setMode(activity, mode)
++        OverlayService.instance?.onAppThemeChanged()
++        if (DsUi.animationsEnabled(activity)) transition.start()
++        card.postDelayed({ if (!activity.isFinishing && !activity.isDestroyed) activity.recreate() },
++          if (DsUi.animationsEnabled(activity)) 210L else 0L)
++      }
++    }
++    card.addView(strip, LinearLayout.LayoutParams(-1, -2))
++    management.addView(card)
++  }
++
+   private fun navigate(next: String) {
+     destination = next
+     if (next == "home" || next == "management") removeDetail()
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
+index defa14b..9bc52cc 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
+@@ -48,12 +48,15 @@ import kotlin.math.ceil
+  */
+ class MainActivity : ComponentActivity() {
+ 
++  /** Last theme used to inflate native views (the WebView can update independently). */
++  private var nativeNightAtInflation = false
++
+   /**
+    * Resolve shell resources in the selected UI language before any view exists.
+    * Following the system keeps the untouched base context.
+    */
+   override fun attachBaseContext(newBase: Context) {
+-    super.attachBaseContext(AppLanguage.wrap(newBase))
++    super.attachBaseContext(AppLanguage.wrap(AppTheme.wrap(newBase)))
+   }
+ 
+   internal lateinit var webView: WebView
+@@ -377,6 +380,7 @@ class MainActivity : ComponentActivity() {
+ 
+   override fun onCreate(savedInstanceState: Bundle?) {
+     super.onCreate(savedInstanceState)
++    nativeNightAtInflation = AppTheme.isDark(this)
+     userClosedEngine = (savedInstanceState?.getBoolean("dsh.engine-user-closed", false) ?: false) ||
+       EngineService.userShutdown || EngineService.isUserShutdownPersisted(this)
+     if (userClosedEngine) EngineService.userShutdown = true
+@@ -859,6 +863,14 @@ class MainActivity : ComponentActivity() {
+ 
+   override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+     super.onConfigurationChanged(newConfig)
++    val expectedDark = AppTheme.isDark(this)
++    val resourceDark = (resources.configuration.uiMode and
++      android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
++    if (nativeNightAtInflation != expectedDark || resourceDark != expectedDark) {
++      // configChanges includes uiMode; stale native cards/colors need recreation.
++      recreate()
++      return
++    }
+     pushSystemDark(webView)
+     pushWebInsets()
+   }
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/OverlayService.kt b/app/src/main/java/com/dsharnessmobile/shell/OverlayService.kt
+index 793bfd7..9cc5011 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/OverlayService.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/OverlayService.kt
+@@ -153,6 +153,11 @@ class OverlayService : Service() {
+   /** 明暗切换 + 旋转/分辨率变化：换肤，并重算窗口坐标（治旋转/分屏后球出屏消失）。 */
+   override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+     super.onConfigurationChanged(newConfig)
++    onAppThemeChanged()
++  }
++
++  /** Explicit native color-mode changes do not generate a system config broadcast. */
++  fun onAppThemeChanged() {
+     if (expanded) panel.applyThemeColors()
+     // P5-3：空闲态光环按主题取色，而 haloView 的 drawable 是手工构造的（不随 uiMode 自动更新）
+     // ——不在此重刷就会出现「切到深色后空闲光环仍是浅色主题的灰」。
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/OverlayTheme.kt b/app/src/main/java/com/dsharnessmobile/shell/OverlayTheme.kt
+index a25c3ba..4cc638f 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/OverlayTheme.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/OverlayTheme.kt
+@@ -6,9 +6,7 @@ import android.content.Context
+ class OverlayTheme(private val ctx: Context) {
+ 
+   /** 系统明暗（0.13.2 悬浮球明暗适配：展开态颜色跟随 uiMode）。 */
+-  fun isDarkTheme(): Boolean =
+-    (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+-      android.content.res.Configuration.UI_MODE_NIGHT_YES
++  fun isDarkTheme(): Boolean = AppTheme.isDark(ctx)
+ 
+   /** 主题色板（随 isDarkTheme() 取用）。 */
+   data class ThemeColors(
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/RepairActivity.kt b/app/src/main/java/com/dsharnessmobile/shell/RepairActivity.kt
+index 463aeae..72daa84 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/RepairActivity.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/RepairActivity.kt
+@@ -29,6 +29,9 @@ import org.json.JSONObject
+  * WebView, plugins, or the extracted snapshot.
+  */
+ class RepairActivity : Activity() {
++  override fun attachBaseContext(newBase: android.content.Context) {
++    super.attachBaseContext(AppLanguage.wrap(AppTheme.wrap(newBase)))
++  }
+   private lateinit var conversation: LinearLayout
+   private lateinit var scroll: ScrollView
+   private lateinit var input: EditText
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+new file mode 100644
+index 0000000..2e656a2
+--- /dev/null
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+@@ -0,0 +1,20 @@
++package com.dsharnessmobile.shell
++
++import org.junit.Assert.assertEquals
++import org.junit.Test
++
++class AppThemeTest {
++  @Test fun normalizesInvalidAndMissingModes() {
++    assertEquals(AppTheme.MODE_SYSTEM, AppTheme.normalize(null))
++    assertEquals(AppTheme.MODE_SYSTEM, AppTheme.normalize("unexpected"))
++    assertEquals(AppTheme.MODE_DARK, AppTheme.normalize(AppTheme.MODE_DARK))
++    assertEquals(AppTheme.MODE_LIGHT, AppTheme.normalize(AppTheme.MODE_LIGHT))
++  }
++
++  @Test fun selectedModeOverridesDeviceNightSetting() {
++    assertEquals(false, AppTheme.resolveDark(AppTheme.MODE_LIGHT, true))
++    assertEquals(true, AppTheme.resolveDark(AppTheme.MODE_DARK, false))
++    assertEquals(true, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, true))
++    assertEquals(false, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, false))
++  }
++}
