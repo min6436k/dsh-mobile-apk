@@ -1,0 +1,49 @@
+diff --git a/dsh-client-ui-responsive/tests/conversation-dock.spec.ts b/dsh-client-ui-responsive/tests/conversation-dock.spec.ts
+index d9f7e9f..5c7b8c5 100644
+--- a/dsh-client-ui-responsive/tests/conversation-dock.spec.ts
++++ b/dsh-client-ui-responsive/tests/conversation-dock.spec.ts
+@@ -38,14 +38,14 @@ describe('conversation docking', () => {
+     const source = row()
+     touch('touchstart', source, 80); vi.advanceTimersByTime(400)
+     const target = () => document.querySelector('.dsh-conversation-drop-zone:not([data-leaving])')
+-    expect(target()?.textContent).toBe('拖到此处以在侧边栏打开')
++    expect(target()?.textContent).toBe('사이드바에서 열려면 여기로 드래그하세요')
+     expect(target()?.hasAttribute('data-over')).toBe(false)
+     touch('touchmove', source, innerWidth - 8)
+-    expect(target()?.textContent).toBe('松开于侧边栏打开')
++    expect(target()?.textContent).toBe('사이드바에서 열려면 놓으세요')
+     expect(target()?.hasAttribute('data-over')).toBe(true)
+     // 移出接收区回到列表：必须退回「拖到此处」，不能停在「松开」。
+     touch('touchmove', source, 80)
+-    expect(target()?.textContent).toBe('拖到此处以在侧边栏打开')
++    expect(target()?.textContent).toBe('사이드바에서 열려면 여기로 드래그하세요')
+     expect(target()?.hasAttribute('data-over')).toBe(false)
+   })
+   it('opens once after settling reorder and removes the target (also in landscape)', () => {
+diff --git a/dsh-client-ui-responsive/tests/mobile-workspaces.spec.ts b/dsh-client-ui-responsive/tests/mobile-workspaces.spec.ts
+index 2cf28f9..f85cf34 100644
+--- a/dsh-client-ui-responsive/tests/mobile-workspaces.spec.ts
++++ b/dsh-client-ui-responsive/tests/mobile-workspaces.spec.ts
+@@ -258,7 +258,7 @@ describe('mobile workspace navigation over native Dockkit planners', () => {
+     expect(h.workspaces.activeId).toBe(display)
+     expect(h.workspaces.split()).toBe(false)
+     expect(h.dock.getSnapshot()).toBe(before)
+-    expect(h.panel.querySelector('[role="status"]')?.textContent).toContain('专用视图')
++    expect(h.panel.querySelector('[role="status"]')?.textContent).toContain('전용 뷰')
+     h.workspaces.detach()
+   })
+ 
+diff --git a/dsh-client-ui-responsive/tests/settings-document.spec.ts b/dsh-client-ui-responsive/tests/settings-document.spec.ts
+index 6eb2590..5ffd776 100644
+--- a/dsh-client-ui-responsive/tests/settings-document.spec.ts
++++ b/dsh-client-ui-responsive/tests/settings-document.spec.ts
+@@ -94,7 +94,7 @@ describe('打开配置文件时说明「这是副本」（S3-20）', () => {
+     button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+     window.removeEventListener('dsh:export-result', listener)
+     expect(events.length, '必须发出一条用户可见说明').toBe(1)
+-    expect(String(events[0].detail.title)).toContain('副本')
+-    expect(String(events[0].detail.detail)).toContain('导入配置')
++    expect(String(events[0].detail.title)).toContain('복사본')
++    expect(String(events[0].detail.detail)).toContain('설정 가져오기')
+   })
+ })
