@@ -2311,7 +2311,7 @@ index 0949add..0a0d29f 100644
  
    /**
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt b/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
-index 01104f2..f1067bf 100644
+index 01104f2..6bbfad5 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
 @@ -225,11 +225,11 @@ class OverlayPanel(private val svc: OverlayService) {
@@ -2494,7 +2494,7 @@ index 01104f2..f1067bf 100644
          box.addView(TextView(svc).apply {
 -          text = "还有 $optsHidden 项（点此展开全部 $optsTotal 项）"
 +          text = if (DsLocale.isKo()) {
-+            "그 외 $optsHidden개 항목 (전체 $optsTotal개 펼치기)"
++            "그 외 ${optsHidden}개 항목 (전체 ${optsTotal}개 펼치기)"
 +          } else {
 +            "还有 $optsHidden 项（点此展开全部 $optsTotal 项）"
 +          }
@@ -2503,7 +2503,7 @@ index 01104f2..f1067bf 100644
            setPadding((6 * dp).toInt(), (8 * dp).toInt(), (6 * dp).toInt(), (8 * dp).toInt())
            minHeight = (44 * dp).toInt()
 -          contentDescription = "展开剩余 $optsHidden 个选项"
-+          contentDescription = ko("展开剩余 $optsHidden 个选项", "남은 $optsHidden개 선택지 펼치기")
++          contentDescription = ko("展开剩余 $optsHidden 个选项", "남은 ${optsHidden}개 선택지 펼치기")
            isClickable = true
            setOnClickListener { qOptsExpanded.add(qid); renderPendingCard(true) }
          })
@@ -3573,7 +3573,7 @@ index b998dc7..0dd87ad 100644
        .firstNotNullOfOrNull { field -> message.optString(field).takeIf { it.isNotBlank() } }
      if (reasoning != null && message.optString("reasoning_content").isBlank()) {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt b/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt
-index e52976d..4dfa64d 100644
+index e52976d..c495cd0 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/ShizukuBindState.kt
 @@ -168,12 +168,16 @@ internal fun shizukuBindGuidance(code: String, binding: Boolean, ageMs: Long, wa
@@ -3599,11 +3599,8 @@ index e52976d..4dfa64d 100644
      }
    }
    if (english) return when {
-@@ -194,29 +198,55 @@ internal fun shizukuBindGuidance(code: String, binding: Boolean, ageMs: Long, wa
-     else ->
-       "The Shizuku shell channel is not ready ($code). Check Phone control for status and guidance."
+@@ -196,27 +200,52 @@ internal fun shizukuBindGuidance(code: String, binding: Boolean, ageMs: Long, wa
    }
-+  }
    return when {
      code == ShizukuBindCodes.BIND_TIMEOUT ->
 -      "Shizuku shell 通道建立超时（${watchdogSec}s 内未收到绑定回调）。绑定状态已复位，" +
@@ -3847,7 +3844,7 @@ index 1c3d6b2..3e3a247 100644
        )
      }
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt b/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
-index 60b9f38..a928c92 100644
+index 60b9f38..f59b702 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/UserCopy.kt
 @@ -47,8 +47,17 @@ internal object UserCopy {
@@ -3981,8 +3978,8 @@ index 60b9f38..a928c92 100644
 +      status == 401 || status == 403 -> "$action 권한이 없습니다. 로컬 앱 내에서 작업 중인지 확인하세요. 계속 실패하면 앱을 다시 여세요"
 +      status == 404 -> "$action 대상이 서버에 존재하지 않습니다(배포 소스가 오프라인일 수 있음). 잠시 후 다시 시도하세요"
 +      status in 500..599 -> "$action 중 서버 오류가 발생했습니다. 잠시 후 다시 시도하세요. 반복 실패 시 로그를 복사하여 문의하세요"
-+      status in 400..499 -> "$action이(가) 서버에서 거부되었습니다. 잠시 후 다시 시도하세요. 반복 실패 시 로그를 복사하여 문의하세요"
-+      else -> "$action이(가) 완료되지 않았습니다. 잠시 후 다시 시도하세요"
++      status in 400..499 -> "${action}이(가) 서버에서 거부되었습니다. 잠시 후 다시 시도하세요. 반복 실패 시 로그를 복사하여 문의하세요"
++      else -> "${action}이(가) 완료되지 않았습니다. 잠시 후 다시 시도하세요"
 +    }
 +  } else {
 +    when {
