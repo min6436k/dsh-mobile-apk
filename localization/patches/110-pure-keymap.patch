@@ -1,0 +1,73 @@
+diff --git a/plugins/dsh-android-vdisplay/src/keybar/keymap.ts b/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
+index 97a651f..77154b6 100644
+--- a/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
++++ b/plugins/dsh-android-vdisplay/src/keybar/keymap.ts
+@@ -28,19 +28,6 @@ export type KeybarKey = (typeof KEYBAR_KEYS)[number]
+ /** Ctrl 闩锁超时（毫秒）。用户口径 3-5s，取中 4s；写成常量而非散落魔数。 */
+ export const CTRL_LATCH_TIMEOUT_MS = 4_000
+ 
+-function isKo(): boolean {
+-  try {
+-    const lang = typeof navigator !== 'undefined' ? (navigator.language || '') : (process.env.LANG || process.env.LC_ALL || '')
+-    return /^ko\b/i.test(lang)
+-  } catch {
+-    return false
+-  }
+-}
+-
+-function ko(zh: string, koText: string): string {
+-  return isKo() ? koText : zh
+-}
+-
+ /**
+  * xterm 可映射的键身份（喂给通路 (c) 的合成 KeyboardEvent 用）。
+  *
+@@ -82,39 +69,39 @@ export interface KeySpec {
+  */
+ export const KEYBAR_SPECS: Readonly<Record<KeybarKey, KeySpec>> = {
+   keyboard: {
+-    id: 'keyboard', label: ko('键盘', '키보드'), labelEn: 'Keys', labelKo: '키보드', ariaLabel: ko('唤起软键盘', '화상 키보드 열기'), ariaLabelEn: 'Show keyboard', ariaLabelKo: '화상 키보드 열기',
++    id: 'keyboard', label: '键盘', labelEn: 'Keys', labelKo: '키보드', ariaLabel: '唤起软键盘', ariaLabelEn: 'Show keyboard', ariaLabelKo: '화상 키보드 열기',
+     sends: false, xterm: null, csi: null, ss3: null,
+   },
+   tab: {
+-    id: 'tab', label: 'Tab', ariaLabel: ko('Tab 键，补全', 'Tab 키, 자동 완성'), ariaLabelEn: 'Tab key, complete', ariaLabelKo: 'Tab 키, 자동 완성',
++    id: 'tab', label: 'Tab', ariaLabel: 'Tab 键，补全', ariaLabelEn: 'Tab key, complete', ariaLabelKo: 'Tab 키, 자동 완성',
+     sends: true, xterm: { key: 'Tab', code: 'Tab', keyCode: 9 }, csi: '\t', ss3: '\t',
+   },
+   ctrl: {
+-    id: 'ctrl', label: 'Ctrl', ariaLabel: ko('Ctrl 组合键，粘滞', 'Ctrl 조합 키, 고정'), ariaLabelEn: 'Ctrl combination, sticky', ariaLabelKo: 'Ctrl 조합 키, 고정',
++    id: 'ctrl', label: 'Ctrl', ariaLabel: 'Ctrl 组合键，粘滞', ariaLabelEn: 'Ctrl combination, sticky', ariaLabelKo: 'Ctrl 조합 키, 고정',
+     sends: false, xterm: null, csi: null, ss3: null,
+   },
+   esc: {
+-    id: 'esc', label: 'Esc', ariaLabel: ko('Esc 键，取消', 'Esc 키, 취소'), ariaLabelEn: 'Esc key, cancel', ariaLabelKo: 'Esc 키, 취소',
++    id: 'esc', label: 'Esc', ariaLabel: 'Esc 键，取消', ariaLabelEn: 'Esc key, cancel', ariaLabelKo: 'Esc 키, 취소',
+     sends: true, xterm: { key: 'Escape', code: 'Escape', keyCode: 27 }, csi: '\u001b', ss3: '\u001b',
+   },
+   left: {
+-    id: 'left', label: '\u2190', ariaLabel: ko('光标左移', '커서 왼쪽 이동'), ariaLabelEn: 'Move cursor left', ariaLabelKo: '커서 왼쪽 이동',
++    id: 'left', label: '\u2190', ariaLabel: '光标左移', ariaLabelEn: 'Move cursor left', ariaLabelKo: '커서 왼쪽 이동',
+     sends: true, xterm: { key: 'ArrowLeft', code: 'ArrowLeft', keyCode: 37 }, csi: '\u001b[D', ss3: '\u001bOD',
+   },
+   right: {
+-    id: 'right', label: '\u2192', ariaLabel: ko('光标右移', '커서 오른쪽 이동'), ariaLabelEn: 'Move cursor right', ariaLabelKo: '커서 오른쪽 이동',
++    id: 'right', label: '\u2192', ariaLabel: '光标右移', ariaLabelEn: 'Move cursor right', ariaLabelKo: '커서 오른쪽 이동',
+     sends: true, xterm: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 }, csi: '\u001b[C', ss3: '\u001bOC',
+   },
+   up: {
+-    id: 'up', label: '\u2191', ariaLabel: ko('上一条历史', '이전 명령 기록'), ariaLabelEn: 'Previous history entry', ariaLabelKo: '이전 명령 기록',
++    id: 'up', label: '\u2191', ariaLabel: '上一条历史', ariaLabelEn: 'Previous history entry', ariaLabelKo: '이전 명령 기록',
+     sends: true, xterm: { key: 'ArrowUp', code: 'ArrowUp', keyCode: 38 }, csi: '\u001b[A', ss3: '\u001bOA',
+   },
+   down: {
+-    id: 'down', label: '\u2193', ariaLabel: ko('下一条历史', '다음 명령 기록'), ariaLabelEn: 'Next history entry', ariaLabelKo: '다음 명령 기록',
++    id: 'down', label: '\u2193', ariaLabel: '下一条历史', ariaLabelEn: 'Next history entry', ariaLabelKo: '다음 명령 기록',
+     sends: true, xterm: { key: 'ArrowDown', code: 'ArrowDown', keyCode: 40 }, csi: '\u001b[B', ss3: '\u001bOB',
+   },
+   enter: {
+-    id: 'enter', label: '\u23ce', ariaLabel: ko('回车', 'Enter (줄바꿈)'), ariaLabelEn: 'Enter', ariaLabelKo: 'Enter (줄바꿈)',
++    id: 'enter', label: '\u23ce', ariaLabel: '回车', ariaLabelEn: 'Enter', ariaLabelKo: 'Enter (줄바꿈)',
+     sends: true, xterm: { key: 'Enter', code: 'Enter', keyCode: 13 }, csi: '\r', ss3: '\r',
+   },
+ }
