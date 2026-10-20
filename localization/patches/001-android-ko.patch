@@ -1431,7 +1431,7 @@ index bc37f00..407265a 100644
      "引擎启动中（已等待 ${clock.waitedSeconds}s，剩余 ${clock.remainingSeconds}s）"
    }
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
-index 893a9d8..1437f21 100644
+index 893a9d8..aa1d441 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
 @@ -31,17 +31,17 @@ internal class GuideManagementController(
@@ -1514,7 +1514,7 @@ index 893a9d8..1437f21 100644
      chrome.primaryButton.visibility = if (next == "home") View.VISIBLE else View.GONE
      animateTo(if (next == "home") 0f else 1f)
    }
-@@ -202,43 +204,48 @@ internal class GuideManagementController(
+@@ -202,43 +204,45 @@ internal class GuideManagementController(
    }
    private fun showStorage() {
      val body = column()
@@ -1571,13 +1571,10 @@ index 893a9d8..1437f21 100644
          activity.provisionPublicRepoAndRefreshChip(PublicRepoProvision.TRIGGER_ON_RESUME)
 -        android.widget.Toast.makeText(activity, t("正在检查公共目录，结果见下方状态", "Checking the shared folder; the result appears below"), 0).show()
 +        android.widget.Toast.makeText(activity, t("正在检查公共目录，结果见下方状态", "Checking the shared folder; the result appears below", "공용 디렉터리를 확인하는 중입니다. 결과는 아래 상태를 참조하세요"), 0).show()
-+        postDelayed({ if (destination == "storage") showStorage() }, 1000)
-+      }
-+    })
          postDelayed({ if (destination == "storage") showStorage() }, 1000)
        }
      })
-@@ -263,11 +270,12 @@ internal class GuideManagementController(
+@@ -263,11 +267,11 @@ internal class GuideManagementController(
    fun refreshStorage() {
      if (destination != "storage") return
      val presentation = PublicRepoProvision.presentation(activity.engineManager.publicRepoStatus())
@@ -1591,12 +1588,11 @@ index 893a9d8..1437f21 100644
 +      PublicRepoPresentation.PENDING -> t("尚未检查", "not checked", "아직 확인 안 됨")
 +      PublicRepoPresentation.NEEDS_GRANT -> t("需要授权，可在下方恢复访问", "needs access; restore it below", "권한 필요, 아래에서 접근 복원 가능")
 +      PublicRepoPresentation.WRITE_FAILED -> t("写入失败，请在控制台查看详细原因", "write failed; see the console for details", "쓰기 실패, 콘솔에서 자세한 원인을 확인하세요")
-+    }
      }
    }
    fun back(): Boolean = when (destination) {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt b/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
-index 452b6ff..7be5878 100644
+index 452b6ff..6fbfb93 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/GuidePageRenderer.kt
 @@ -98,6 +98,12 @@ internal val RUNTIME_STAGE_PHRASES: List<String> = listOf(
@@ -1768,12 +1764,11 @@ index 452b6ff..7be5878 100644
        startupRetryAction -> activity.getString(R.string.ds_start_retry)
        phase == GuidePhase.Recovering -> activity.getString(R.string.ds_recovering)
        phase == GuidePhase.Starting || phase == GuidePhase.Extracting -> activity.getString(R.string.ds_starting)
-@@ -679,19 +711,20 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -679,19 +711,19 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
    }
  
    private fun defaultHint(phase: GuidePhase): String = when (phase) {
 -    GuidePhase.Starting -> UiText.t(activity, "首次启动会解压运行时，请保持前台。", "First start unpacks the runtime; stay in the app.")
-+  private fun defaultHint(phase: GuidePhase): String = when (phase) {
 +    GuidePhase.Starting -> UiText.t(activity, "首次启动会解压运行时，请保持前台。", "First start unpacks the runtime; stay in the app.", "첫 실행 시 내장 런타임의 압축을 풉니다. 앱을 화면에 유지해 주세요.")
      GuidePhase.Extracting -> extractHintBody()
      // 0.14.6：这句只允许出现在**引擎快照更新**相位。APK 自更新路径不再把相位设成 Updating
@@ -1796,7 +1791,7 @@ index 452b6ff..7be5878 100644
    }
  
    /**
-@@ -706,6 +739,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -706,6 +738,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
        activity,
        "正在解压运行时，需数分钟，请勿关闭。",
        "Unpacking the runtime; this takes a few minutes. Keep the app open.",
@@ -1804,7 +1799,7 @@ index 452b6ff..7be5878 100644
      )
  
    private fun setStatusPulse(on: Boolean) {
-@@ -893,7 +927,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -893,7 +926,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
        }
        ApkUpdateState.STATE_FAILED -> {
          // 失败如实报分类原因（UpdateChecker 的 8 类 + 下载/校验/安装器 3 类），不再链快照更新。
@@ -1813,7 +1808,7 @@ index 452b6ff..7be5878 100644
          setUpdateButton(activity.getString(R.string.ds_check_update), enabled = true)
          apkHint(reason)
        }
-@@ -979,7 +1013,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
+@@ -979,7 +1012,7 @@ internal class GuidePageRenderer(private val activity: MainActivity) {
      val crash = activity.crashInfo
      if (crash != null) {
        crashBanner.visibility = View.VISIBLE
@@ -2920,7 +2915,7 @@ index e428767..96b5c26 100644
          ).show()
        } catch (_: Exception) {
 diff --git a/app/src/main/java/com/dsharnessmobile/shell/PluginManagementPage.kt b/app/src/main/java/com/dsharnessmobile/shell/PluginManagementPage.kt
-index 939b534..3127a8a 100644
+index 939b534..66bfc79 100644
 --- a/app/src/main/java/com/dsharnessmobile/shell/PluginManagementPage.kt
 +++ b/app/src/main/java/com/dsharnessmobile/shell/PluginManagementPage.kt
 @@ -56,7 +56,7 @@ internal class PluginManagementPage(
@@ -3021,14 +3016,13 @@ index 939b534..3127a8a 100644
              }
            }
          }
-@@ -365,14 +365,15 @@ internal class PluginManagementPage(
+@@ -365,14 +365,14 @@ internal class PluginManagementPage(
        setPadding(dp(24), dp(32), dp(24), dp(24))
      }
      panel.addView(label(when {
 -      waiting -> t("正在启动引擎", "Starting the engine")
 -      failed -> t("引擎尚未启动成功", "The engine did not start")
 -      else -> t("引擎未启动", "The engine is stopped")
-+    panel.addView(label(when {
 +      waiting -> t("正在启动引擎", "Starting the engine", "엔진 시작 중")
 +      failed -> t("引擎尚未启动成功", "The engine did not start", "엔진이 아직 정상 시작되지 않음")
 +      else -> t("引擎未启动", "The engine is stopped", "엔진 미시작")
@@ -3043,7 +3037,7 @@ index 939b534..3127a8a 100644
      }, 14, gray1).apply { gravity = Gravity.CENTER; setPadding(0, dp(12), 0, dp(20)) })
      if (waiting) {
        panel.addView(ProgressBar(activity).apply {
-@@ -380,7 +381,7 @@ internal class PluginManagementPage(
+@@ -380,7 +380,7 @@ internal class PluginManagementPage(
        }, LinearLayout.LayoutParams(dp(28), dp(28)))
        root.postDelayed(retryLoad, 1_500L)
      } else {
@@ -3052,7 +3046,7 @@ index 939b534..3127a8a 100644
          if (failed) onBack() else launchEngineFromHere()
        }.apply {
          setTextColor(textOnAccent)
-@@ -395,15 +396,16 @@ internal class PluginManagementPage(
+@@ -395,15 +395,16 @@ internal class PluginManagementPage(
    private fun changeEnabled(row: PluginRow, enabled: Boolean) {
      if (!enabled) {
        android.app.AlertDialog.Builder(activity)
@@ -3072,7 +3066,7 @@ index 939b534..3127a8a 100644
          .setOnCancelListener { adapter.notifyDataSetChanged() }
          .show()
        return
-@@ -423,18 +425,18 @@ internal class PluginManagementPage(
+@@ -423,18 +424,18 @@ internal class PluginManagementPage(
            val application = result.optString("application")
            if (application in setOf("applied", "restart-required", "overridden")) {
              when (application) {
@@ -3095,7 +3089,7 @@ index 939b534..3127a8a 100644
          }
        }
      }
-@@ -451,7 +453,7 @@ internal class PluginManagementPage(
+@@ -451,7 +452,7 @@ internal class PluginManagementPage(
            allRows = rows
            refreshRows()
          }
@@ -3104,7 +3098,7 @@ index 939b534..3127a8a 100644
        }
      }
    }
-@@ -465,14 +467,14 @@ internal class PluginManagementPage(
+@@ -465,14 +466,14 @@ internal class PluginManagementPage(
        isFocusableInTouchMode = true
      }
      page.addView(label(rowTitle(row), 22, white, true))
@@ -3127,7 +3121,7 @@ index 939b534..3127a8a 100644
      page.addView(configStatus)
      content.removeAllViews()
      content.addView(ScrollView(activity).apply {
-@@ -487,11 +489,13 @@ internal class PluginManagementPage(
+@@ -487,11 +488,13 @@ internal class PluginManagementPage(
            if (!showingDetail || page.parent == null) return@runOnUiThread
            page.removeView(configStatus)
            if (config == null) {
@@ -3143,7 +3137,7 @@ index 939b534..3127a8a 100644
              addNamespaceEditor(page, row, config, writable)
            }
          }
-@@ -500,7 +504,7 @@ internal class PluginManagementPage(
+@@ -500,7 +503,7 @@ internal class PluginManagementPage(
            if (disposed || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
            if (showingDetail && page.parent != null) {
              page.removeView(configStatus)
@@ -3152,7 +3146,7 @@ index 939b534..3127a8a 100644
            }
          }
        }
-@@ -514,14 +518,16 @@ internal class PluginManagementPage(
+@@ -514,14 +517,16 @@ internal class PluginManagementPage(
      val secretPaths = secretPaths(namespace)
      val initial = namespace.optJSONObject("user")?.let { JSONObject(it.toString()) } ?: JSONObject()
      secretPaths.forEach { path -> removePath(initial, path) }
@@ -3173,7 +3167,7 @@ index 939b534..3127a8a 100644
      val editor = EditText(activity).apply {
        setText(initial.toString(2))
        setTextColor(white)
-@@ -536,14 +542,14 @@ internal class PluginManagementPage(
+@@ -536,14 +541,14 @@ internal class PluginManagementPage(
          android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
        setPadding(dp(12), dp(10), dp(12), dp(10))
        background = rounded(gray4, 8)
@@ -3190,7 +3184,7 @@ index 939b534..3127a8a 100644
          setHintTextColor(gray3)
          setTextColor(white)
          textSize = 14f
-@@ -551,7 +557,7 @@ internal class PluginManagementPage(
+@@ -551,7 +556,7 @@ internal class PluginManagementPage(
          setSingleLine(true)
          setPadding(dp(10), dp(8), dp(10), dp(8))
          background = rounded(gray4, 8)
@@ -3199,7 +3193,7 @@ index 939b534..3127a8a 100644
        }
        secretInputs[path] = secret
        page.addView(secret, LinearLayout.LayoutParams(-1, dp(44)).apply { bottomMargin = dp(6) })
-@@ -560,15 +566,15 @@ internal class PluginManagementPage(
+@@ -560,15 +565,15 @@ internal class PluginManagementPage(
        orientation = LinearLayout.HORIZONTAL
        gravity = Gravity.END
      }
@@ -3218,7 +3212,7 @@ index 939b534..3127a8a 100644
          return@actionButton
        }
        secretInputs.forEach { (path, input) ->
-@@ -586,7 +592,7 @@ internal class PluginManagementPage(
+@@ -586,7 +591,7 @@ internal class PluginManagementPage(
    private fun addPrimitiveControls(page: LinearLayout, schema: JSONObject?, editor: EditText, effective: JSONObject) {
      val properties = schema?.optJSONObject("properties") ?: schema?.optJSONObject("dict") ?: return
      if (properties.length() == 0) return
@@ -3227,7 +3221,7 @@ index 939b534..3127a8a 100644
      val keys = properties.keys()
      while (keys.hasNext()) {
        val key = keys.next()
-@@ -595,7 +601,7 @@ internal class PluginManagementPage(
+@@ -595,7 +600,7 @@ internal class PluginManagementPage(
        val enum = field.optJSONArray("enum")
        when {
          enum != null && enum.length() in 1..20 -> {
@@ -3236,7 +3230,7 @@ index 939b534..3127a8a 100644
            val current = try { JSONObject(editor.text.toString()).optString(key) } catch (_: Throwable) { "" }
            val originalIndex = if (current.isBlank()) 0 else opts.indexOf(current).coerceAtLeast(0)
            var changedByUser = false
-@@ -661,7 +667,7 @@ internal class PluginManagementPage(
+@@ -661,7 +666,7 @@ internal class PluginManagementPage(
        mutate(value)
        editor.setText(value.toString(2))
      } catch (_: Throwable) {
@@ -3245,7 +3239,7 @@ index 939b534..3127a8a 100644
      }
    }
  
-@@ -675,18 +681,21 @@ internal class PluginManagementPage(
+@@ -675,14 +680,15 @@ internal class PluginManagementPage(
          activity.runOnUiThread {
            if (disposed || activity.isFinishing || activity.isDestroyed) return@runOnUiThread
            button.isEnabled = true
@@ -3263,13 +3257,7 @@ index 939b534..3127a8a 100644
          }
        }
      }
-   }
-+    }
-+  }
- 
-   private fun secretPaths(namespace: JSONObject): List<List<String>> {
-     val secrets = namespace.optJSONArray("secrets") ?: return emptyList()
-@@ -739,7 +748,11 @@ internal class PluginManagementPage(
+@@ -739,7 +745,11 @@ internal class PluginManagementPage(
        statusOk && (needle.isEmpty() || searchable.contains(needle))
      }
      adapter.rows = rows
@@ -3282,7 +3270,7 @@ index 939b534..3127a8a 100644
      adapter.notifyDataSetChanged()
    }
  
-@@ -750,7 +763,7 @@ internal class PluginManagementPage(
+@@ -750,7 +760,7 @@ internal class PluginManagementPage(
    }
  
    private fun showError(message: String, retry: Boolean) {
@@ -3291,7 +3279,7 @@ index 939b534..3127a8a 100644
      error.setOnClickListener(if (retry) View.OnClickListener { load() } else null)
      error.visibility = View.VISIBLE
      Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-@@ -771,17 +784,17 @@ internal class PluginManagementPage(
+@@ -771,17 +781,17 @@ internal class PluginManagementPage(
        }
        holder.name.text = rowTitle(row)
        holder.id.text = row.entryId
@@ -3312,7 +3300,7 @@ index 939b534..3127a8a 100644
        holder.root.isFocusable = true
        holder.root.isClickable = true
        holder.root.setOnClickListener { openDetail(row) }
-@@ -817,7 +830,7 @@ internal class PluginManagementPage(
+@@ -817,7 +827,7 @@ internal class PluginManagementPage(
        textOn = ""
        textOff = ""
        showText = false
@@ -3321,7 +3309,7 @@ index 939b534..3127a8a 100644
        minWidth = dp(52)
        minHeight = dp(48)
        thumbTintList = android.content.res.ColorStateList(
-@@ -837,11 +850,15 @@ internal class PluginManagementPage(
+@@ -837,11 +847,15 @@ internal class PluginManagementPage(
    private fun stateSummary(row: PluginRow): String {
      val desired = row.desiredEnabled ?: row.enabled
      if (row.pendingRestart || desired != row.enabled) {
@@ -3341,7 +3329,7 @@ index 939b534..3127a8a 100644
    }
  
    private fun label(value: String, size: Int, color: Int, medium: Boolean = false) = TextView(activity).apply {
-@@ -860,8 +877,11 @@ internal class PluginManagementPage(
+@@ -860,8 +874,11 @@ internal class PluginManagementPage(
  
    private fun localized(value: Any?): String = when (value) {
      is String -> value
