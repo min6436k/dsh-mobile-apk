@@ -1,3 +1,6 @@
+<!-- ko-patch upstream release notes disclaimer -->
+> **한국어 포크 안내:** 아래는 업스트림 원본의 릴리스 노트입니다. 한국어 APK 빌드의 실제 출처는 Draft Release의 `KO-BUILD-SOURCES.txt`에서 확인하고, 운영 절차는 [`localization/README.md`](localization/README.md)를 따르세요.
+
 # 手动浅深色主题稳定性修复
 
 - 基于最新已提交 APK 基线；原脏工作区未修改。未改版本号，未创建 tag 或 Release。

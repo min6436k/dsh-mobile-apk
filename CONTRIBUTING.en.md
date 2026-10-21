@@ -1,3 +1,6 @@
+<!-- ko-patch localization fork notice -->
+> **Korean patch fork:** The instructions below describe upstream development. For Korean translations and patch contributions use [`localization/README.md`](localization/README.md). Commit `.patch` files on the `ko-patch` branch instead of copying modified upstream source. Do not modify `main`.
+
 # Contributing
 
 [中文版](CONTRIBUTING.md)

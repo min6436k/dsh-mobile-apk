@@ -1,3 +1,6 @@
+<!-- ko-patch localization fork notice -->
+> **한국어 포크에 기여하려는 경우**: 이 문서 아래 내용은 원본 앱 개발 가이드입니다. 한국어 번역·패치 제출은 [`localization/README.md`](localization/README.md)를 기준으로 해 주세요. `ko-patch`에 전체 수정 소스를 올리거나 원본 `main` 브랜치를 변경하지 마세요.
+
 # 贡献指南
 
 [English version](CONTRIBUTING.en.md)

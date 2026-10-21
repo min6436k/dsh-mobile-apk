@@ -1,3 +1,6 @@
+<!-- ko-patch upstream document disclaimer -->
+> **한국어 포크 안내:** 이 문서는 **업스트림 릴리스 기록/절차**입니다. `ko-patch`의 APK 빌드·초안 공개 절차가 아닙니다. 한국어 APK는 [`ko-upstream-apk.yml`](../.github/workflows/ko-upstream-apk.yml)에서 생성하며 실제 운영 지침은 [`localization/README.md`](../localization/README.md)를 참고하세요.
+
 # Release 发布流程（源码仓库 ↔ 构建产物分离，v0.10.2 起）
 
 > 2026-08-14 v2 ｜ 原则：**源码仓库只维护源码**；产物统一进主仓库 release/ 目录（分门别类 + 版本管理），经 GitHub Releases 发布（单一入口）。

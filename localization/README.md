@@ -1,337 +1,137 @@
-> **Oracle 단일 작업 루트:** `/home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch`  
-> 포크 전체 소스를 중복 클론하지 마세요. 번역할 최신 업스트림은 이 폴더의 `.workspace/source/` 아래 임시 worktree에 두고, 배포할 변경은 **`localization/patches/*.patch`만** 저장합니다. `main`을 수정하지 않습니다.  
-> **절대 완료 판정 금지:** 에이전트의 소스 작업본에서 번역했다고 해서 APK에 적용된 것은 아닙니다. **깨끗한 최신 업스트림에 전체 패치를 새로 적용한 결과**로 전수 검사와 테스트를 수행해야 합니다.
+# 한국어 패치 유지보수 가이드
 
-# Ko-KR-Patch: 한국어 패치 제작 가이드
+> [저장소 첫 화면](../README.md) · [Actions 워크플로](../.github/workflows/ko-upstream-apk.yml) · [패치 목록](patches/)
+>
+> **이 문서가 한국어 포크의 단일 작업 기준입니다.** 기존 원본 저장소의 AGENTS·README·출시 스크립트는 원본 개발 이력이며, 현재 한국어 APK 배포 명령을 대신하지 않습니다.
 
-이 공개 포크는 [원본 dsh-mobile-apk](https://github.com/kelai141/dsh-mobile-apk)의 최신 `main`을 자동으로 받아, 별도 브랜치에서 관리하는 한국어 `.patch` 파일을 적용한 후 **arm64 APK 하나**를 빌드합니다.
+## 1. 구조와 범위
 
-- 자동 빌드 설정: 이 저장소의 기본 브랜치 `ko-patch` → `.github/workflows/ko-upstream-apk.yml`
-- 한국어 패치 보관: 이 저장소의 **`ko-patch` 브랜치** → `localization/patches/*.patch`
-- 빌드 대상: 원본 `kelai141/dsh-mobile-apk`의 최신 `main`
-- 원본 추적 브랜치: 이 포크의 `main`은 업스트림 `main`과 동일한 소스만 보관하고, 번역 및 자동화는 `ko-patch`에서 관리합니다.
-- 결과물: [Releases](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)** 안에 `dsh-ko-arm64.apk`, `KO-BUILD-SOURCES.txt`
-- 실행: 패치 추가·변경 시 자동 / 매일 03:15(KST) 원본 변경 확인 / Actions 수동 실행
-
-> **가장 중요한 원칙:** `ko-patch`에는 번역을 완료한 소스 파일 자체가 아니라 **소스의 변경 사항을 기록한 `.patch` 파일**을 올립니다. 자동 빌드는 원본의 깨끗한 최신 소스에 패치를 덧씌웁니다. `main` 브랜치에 한국어 파일을 직접 수정해 넣지 마세요.
-
-## Oracle 로컬 통합 작업 경로
-
-**로컬에서 사용하는 단일 루트: /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch**
-
-이전의 /home/ubuntu/dsh-ko-* 및 /home/ubuntu/project/ko-patches, /home/ubuntu/project/ko-source 경로를 다시 만들지 마세요. 이 문서 뒤쪽의 ko-source / ko-patches는 개인 PC에서 별도로 클론하는 경우의 범용 예시입니다. Oracle에서는 다음 통합 경로를 사용합니다.
-
-| 용도 | 통합 루트 기준 경로 |
+| 요소 | 기준 |
 | --- | --- |
-| Git 저장소 및 한국어 패치 | /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch |
-| 기존 패치 적용 업스트림 작업본 | .workspace/source/ |
-| 이전 검증 차분 및 조사 결과 | .workspace/archive/ |
-| 중국어 검사 스크립트 | localization/scripts/check-chinese.mjs |
-| 한국어 패치 파일 | localization/patches/*.patch |
+| 대상 저장소 | `min6436k/dsh-mobile-apk-Ko-KR-Patch` |
+| 수정 브랜치 | `ko-patch` (PR을 거쳐 병합); 포크 `main` 수정 금지 |
+| 원본 소스 | `kelai141/dsh-mobile-apk`의 최신 `main` |
+| 코드 변경 | `localization/patches/*.patch`만 배포에 사용 |
+| 정적 검사 | `localization/scripts/check-chinese.mjs` 및 테스트 |
+| 예외 등록 | `localization/chinese-scan-exceptions.json` |
+| 자동 빌드 | `.github/workflows/ko-upstream-apk.yml` (ARM64만) |
+| 배포 파일 | Draft Release의 APK / SHA-256 / 출처 파일 |
 
-.workspace/는 Git 추적에서 제외합니다. 업스트림 전체 소스나 조사용 차분을 GitHub에 올리지 않고 경량 패치만 관리합니다.
+패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **14개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
 
-Oracle 환경의 검사 명령:
+### 현재 패치 목록 (파일명순)
 
-~~~bash
+| 파일 | 목적 |
+| --- | --- |
+| `001-android-ko.patch` | Android 리소스·네이티브 화면의 한국어화 |
+| `010-client-ui-ko.patch` | WebView 반응형 UI 한국어화 |
+| `020-host-web-compat-ko.patch` | 웹 호환 계층의 한국어화 |
+| `030-plugins-ko.patch` | 내장 플러그인의 한국어화 |
+| `040-color-mode.patch` | 라이트/다크/시스템 색상 모드 |
+| `050-security-hardening.patch` | 부팅·복구 동의 및 업데이트 경로 등 보안 개선 |
+| `060-code-map.patch` | 새 코드의 업스트림 실행 지도 등록 |
+| `070-boot-contention.patch` | 초기화 중복 시작 경합 처리 |
+| `080-theme-vector-icons.patch` | 태양·달·모니터 단색 벡터 아이콘 |
+| `090-tests-ko.patch` | 한국어 UI 테스트 추가 |
+| `100-full-ko-review.patch` | 누락 번역 전수 보완과 워크스페이스 표시명 |
+| `110-pure-keymap.patch` | 가상 키맵 순수 로직 회귀 복구 |
+| `120-android-compile-repair.patch` | Android Kotlin 컴파일 호환성 보완 |
+| `130-kotlin-localized-contract-tests.patch` | 한국어화 이후 Kotlin 계약 테스트 수정 |
+
+패치를 제거·합칠 때는 적용 순서와 기존 테스트의 기대 동작을 먼저 확인하세요. 원본 파일의 대량 복사는 허용하지 않습니다.
+
+범위는 Android 네이티브 앱, WebView용 반응형 UI, 웹 호환 레이어, APK에 내장하는 Android 플러그인입니다. **외부 DeepSeek Harness 엔진 전체**나 설치 후 사용자가 추가한 플러그인은 이 포크의 번역 보증 범위가 아닙니다.
+
+## 2. Oracle 단일 작업 디렉터리
+
+**작업 루트:** `/home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch`
+
+```text
+dsh-mobile-apk-Ko-KR-Patch/
+├── .github/workflows/ko-upstream-apk.yml
+├── localization/
+│   ├── README.md
+│   ├── chinese-scan-exceptions.json
+│   ├── patches/                 # 순서대로 적용할 코드 차분
+│   └── scripts/                 # 검사기와 테스트
+└── .workspace/                  # Git 제외: 원본 worktree, 보고서, 복구 자료
+```
+
+원본 체크아웃은 `.workspace/source/` 아래에 두고, 검증용 worktree는 `.workspace/` 아래 **새 디렉터리**로 만듭니다. `.workspace/source/`는 과거의 미커밋 번역 작업이 남아 있을 수 있습니다. 이미 존재하는 worktree에 대해 `git reset --hard`, `git clean -fd`를 실행하거나 덮어쓰지 마세요. 이전 폴더 `/home/ubuntu/dsh-ko-*`, `/home/ubuntu/project/ko-source`, `/home/ubuntu/project/ko-patches`를 재생성하지 마세요.
+
+## 3. 패치를 적용한 깨끗한 원본에서 검사
+
+아래는 **이미 존재하는** `.workspace/source/` Git 저장소를 기준으로 한 안전한 예제입니다. `<새-검증-폴더>`는 아직 존재하지 않는 디렉터리 이름으로 바꾸세요.
+
+```bash
 cd /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch
+ROOT="$PWD"
+git -C .workspace/source fetch origin main
+TREE="$ROOT/.workspace/<새-검증-폴더>"
+git -C .workspace/source worktree add --detach "$TREE" origin/main
+
+for patch in "$ROOT"/localization/patches/*.patch; do
+  git -C "$TREE" apply --check --binary --whitespace=error "$patch"
+  git -C "$TREE" apply --binary --whitespace=error "$patch"
+done
+git -C "$TREE" diff --check
+
 node --test localization/scripts/check-chinese.test.mjs
-node localization/scripts/check-chinese.mjs .workspace/source --json > .workspace/archive/chinese-candidates.json
-node localization/scripts/check-chinese.mjs .workspace/source --strict
-~~~
+node localization/scripts/check-chinese.mjs "$TREE" --markdown > "$ROOT/.workspace/chinese-audit.md"
+node localization/scripts/check-chinese.mjs "$TREE" --json > "$ROOT/.workspace/chinese-audit.json"
+node localization/scripts/check-chinese.mjs "$TREE" --strict
+```
 
-**주의:** .workspace/source/는 이전 패치가 적용된 작업본입니다. 최신 업스트림에 맞춰 패치를 검증하기 전에는 깨끗한 최신 원본이라고 가정하지 마세요. .workspace/archive/는 이전 실험의 차분을 보존한 복구용 자료이지, 현재 빌드에 무조건 적용할 패치 목록이 아닙니다.
+이 예제는 `origin/main`을 신뢰할 수 있는 업스트림 원격으로 설정한 **작업용 소스 저장소**가 있을 때만 유효합니다. 시작 전에 `git -C .workspace/source remote -v`로 `origin`이 `kelai141/dsh-mobile-apk`인지 확인하세요. 원격이 다르면 잘못된 소스를 사용하지 말고 올바른 업스트림 원격으로 교정해야 합니다. 기존 검증 폴더 이름을 다시 쓰지 마세요.
 
-## 0. 최우선 작업 규칙: 전수 조사 없이는 번역 완료가 아닙니다
+CI도 동일하게 깨끗한 원본을 체크아웃한 뒤 `.patch`를 순서대로 적용하고, 검사기 테스트 및 `--strict`를 APK 컴파일 **이전**에 실행합니다. 이전 로컬 번역 작업본의 결과를 보고 완료로 주장하면 안 됩니다.
 
-> **필수 지시:** 원본에서 한국어가 표시되어야 하는 모든 사용자 화면의 중국어·미번역 문자열을 **먼저 전수 조사**하세요. 몇 가지 예시 파일만 수정하거나 APK가 빌드됐다는 이유로 한국어화 완료라고 보고하면 안 됩니다. 조사·번역·재검색·화면 검수 중 하나라도 빠지면 결과는 **부분 번역**입니다.
+## 4. 중국어 번역·내부 식별자 정책
 
-### 번역 전에 반드시 조사할 범위
+한국어 화면에 사용자가 볼 수 있는 중국어를 남기지 않습니다. 다음 범위를 모두 확인하세요.
 
-1. **Android 네이티브 전체:** `app/src/main/java/` 아래의 Kotlin/Java, `app/src/main/res/`의 XML 및 문자열/배열, `app/src/main/assets/`의 HTML/JS. 화면 제목, 버튼, 안내, 상태·진행 메시지, 에러·복구·권한 문구, 메뉴, 알림, `contentDescription`, 다이얼로그 및 접근성 레이블까지 포함합니다.
-2. **앱 내 WebView UI 전체:** `dsh-client-ui-responsive/src/` 및 실제로 앱에 주입·번들되는 웹 UI 소스. 기존 언어 사전뿐 아니라 TS/TSX/JS/JSX의 하드코딩 문자열도 찾습니다.
-3. **호스트 호환 계층·번들 플러그인:** `dsh-host-web-compat/`, `plugins/` 등 APK와 런타임에 포함된 사용자 노출 텍스트. 어느 구성 요소가 실제 문구를 생성하는지 추적합니다.
-4. **외부 DSH 엔진/마켓 플러그인:** APK 저장소 밖에서 렌더링되는 UI는 소스 소유 저장소를 식별해 별도 패치 필요 여부를 기록합니다. 현재 APK 패치로 못 바꾸는 항목을 임의로 완료 처리하지 마세요.
+- Android 화면·리소스·알림·복구·권한 안내·접근성 설명·콘솔 및 오류 메시지
+- WebView UI의 제목·버튼·ARIA·placeholder·동적 문자열
+- 내장 플러그인의 사용자/모델 도구 응답, 작업 공간과 세션 표시명
+- 한국어 표시로 연결되지 않은 다국어 호출과 신규 업스트림 화면
 
-실제 누락 사례가 있었던 곳(업스트림 구조가 바뀌면 경로를 다시 확인):
+검사기는 주석, 정상적인 중국어 로케일 원문, 대응하는 한국어 번역이 확인된 조회 사전 및 다국어 호출을 제외합니다. **단독 중국어 문자열과 내부 식별자는 감지**합니다. `label`·`labelKo`와 같이 동일 객체에서 언어별 필드가 대응하는 순수 키맵도 한국어 항목이 실재하는지를 확인합니다.
 
-| 화면/기능 | 우선 확인할 원본 파일 | 번역 누락 예시 |
-| --- | --- | --- |
-| 관리 센터·저장소 관리 | `app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt` | `管理中心`, `插件管理`, `存储管理` |
-| 시작·런타임 진행/복구 | `GuidePageRenderer.kt`, `EngineStartFlow.kt`, `MainActivity.kt` | `正在更新运行时`, 상태·오류 안내 |
-| 내장 콘솔 | `app/src/main/assets/console.html` 및 `ConsoleActivity.kt` | `控制台`, `发送`, `输入命令` |
-| 플러그인 관리 | `PluginManagementPage.kt`, 관련 네이티브 UI | 화면 제목·설명·오프라인 상태 |
-| 기타 관리 UI/접근성 | `GuideChrome.kt` 및 관련 Kotlin/리소스 | 화면 전환·아이콘 설명 |
+**내부 식별자라서 그냥 무시하면 안 됩니다.** 예를 들어 이전 버전의 `临时工作区`는 내부 작업 공간 조회에 쓰이면서 **실제 화면 제목**으로도 노출됐습니다. 해결 시에는 다음을 모두 확인합니다.
 
-### 중국어 문자열을 찾는 방법 (필수: 전용 검사 스크립트 우선)
+1. 기존 ID, 경로, 세션 연결과 저장된 중국어 제목을 손실 없이 재사용합니다.
+2. 새로 등록하는 작업 공간의 표시 이름은 현재 앱 언어에 맞춥니다.
+3. 기존 중국어 제목도 한국어 화면에는 `임시 작업 공간`으로 보이게 하되 사용자 메시지·코드·파일명은 무단 변환하지 않습니다.
+4. 중국어·영어 언어 모드도 회귀 검증합니다.
 
-다음 원시 검색은 **보조 점검용**입니다. 주석과 번역 조회 사전까지 포함하므로 이 결과만으로 완료를 판정하지 마세요. 바로 아래의 **전용 검사 스크립트와 전체 후보 처리 절차가 필수**입니다.
+`chinese-scan-exceptions.json`은 **검출되지 않는 화이트리스트가 아닙니다.** 중국어 원문은 `totalDetected`와 `auditedExceptions`에 계속 집계하며, 기술적으로 보존이 필요한 후보도 검증해야 합니다. 예외에는 `file`, `text`, 상세한 `why`, 허용된 `category`, 실제 테스트 소스 경로인 `verifiedBy`가 필요합니다. 근거·테스트 없는 예외는 `unverifiedExceptions`로 남고 `--strict`가 실패합니다.
 
-~~~bash
-rg -n --pcre2 '[\p{Han}]'   app/src/main/java app/src/main/assets app/src/main/res   dsh-client-ui-responsive/src dsh-host-web-compat plugins   --glob '*.{kt,java,xml,html,js,jsx,ts,tsx,json}'
-~~~
+**완료 조건:** `findings` 0건, `staleExceptions` 0건, `unverifiedExceptions` 0건, 검사기 테스트 통과. `auditedExceptions`는 0이어야 하는 값이 아니라 **하나씩 사유와 런타임 동작을 검증해야 하는 목록**입니다. 검사기 자체의 누락 패턴은 범위 축소가 아닌 검사기와 회귀 테스트 추가로 해결하세요. 기기 실행 검증은 별도입니다.
 
-위 정규식은 **한자 계열 문자 전체**를 찾으므로 코드 주석, 테스트 데이터, 의도적으로 남긴 중국어 번역, 외부 라이브러리 문구도 포함됩니다. **검색 결과를 수작업으로 분류**하고, 실제 사용자에게 노출되는 중국어는 번역하거나 근거 있는 제외 사유를 남기세요. 검색 결과 0건만 기계적으로 맞추려고 정상적인 중국어 로케일·주석을 삭제하면 안 됩니다.
+## 5. 새 번역 패치 생성 및 제출
 
-~~~bash
-rg -n '管理中心|插件管理|存储管理|正在更新运行时|控制台|输入命令'   app/src/main/java app/src/main/assets
-~~~
+1. 최신 업스트림을 검증용 worktree에 받은 후 **기존 14개 패치를 먼저 적용**합니다.
+2. 번역·기능 수정을 해당 worktree에서 수행합니다. 한국어와 영어·중국어를 보존하고, API/JSON 키, 출력 프로토콜, URL, 경로, 플레이스홀더는 함부로 변경하지 않습니다.
+3. 수정한 파일을 검토하고 `git diff --check` 및 관련 npm·Kotlin 테스트를 실행합니다.
+4. 변경분을 `git -C "$TREE" diff --binary > "$ROOT/localization/patches/<다음-번호>-설명.patch"`로 추출합니다. 신규 파일은 먼저 `git -C "$TREE" add -N <새-파일>`로 diff에 포함시키거나, 임시 커밋에서 기준 커밋과 비교해 누락 없이 추출합니다.
+5. **별도의 깨끗한 검증용 worktree**에 모든 패치를 처음부터 적용하고 `--strict`, 관련 앱·플러그인 테스트, 패키징 검사를 다시 실행합니다. 원본 소스 전체를 포크에 커밋하지 않습니다.
+6. 작업 브랜치에 `.patch`, 검사기·예외 파일, 가이드 변경만 커밋하고 `ko-patch` 대상으로 PR을 엽니다. PR 검사 결과를 확인한 뒤 병합합니다.
 
-검색으로 발견한 **원본 파일·원문·표시 화면·적용 방법·처리 상태**를 표로 정리한 다음 번역하세요. 파일 몇 개만 임의로 선정하거나 `values-ko` 한 파일만 추가하는 것은 전수 조사에 해당하지 않습니다.
+검증 중 발견한 누락은 `localization/patches`에 반영되어야 **APK에 반영**됩니다. 지난 작업에서 AGY가 번역을 소스 작업본에만 남기고 배포 패치를 재생성하지 않아 사용자에게 중국어가 노출됐던 문제를 반복하지 마세요.
 
-### Oracle에서 검사할 때 쓰는 실제 경로
+## 6. Actions, 릴리스, 정리
 
-~~~bash
-cd /home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch
-# SOURCE_TREE는 최신 업스트림에 모든 패치를 새로 적용한 소스 worktree입니다.
-SOURCE_TREE="$PWD/.workspace/source/.workspace/translation_port"
-node --test localization/scripts/check-chinese.test.mjs
-node localization/scripts/check-chinese.mjs "$SOURCE_TREE" --strict
-~~~
+- 패치 파일을 `ko-patch`에 푸시하면 ARM64 빌드가 자동으로 시작됩니다. 매일 03:15 KST에는 최신 업스트림을 확인하며, 수동 실행 시 `force=true`로 새 빌드를 강제할 수 있습니다.
+- Actions 순서: 원본 체크아웃 → 패치 적용 → **중국어 미번역 강제 검사** → Kotlin 단위 테스트 → 내장 플러그인 빌드 → Termux 스냅샷 → APK 빌드·서명 → Draft Release 업로드.
+- 성공한 Draft에는 `dsh-ko-arm64.apk`, `dsh-ko-arm64.apk.sha256`, `KO-BUILD-SOURCES.txt`가 있어야 합니다. APK 해시와 기록된 업스트림/패치 SHA가 정확히 일치하는지 확인합니다.
+- APK 서명은 원본의 `repoDebug` 인증서 기반입니다. 정식 앱 스토어 배포 인증서라고 소개하지 않습니다.
+- 공개 게시 전 실기기 설치, 첫 실행·기존 데이터 마이그레이션, 색상 모드, 작업 공간 표시명, 복구 동의, 내장 플러그인 및 업데이트 경로를 확인합니다. **APK 성공은 기기 테스트 성공이 아닙니다.**
+- 과거 릴리스와 Actions 실행 기록 삭제는 새 릴리스가 성공적으로 생성되고 확인된 **후에만** 합니다. Actions 기록 삭제는 되돌리기 어렵습니다. 다른 워크플로나 `main` 릴리스를 일괄 삭제하지 마세요.
 
-**주의:** 위 SOURCE_TREE는 현재 작업 예시이며 고정된 유일한 소스가 아닙니다. 새로운 검증용 worktree를 만들었다면 반드시 그 경로로 바꿔 실행하세요. 기존 작업본의 0건 판정을 그대로 재사용하지 마세요.
+**중요:** 이 워크플로는 패치 내용을 바꾸지 않은 문서 커밋도 `ko-patch` Git SHA가 달라지면 다음 예약 실행 때 새 릴리스 ID를 만들 수 있습니다. 패치 변경 없이 원본 문서만 수정한 것을 신규 앱 기능이라고 소개하지 마세요.
 
-### 전용 미번역 검사: 나온 항목 전부 처리할 것 (필수 · 생략 금지)
+## 7. 유지보수 파일 정리 범위
 
-이 포크에는 **localization/scripts/check-chinese.mjs**가 있습니다. Android 앱·리소스·콘솔 HTML, WebView UI, APK 내장 플러그인 코드를 검사하여 한자가 들어 있는 **미번역 후보**를 파일:행별로 추출합니다.
+한국어 포크에서 실제 사용하지 않는 구형 테스트·배포 스크립트와 오래된 인수인계 문서는 정리합니다. 반면 업스트림 소스 검증과 직접 연결된 `scripts/check-*.mjs`, `docs/AGENTS/EXECUTION-MAP.md`, 인증·라이선스 문서, PR 검사기는 **외부 참조가 있으므로 임의로 삭제하지 않습니다**. 한국어 APK Actions는 포크에 남아 있는 업스트림 스크립트를 실행하는 대신 최신 원본을 체크아웃해 원본의 빌드 스크립트를 실행합니다.
 
-자동으로 제외하는 항목:
-
-- Kotlin/Java/TS/JS/HTML/XML의 코드 주석, 테스트·빌드 출력
-- 중국어 번역 조회용 원문 사전(DsLocale.kt, UserCopy.kt, i18n.ts, locales.ts 계열), 중국어 전용 리소스
-- 이미 한국어 인수가 연결된 다국어 호출(ko/UiText.t/tr 등), 정확한 한국어 사전 키가 있는 2인수 호출
-- 한국어 번역 리소스(values-ko)가 실제로 제공되는 기본 Android(values) 문자열
-
-**반드시 남기는 항목:** 한국어 대안이 없고 번역 사전에도 없는 호출, 사용자 표시 문자열, **워크스페이스 이름·저장소 식별자·프로토콜 상태값과 같이 화면에 노출될 수 있는 내부 문자열**, 단독 중국어 상수, 한국어 번역이 빠진 리소스. 과거 실제 누락 사례인 临时工作区, 新的修复 같은 값도 탐지해야 합니다.
-
-2절의 작업 폴더 이름(ko-source = 원본에 패치가 적용된 소스, ko-patches = 포크 패치 저장소)을 기준으로 다음을 실행하세요.
-
-~~~bash
-cd ko-patches
-node --test localization/scripts/check-chinese.test.mjs
-
-cd ../ko-source
-node ../ko-patches/localization/scripts/check-chinese.mjs . --markdown > chinese-candidates.md
-node ../ko-patches/localization/scripts/check-chinese.mjs . --json > chinese-candidates.json
-~~~
-
-**최신 원본을 받았을 때 1회, 기존 한국어 패치 전체와 이번 변경을 적용한 뒤 다시 1회 실행합니다.** 최종 판정은 반드시 **실제 APK에 넣을 패치 적용 후 소스**에서 합니다. JSON의 findings를 임시 작업 목록으로 삼아 **하나도 건너뛰지 마세요.** 파일:행, 원문, 표시 화면 또는 호출 경로, 수정 방법, 수정 패치, 검증 결과를 항목별로 남깁니다.
-
-**후보 하나하나의 필수 처리 방식**
-
-1. 사용자가 볼 수 있는 문구(화면, 알림, 접근성, 오류/복구, 플러그인 도구 응답, 워크스페이스 제목)는 모두 **한국어 표시를 구현**하고 동작을 테스트합니다.
-2. 중국어 문자열이 동시에 영속 데이터 식별자, 기존 제목 검색 키, 프로토콜 값이라면 **그 원문을 무작정 치환하지 마세요.** 식별자를 보존하면서 표시용 한국어를 분리하고, 과거에 저장된 값의 호환성·마이그레이션까지 검증합니다.
-3. 의도적으로 중국어 로케일에서만 노출되거나 한국어 분기로 절대 도달하지 않는 등 **코드로 증명된 예외만** localization/chinese-scan-exceptions.json의 exceptions에 기록할 수 있습니다. 항목마다 정확한 file, text, 20자 이상의 구체적인 why를 씁니다. “내부용”, “번역 불필요” 같은 근거 없는 일괄 예외는 금지합니다. 승인된 예외도 보고서의 auditedExceptions에 나타납니다.
-4. 수정 후 다시 실행합니다. **findings 0건**뿐 아니라 **staleExceptions 0건**이어야 합니다. 더 이상 존재하지 않는 예외는 삭제합니다. 검사 대상을 빼거나 중국어 사전/주석을 삭제해서 숫자만 줄이는 것은 금지합니다.
-
-~~~bash
-cd ko-source
-node ../ko-patches/localization/scripts/check-chinese.mjs . --strict
-~~~
-
-strict 검사는 미처리 후보, 오래된 예외 또는 검증 테스트가 없는 예외가 하나라도 있으면 **종료 코드 1**을 반환합니다. 통과 전에는 작업 완료·전면 한국어화를 주장하지 마세요.
-
-정적 스캔에는 한계가 있습니다. 중국어 사용자에게만 보이는 조건 분기나 데이터 식별자도 후보로 나올 수 있으므로 개별 호출 경로를 확인하고 근거를 기록하세요. 반대로 코드로 생성되는 문구나 외부 DSH 엔진의 자체 UI는 놓칠 수 있으므로 실제 기기 화면 점검도 필수입니다. **스크립트에서 새 누락 패턴을 발견하면 스크립트와 테스트부터 보강**합니다.
-
-
-### 예외도 전부 검출하고 표시합니다 (완료 판정에 포함)
-
-중국어 문자열이 내부 식별자로도 사용된다면 문자열 전체를 한국어로 무작정 치환하지 말고 **저장된 ID/경로/과거 세션을 유지하면서 표시 텍스트를 별도 번역**하세요. 과거 `临时工作区`는 실제로 보이는 제목인데 식별자라며 예외 처리되어 배포 APK에 중국어가 남았습니다. 이 문제는 절대 재발해선 안 됩니다.
-
-이제 `check-chinese.mjs`는 예외 목록도 `totalDetected`와 `auditedExceptions`에 **반드시 포함**하여 보고합니다. 예외에는 아래 네 가지를 모두 명시해야 합니다.
-
-- `file` 및 `text`: 정확한 소스 경로와 중국어 원문
-- `why`: 번역을 그대로 대입할 수 없는 기술적 이유와 **한국어 화면 표시를 처리한 경로**
-- `category`: `protocol-only`, `selector-only`, `display-identity`, `localized-fallback` 중 하나
-- `verifiedBy`: 실제 패치가 적용된 소스에서 실행 가능한 검증 테스트의 상대 경로
-
-`display-identity`는 테스트 소스에 해당 원문이 명시돼야 하며, 검증 경로가 없거나 더 이상 존재하지 않는 예외가 있으면 `--strict` 실패로 처리합니다. **예외 0건으로 숫자를 조작하거나, '내부용'이라는 말만으로 예외를 승인하지 마세요.** 프로토콜 값은 통신 계약 때문에 보존하더라도 사용자에게 보이는 한국어 분기를 반드시 따로 확인합니다.
-
-**AGY 작업 이력에서 발견된 누락 유형:** 소스 작업본에는 번역했으나 `localization/patches`에 재생성하지 않아 실제 APK에는 중국어가 남았습니다. 그러므로 소스에서의 검사 성공만 보고하면 안 되고, 반드시 GitHub Actions에서 적용된 정확한 업스트림 SHA + 패치 SHA로 동일한 검사를 재실행해야 합니다.
-
-### 구현 원칙
-
-- Android 리소스화가 가능한 문구는 `values/strings.xml`에 기존 키를 유지하고 `values-ko/strings.xml`에 한국어를 제공합니다. Kotlin 코드의 중국어 하드코딩은 필요하면 문자열 리소스로 추출해 한국어 로케일에서 실제 선택되도록 연결합니다.
-- HTML 및 Web UI의 하드코딩 문구도 한국어 사용자에게 한국어로 표시돼야 합니다. 기존 다국어 지원 기능과 중국어·영어 로케일은 불필요하게 훼손하지 마세요.
-- **문구를 조건·상태 식별에 사용하는 코드가 있을 수 있습니다.** 특히 `console.html`은 상태 문자열과 동작이 연결될 수 있으므로 UI 텍스트를 교체할 때 판별 로직·테스트도 함께 확인합니다.
-- `%1$s` 같은 Android 서식 자리표시자, `{name}` 같은 템플릿 변수, HTML/JS 이스케이프, URL/JSON·설정 키, CLI 명령어, 기술 식별자를 보존합니다.
-- 번역했다고 UI 구성이나 기능을 삭제·우회하지 마세요. 불분명한 외부 플러그인 UI는 원인을 기록하고 **미완료**로 남깁니다.
-
-### 완료 기준
-
-**APK 빌드 성공 ≠ 번역 완료.** 다음을 충족하지 못하면 완료 보고 대신 미완료 목록과 남은 원인을 제출하세요.
-
-- [ ] 네이티브·콘솔·웹 UI·실제 번들 플러그인 소스의 번역 대상을 전수 검색했고, 발견 결과를 분류함
-- [ ] 전용 스크립트를 패치 적용 후 소스에서 실행하고, findings, staleExceptions, unverifiedExceptions가 모두 0건이며, 식별자 등 auditedExceptions도 전체 목록에서 검토하고 strict 검사가 통과함
-- [ ] 모든 앱 소유 사용자 노출 중국어가 한국어 로케일에서 한국어로 나옴(의도적 예외는 원문·사유·화면을 기록)
-- [ ] 대표 화면(시작/진행/오류, 관리 센터, 저장소, 플러그인, 콘솔, 주요 설정)의 한국어 표시 여부를 검수함
-- [ ] 검색을 다시 실행해 잔여 사용자 노출 문구의 목록 및 처리/제외 사유를 제시함
-- [ ] 패치 충돌 확인, 관련 테스트 및 arm64 빌드를 마침. **기기 화면을 검증하지 못했다면 미검증이라고 명시**함
-- [ ] 작업 결과에 변경한 파일, 패치 이름, 번역/미번역 집계, 예외, 테스트 증거, 미완료 항목을 적음
-
----
-
-## 1. 어디를 번역하나요?
-
-| 번역 대상 | 원본에 존재하는 파일 | 권장 방법 |
-| --- | --- | --- |
-| Android 문자열 리소스 | `app/src/main/res/values/strings.xml` | `values-ko/strings.xml`에서 기존 키를 한국어로 제공 |
-| Android 관리 센터·시작·오류·설정·플러그인 화면 | `app/src/main/java/` 아래의 Kotlin/Java (특히 `GuideManagementController.kt`, `GuidePageRenderer.kt`, `EngineStartFlow.kt`, `PluginManagementPage.kt`) | **코드에 직접 들어 있는 중국어도 전수 조사**하고 리소스화·번역 |
-| 내장 콘솔 HTML | `app/src/main/assets/console.html` | 표시 문구와 문자열 의존 상태 판별을 함께 점검 |
-| 앱 내 웹 UI의 브라우저 | `dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts` | 언어별 사전 및 언어 선택 코드 확인 후 수정 |
-| 앱 내 웹 UI의 사이드바 | `dsh-client-ui-responsive/src/client/mobile/sidebar-bubbles.locales.ts` | 언어별 사전 및 언어 선택 코드 확인 후 수정 |
-| 그 밖의 앱 및 번들 플러그인의 사용자 노출 텍스트 | `dsh-client-ui-responsive/src/`, `dsh-host-web-compat/`, `plugins/`의 실제 소스 | 하드코딩 문자열까지 전수 검색해 번역; 외부 엔진 UI는 별도 출처 기록 |
-
-`values-ko` 추가만으로 WebView 내부 전체가 한국어로 바뀌지는 않습니다. **Android 문자열과 웹 UI의 언어 사전은 별도**입니다. 모델 설정창처럼 외부 엔진이나 플러그인에서 생성되는 UI라면, APK 저장소에 해당 코드가 있는지 먼저 확인해야 합니다.
-
-## 2. 처음 패치 만들기 (Windows Git Bash / macOS / Linux)
-
-### 준비: Git과 텍스트 편집기
-
-Windows에서는 **Git Bash**를 사용하세요. 아래 명령은 Git Bash·macOS·Linux 터미널 기준입니다.
-
-### ① 작업용 저장소 2개 받기
-
-임의의 작업 폴더에서 실행하세요.
-
-~~~bash
-GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 https://github.com/kelai141/dsh-mobile-apk.git ko-source
-GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --branch ko-patch https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch.git ko-patches
-~~~
-
-- `ko-source`: **최신 원본을 번역**하기 위한 작업 폴더
-- `ko-patches`: 생성한 **패치 파일을 커밋·업로드**할 폴더
-- `GIT_LFS_SKIP_SMUDGE=1`: 번역에 필요 없는 대형 런타임 파일 다운로드를 생략
-
-### ② 원본 파일을 번역하기
-
-`ko-source/app/src/main/res/values-ko/strings.xml`을 새로 만들어 **UTF-8**로 저장합니다. 예:
-
-~~~xml
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="ds_start_engine">엔진 시작</string>
-    <string name="ds_retry">다시 시도</string>
-    <string name="ds_safe_start">안전 모드로 시작</string>
-</resources>
-~~~
-
-위 세 키는 실제 원본 `values/strings.xml`에 있는 키입니다. 빠진 키는 기본 `values/strings.xml`로 대체되므로 조금씩 번역해도 됩니다.
-
-**번역할 때 주의할 점**
-
-- `name` 키를 바꾸지 마세요. 원본 키와 정확히 일치해야 합니다.
-- `%1$s`, `%2$d` 같은 Android 자리표시자의 타입·순서를 지키세요.
-- 웹 UI의 `{reason}` 같은 보간 변수도 그대로 남겨야 합니다.
-- XML 특수문자 `&`는 `&amp;`로 이스케이프하고 XML 문법·중복 키를 확인하세요.
-- 앱의 언어 설정이 한국어일 때만 `values-ko`가 선택됩니다. 웹 UI의 언어 설정은 별도로 확인해야 합니다.
-
-### ③ 변경한 원본에서 `.patch` 파일 만들기
-
-원본 폴더로 이동해 수정한 파일을 Git에 등록한 뒤 diff를 생성합니다.
-
-~~~bash
-cd ko-source
-git add -A app/src/main/res/values-ko/strings.xml
-git diff --cached --check
-git diff --cached --binary HEAD -- app/src/main/res/values-ko/strings.xml > ../ko-patches/localization/patches/001-android-ko.patch
-~~~
-
-이제 `ko-patches/localization/patches/001-android-ko.patch` 파일이 생깁니다. **`git diff --cached --binary HEAD`는 신규 파일과 기존 파일 수정 모두 처리**합니다.
-
-웹 UI의 기존 소스 파일을 번역했다면 별도 패치로 구분할 수 있습니다. (아래는 해당 파일을 실제로 수정한 뒤 실행합니다.)
-
-~~~bash
-git add -A dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts
-git diff --cached --binary HEAD -- dsh-client-ui-responsive/src/client/mobile/upstream-browser/locales.ts > ../ko-patches/localization/patches/020-browser-ko.patch
-~~~
-
-패치 내부에는 `diff --git a/... b/...`, `--- a/...`, `+++ b/...`와 변경 줄이 기록됩니다. **패치 파일은 직접 한 줄씩 만드는 대신 Git으로 생성하는 것을 권장**합니다. 절대 경로를 사용하지 말고, 파일을 UTF-8로 보관하세요.
-
-패치 파일을 여러 개 만들었다면 `001-...patch`, `020-...patch`처럼 **사전순 적용 순서**를 정하세요. 뒤 패치가 앞 패치와 충돌하지 않게 기능별로 분리하는 것이 좋습니다.
-
-### ④ 적용 가능 여부 확인하기
-
-이미 번역이 적용된 `ko-source`에서 정방향 `git apply --check`를 하면 실패할 수 있습니다. 이때는 **역방향 검사**를 사용합니다.
-
-~~~bash
-git apply --reverse --check --binary ../ko-patches/localization/patches/001-android-ko.patch
-~~~
-
-정확한 정방향 검사는 **수정하지 않은 최신 원본의 별도 체크아웃**에서 실행하세요.
-
-~~~bash
-git apply --check --binary --whitespace=error /path/to/ko-patches/localization/patches/001-android-ko.patch
-~~~
-
-위 마지막 명령은 **깨끗한 원본 체크아웃에서 실행**해야 하며, 경로는 본인 환경에 맞게 바꿔야 합니다. GitHub Actions도 각 패치에 대해 `git apply --check` 후 순서대로 `git apply`를 실행합니다. 하나라도 충돌하면 빌드를 중단합니다.
-
-### ⑤ 패치 브랜치에 올리기
-
-중요: 이제 `ko-source`가 아니라 **`ko-patches` 폴더**로 이동합니다.
-
-~~~bash
-cd ../ko-patches
-git status
-git add localization/patches/001-android-ko.patch
-git commit -m "l10n: add Korean Android strings patch"
-git push origin ko-patch
-~~~
-
-푸시하면 이 포크의 **Korean arm64 Release from upstream** 워크플로가 자동 시작됩니다.
-
-GitHub 웹으로 올리고 싶다면 **`ko-patch` 브랜치를 선택한 뒤 `localization/patches/`에 이미 만든 `.patch` 파일만** 업로드하세요. 웹에서 번역 소스 파일만 수정해 커밋하면 이 워크플로는 그 변경을 적용하지 않습니다.
-
-## 3. 기존 한국어 패치 업데이트하기
-
-**원본이 변경되거나 번역을 추가할 때는 최신 원본을 기준으로 패치를 다시 생성**해야 합니다.
-
-1. `ko-source`에 아직 커밋/보관하지 않은 작업이 있다면 먼저 안전하게 보관하세요.
-2. 깨끗한 작업 폴더라면 `git pull --ff-only origin main`으로 원본을 갱신하거나, 2절의 `git clone` 명령으로 새 `ko-source`를 받습니다.
-3. 새 원본에서 해당 번역을 다시 수정한 후 `git add -A 파일경로` 및 `git diff --cached --binary HEAD -- 파일경로`를 실행합니다.
-4. 출력 대상을 기존 `001-android-ko.patch`로 지정해 **기존 패치를 교체**하세요. 같은 영역을 수정하는 패치를 끝없이 추가하면 충돌합니다.
-5. `ko-patches`에서 `git pull --ff-only origin ko-patch`로 다른 변경을 동기화한 뒤, 수정한 `.patch`만 커밋하고 `git push origin ko-patch`로 업로드합니다.
-6. Actions 로그에서 적용 및 빌드 성공을 확인합니다.
-
-이전 패치가 더는 필요 없으면 `ko-patch`에서 해당 `.patch`를 삭제해 커밋하면 됩니다. **`main`을 수정하거나 원본 소스를 이 포크에 복사할 필요는 없습니다.**
-
-## 4. 자동 빌드, 결과와 오류 확인
-
-1. [Actions 페이지](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/actions)에서 **Korean arm64 Release from upstream** 실행 내역을 엽니다.
-2. 성공하면 [Releases 페이지](https://github.com/min6436k/dsh-mobile-apk-Ko-KR-Patch/releases)의 **Draft(초안)**을 확인합니다. 초안은 일반 공개 릴리즈로 게시되기 전 상태입니다.
-3. `dsh-ko-arm64.apk`를 기기에서 테스트하세요. `KO-BUILD-SOURCES.txt`에는 원본 커밋, 패치 브랜치 커밋, ABI, 서명, APK SHA-256 해시가 기록됩니다.
-4. 정상 확인 후 원한다면 GitHub에서 **Publish release**로 초안을 수동 게시할 수 있습니다.
-
-변경이 없고 최근에 동일한 원본·번역 조합으로 성공했다면 재빌드를 생략합니다. 지금 당장 재빌드하려면 **Actions → 해당 워크플로 → Run workflow → `force=true`**를 선택하세요.
-
-원본에 새 커밋이 생기면 매일 **03:15 KST** 예약 실행에서 다시 시도합니다. 원본 변경 때문에 패치가 깨지면 **Apply Korean patch series on top of upstream** 단계에서 실패하며, 새 원본에 맞게 3절대로 패치를 재생성해야 합니다. 충돌을 자동으로 무시하지 않습니다.
-
-## 5. 제한 사항 및 보안
-
-- 이 저장소는 **공개**입니다. 패치나 로그에 토큰·비밀번호·개인 키·비공개 정보를 넣지 마세요.
-- 현재는 **arm64 APK 하나만** 생성합니다. `x86_64` APK를 만들지 않습니다.
-- 빌드는 원본 `scripts/build-apk.mjs`를 따릅니다. 원본은 `release`/`debug` 빌드 모두 저장소의 `repoDebug` 인증서를 사용하므로, GitHub **Release 초안**이라고 해서 Android 정식 배포 키로 서명됐다는 의미는 아닙니다.
-- 앱의 UI/언어 전체가 자동으로 한국어가 되는 것은 아닙니다. **APK 소스에 포함된 기능만** 패치할 수 있습니다. 외부 플러그인이나 DSH 엔진의 화면을 변경하려면 별도 구현 확인이 필요합니다.
-- 원본의 패키징 방식이나 빌드 검증 조건이 바뀌면 이 포크의 워크플로도 업데이트해야 할 수 있습니다.
-
-## 6. 번역 패치 제출 시 필수 결과 보고서
-
-다음 양식으로 **전수 조사 결과와 실제 검증 범위**를 보고하세요. 건너뛴 항목을 완료로 표시하면 안 됩니다.
-
-~~~text
-[번역 패치 작업 보고]
-- 기준 업스트림 커밋:
-- ko-patch 커밋 및 새/수정 .patch:
-- 조사 범위(폴더/화면):
-- 변경 파일 목록:
-- 전용 스크립트 검사 결과: 최초 findings __건 / 최종 findings __건 / 검사 파일 __개
-- 사용자 노출 문구: 번역 완료 __건 / 확인된 미완료 __건 / 구체적인 코드 근거가 있는 예외 __건
-- 후보별 근거: 파일:행 / 중국어 원문 / 실제 표시·호출 경로 / 수정 패치 / 검증 결과
-- 예외: auditedExceptions __건(사유 목록 첨부) / staleExceptions __건
-- 검사 종료 코드: check-chinese.mjs --strict / check-chinese.test.mjs
-- 화면별 검수: 시작 / 런타임 상태 / 관리 센터 / 저장소 / 플러그인 / 콘솔 / 웹 UI / 설정
-- 검사 결과: git apply --check, git diff --check, 관련 테스트, APK 빌드, 기기 실행
-- 미완료·기기 미검증·외부 엔진/플러그인 범위와 후속 작업:
-~~~
-
-**예시 파일만 번역했거나 APK만 빌드했다면 반드시 '부분 번역'으로 보고하세요.** 모든 번역 변경 사항은 기존 안내대로 `ko-patch/localization/patches/*.patch`에 보관하고, 깨끗한 업스트림 `main`에 적용되는지 검증합니다. 소스 파일을 포크의 `main`에 직접 덮어쓰지 마세요.
+작업 중에는 `.workspace/archive/`의 미완료 차분 및 기타 복구 자료를 함부로 지우지 않습니다. Git 추적된 구형 파일만 의존성 확인 후 삭제하며, 작업 디렉터리·기기 데이터·과거 세션은 이 정리의 대상이 아닙니다.

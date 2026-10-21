@@ -1,3 +1,8 @@
+<!-- ko-patch branch overlay: keep upstream source-map text below unchanged. -->
+> **한국어 포크 작업 규칙 (`ko-patch`)**: 이 아래 내용은 업스트림 Android 소스 개발 문서입니다. 이 포크의 **실제 한국어 APK 빌드/번역/패치 작업**은 [`localization/README.md`](localization/README.md)를 우선 적용하세요.
+> Oracle 단일 작업 경로: `/home/ubuntu/project/dsh-mobile-apk-Ko-KR-Patch`. `ko-patch`에는 원본 전체 코드를 커밋하지 말고 `localization/patches/*.patch`만 적용하세요. 원본 추적용 `main`을 수정하지 마세요.
+> 원본의 `release.yml`, `build-apk.yml`, `build-apk-source.yml`은 업스트림 검사·실행 지도에서 참조하므로 유지합니다. **한국어 APK 배포에는 `ko-upstream-apk.yml`만 사용**하고 `pr-gate.yml`은 PR을 검사합니다. 원본 Pages 전용 워크플로만 이 브랜치에서 정리했습니다. 아래에 남은 업스트림 출시·다중 저장소 명령과 버전·기기 정보는 현재 포크의 실행 지침이 아닙니다.
+
 # AGENTS.md — dsh-mobile-apk 项目地图
 
 > **本文件是你进入壳侧的入口**：仓库地图 + 去哪查 + 更新协议。不堆历史记录。
