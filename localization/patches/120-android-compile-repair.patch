@@ -1,0 +1,49 @@
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt b/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
+index cdb5009..1ce1ab4 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/OverlayPanel.kt
+@@ -16,7 +16,6 @@ import android.widget.ImageView
+ import android.widget.LinearLayout
+ import android.widget.Spinner
+ import android.widget.TextView
+-import com.dsharnessmobile.shell.DsLocale.ko
+ import org.json.JSONObject
+ import java.net.HttpURLConnection
+ import java.net.URL
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt b/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
+index e98d510..2213f0e 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/SnapshotTransaction.kt
+@@ -1,7 +1,6 @@
+ package com.dsharnessmobile.shell
+ 
+ import android.util.Log
+-import com.dsharnessmobile.shell.DsLocale.ko
+ 
+ import java.io.File
+ import java.io.IOException
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt b/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
+index 2c8344e..1a0f10c 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/DeviceControlService.kt
+@@ -1204,7 +1204,6 @@ class DeviceControlService : AccessibilityService() {
+       .put("x", x.toDouble()).put("y", y.toDouble())
+     else error(ko("手势点击未完成（被系统取消）", "탭 제스처가 완료되지 않음 (시스템에 의해 취소됨)"))
+   }
+-  }
+ 
+   /**
+    * 便宜的状态读数（不建树）：当前快照代次 + 是否已被窗口/内容事件失效。
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt b/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
+index 8c9c6f1..dfae260 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/ShizukuTransport.kt
+@@ -780,7 +780,7 @@ object ShizukuTransport {
+         .put("protocolVersion", pv)
+         .put("guidance", ko(
+           "Shizuku UserService 协议为 v$pv，本机需要 v$wantPv；请在设置页「手机控制」重置连接，重启旧 UserService（无需重装）。",
+-          "Shizuku UserService 프로토콜이 v$pv이며, 본 기기에는 v$wantPv이(가) 필요합니다. 설정 페이지의 '휴대폰 제어'에서 연결을 재설정하여 이전 UserService를 다시 시작하세요(재설치 불필요)."
++          "Shizuku UserService 프로토콜이 v${pv}이며, 본 기기에는 v${wantPv}이(가) 필요합니다. 설정 페이지의 '휴대폰 제어'에서 연결을 재설정하여 이전 UserService를 다시 시작하세요(재설치 불필요)."
+         ))
+     }
+     if (!configureIfNeeded(context)) return null to JSONObject().put("ok", false)
