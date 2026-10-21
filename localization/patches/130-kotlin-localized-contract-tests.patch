@@ -1,0 +1,163 @@
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/CallSiteContractTest.kt b/app/src/test/java/com/dsharnessmobile/shell/CallSiteContractTest.kt
+index 5fa6184..217f50c 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/CallSiteContractTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/CallSiteContractTest.kt
+@@ -379,11 +379,11 @@ class CallSiteContractTest {
+     assertTrue("A1：turn_end 必须读 kind 字段（语义真源）", live.contains("j.optString(\"kind\""))
+     assertTrue("A1：kind 必须经 turnEndLabel 映射", live.contains("turnEndLabel(kind)"))
+     val report = codeOnly(source("OverlayReport.kt"))
+-    assertTrue("A1：kind 映射必须与 notify-projection 口径同构", report.contains("\"completed\" -> \"已完成\""))
+-    assertTrue("A1：未知 kind 必须兜底「结果未知」而非「已完成」", report.contains("else -> \"结果未知\""))
++    assertTrue("A1：kind 映射必须与 notify-projection 口径同构", report.contains("\"completed\" -> ko(\"已完成\", \"완료됨\")"))
++    assertTrue("A1：未知 kind 必须兜底「结果未知」而非「已完成」", report.contains("else -> ko(\"结果未知\", \"결과 알 수 없음\")"))
+     assertTrue(
+       "A1：只有布尔 ok 时，false 必须落「结果未知」而非「已完成」",
+-      live.contains("if (j.optBoolean(\"ok\", false)) \"已完成\" else \"结果未知\""),
++      live.contains("if (j.optBoolean(\"ok\", false)) ko(\"已完成\", \"완료됨\") else ko(\"结果未知\", \"결과 알 수 없음\")"),
+     )
+   }
+ 
+@@ -517,7 +517,7 @@ class CallSiteContractTest {
+   @Test
+   fun theHideEntryLivesInThePanelAndCallsHideBall() {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+-    assertTrue("J-A1：面板必须有「隐藏悬浮球」入口（可发现性：不得只靠手势）", panel.contains("contentDescription = \"隐藏悬浮球\""))
++    assertTrue("J-A1：面板必须有「隐藏悬浮球」入口（可发现性：不得只靠手势）", panel.contains("contentDescription = ko(\"隐藏悬浮球\", \"플로팅 볼 숨기기\")"))
+     assertTrue("J-A1：入口必须挂进顶行（与 ✕ 收起并排）", panel.contains("overlay-hide-entry"))
+     assertTrue("J-A1：点击必须走 svc.hideBall()", panel.contains("setOnClickListener { svc.hideBall() }"))
+     assertTrue("J-A1：换肤必须同步该入口颜色（漏了会留旧主题灰）", panel.contains("hideEntryView?.setTextColor(c.chevron)"))
+@@ -573,7 +573,7 @@ class CallSiteContractTest {
+     val recall = codeOnly(source("OverlayRecall.kt"))
+     assertTrue("J-A4：条必须有窗口参数（懒建）", recall.contains("WindowManager.LayoutParams("))
+     assertTrue("J-A4：条窗口必须 NOT_FOCUSABLE（否则顶掉输入法）", recall.contains("FLAG_NOT_FOCUSABLE"))
+-    assertTrue("J-A4：条必须在场时认得出自己（uiautomator/无障碍）", recall.contains("contentDescription = \"唤回悬浮球\""))
++    assertTrue("J-A4：条必须在场时认得出自己（uiautomator/无障碍）", recall.contains("contentDescription = ko(\"唤回悬浮球\", \"플로팅 볼 다시 부르기\")"))
+     assertTrue("J-A4：条的唯一点击动作是召回", recall.contains("svc.recallBall()"))
+   }
+ 
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/GuideAndConsoleBatch6Test.kt b/app/src/test/java/com/dsharnessmobile/shell/GuideAndConsoleBatch6Test.kt
+index 7e09dfb..ebafa15 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/GuideAndConsoleBatch6Test.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/GuideAndConsoleBatch6Test.kt
+@@ -274,8 +274,8 @@ class GuideAndConsoleBatch6Test {
+       "引擎启动失败的标题同样",
+       flow.contains("\"引擎启动失败（\" + diagnosticsLocationHint(dir) + \"）\""),
+     )
+-    assertTrue("标题只说事实", flow.contains("GuidePhase.Error,\n                \"运行时更新失败\",") || flow.contains("\"运行时更新失败\","))
+-    assertTrue("路径挪到副文案", flow.contains("diagnosticsLocationHint(dir) + \"。可复制该路径或打开控制台查看 engine.log。\""))
++    assertTrue("标题只说事实", flow.contains("UiText.t(activity, \"运行时更新失败\", \"Runtime update failed\", \"런타임 업데이트 실패\")"))
++    assertTrue("路径挪到副文案", flow.contains("diagHint + activity.getString(R.string.ds_safe_hint_short)") && flow.contains("diagnosticsLocationHint(dir)"))
+   }
+ 
+   // ── S1-6：回撤文案不再是内部判定句 ───────────────────────────────────────
+@@ -425,7 +425,7 @@ class GuideAndConsoleBatch6Test {
+     )
+     assertTrue("必须按显式状态判", html.contains("window.__consoleState = function (state, text)"))
+     assertTrue("快照缺失必须是独立状态", html.contains("missingState"))
+-    assertTrue("缺失时按钮换语义而不是留一个必然失败的重连", html.contains("restartBtn.textContent = missingState ? '返回应用' : '重连'"))
++    assertTrue("缺失时按钮换语义而不是留一个必然失败的重连", html.contains("restartBtn.textContent = missingState ? ko('返回应用', '앱으로 돌아가기') : ko('重连', '재연결')"))
+     assertTrue("缺失时必须说清怎么办", html.contains("快照缺失：控制台依赖运行时里的 bash"))
+     val act = codeOnly(source("ConsoleActivity.kt"))
+     assertTrue("壳侧必须推状态+文案两个参数", act.contains("window.__consoleState && window.__consoleState("))
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/NotifyStructureBatch8Test.kt b/app/src/test/java/com/dsharnessmobile/shell/NotifyStructureBatch8Test.kt
+index 2435ad4..6698fce 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/NotifyStructureBatch8Test.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/NotifyStructureBatch8Test.kt
+@@ -168,7 +168,7 @@ class NotifyStructureBatch8Test {
+   @Test
+   fun approvalTitleNamesTheConcreteSubject() {
+     val code = centerCode()
+-    assertTrue("标题必须用工具名（具体对象）", code.contains("「\" + it + \"」需要授权"))
++    assertTrue("标题必须用工具名，且明确支持中文和韩文", code.contains("ko(\"「\$it」需要授权\", \"「\$it」 승인 필요\")"))
+     assertTrue("没有工具名时才回落类别词", code.contains("entry.displayTitle().ifBlank { UserCopy.notifyCategory(Face.APPROVAL.category) }"))
+   }
+ 
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/OverlayBatch5Test.kt b/app/src/test/java/com/dsharnessmobile/shell/OverlayBatch5Test.kt
+index 15275a6..54e7717 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/OverlayBatch5Test.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/OverlayBatch5Test.kt
+@@ -197,12 +197,12 @@ class OverlayBatch5Test {
+   @Test
+   fun `两枚圆钮必须补 contentDescription 且视觉尺寸不变`() {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+-    assertTrue("发送必须有无障碍名", panel.contains("roundButton(\"overlay-send\", R.drawable.dsh_ic_send, 16, 0xFF4176E6.toInt(), \"发送\")"))
+-    assertTrue("停止必须有无障碍名", panel.contains("roundButton(\"overlay-stop\", R.drawable.dsh_ic_stop, 12, 0xFFE04848.toInt(), \"停止当前任务\")"))
++    assertTrue("发送必须有双语无障碍名", panel.contains("roundButton(\"overlay-send\", R.drawable.dsh_ic_send, 16, 0xFF4176E6.toInt(), ko(\"发送\", \"전송\"))"))
++    assertTrue("停止必须有双语无障碍名", panel.contains("roundButton(\"overlay-stop\", R.drawable.dsh_ic_stop, 12, 0xFFE04848.toInt(), ko(\"停止当前任务\", \"현재 작업 중지\"))"))
+     assertTrue("外层命中区撑到热区下限、内层保持 36dp 观感", panel.contains("FrameLayout.LayoutParams((36 * dp).toInt(), (36 * dp).toInt(), Gravity.CENTER)"))
+     val report = codeOnly(source("OverlayReport.kt"))
+-    assertTrue("回报栏关闭键必须有无障碍名", report.contains("contentDescription = \"关闭工作汇报\""))
+-    assertTrue("手柄行必须有无障碍名", report.contains("contentDescription = \"上下拖动调整汇报栏高度\""))
++    assertTrue("회보창 닫기에 한국어 접근성 이름 필요", report.contains("contentDescription = ko(\"关闭工作汇报\", \"업무 보고서 닫기\")"))
++    assertTrue("드래그 손잡이 한국어 접근성 이름 필요", report.contains("contentDescription = ko(\"上下拖动调整汇报栏高度\", \"위아래로 드래그하여 보고서 바 높이 조절\")"))
+   }
+ 
+   // ── P5-1：状态行必须有可见入口，长按仍可用 ─────────────────────────────────
+@@ -210,18 +210,18 @@ class OverlayBatch5Test {
+   @Test
+   fun `状态行必须有可见的汇报入口`() {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+-    assertTrue("入口文案必须在场", panel.contains("\"查看汇报\""))
++    assertTrue("入口文案必须双语", panel.contains("ko(\"查看汇报\", \"보고서 보기\")"))
+     assertTrue("入口必须真的开报告栏", panel.contains("setOnClickListener { svc.toggleReportBar() }"))
+     assertTrue("入口必须挂在状态行（row1）里", panel.contains("addView(reportEntry"))
+-    assertTrue("入口必须有无障碍名", panel.contains("contentDescription = \"查看工作汇报\""))
++    assertTrue("入口必须有韩语无障碍名", panel.contains("contentDescription = ko(\"查看工作汇报\", \"업무 보고서 보기\")"))
+     assertTrue("换肤时必须同步入口配色", panel.contains("reportEntryView?.setTextColor(c.chevron)"))
+   }
+ 
+   @Test
+   fun `完成态提示语指向可见入口而不是长按`() {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+-    assertTrue("默认完成模板必须改成指向可见入口", panel.contains("getString(\"template_completion\", \"已完成，可查看汇报\")"))
+-    assertTrue("兜底提示语必须同口径", panel.contains("ifBlank { \"可查看汇报\" }"))
++    assertTrue("完成模板必须保持中韩双语", panel.contains("ko(\"已完成，可查看汇报\", \"완료됨, 보고서 확인 가능\")") && panel.contains("getString(\"template_completion\", def)"))
++    assertTrue("兜底提示语必须双语且同口径", panel.contains("val fallback = ko(\"可查看汇报\", \"보고서 확인 가능\")") && panel.contains("ifBlank { fallback }"))
+     assertFalse(
+       "不得再只教长按：可见入口已存在，文案指向用户看不见的手势等于没入口",
+       panel.contains("长按查看汇报"),
+@@ -274,7 +274,7 @@ class OverlayBatch5Test {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+     assertTrue("手势必须真的用上该窗口", panel.contains("tripleTapWindowMs(android.view.ViewConfiguration.getDoubleTapTimeout().toLong())"))
+     val svc = codeOnly(source("OverlayService.kt"))
+-    assertTrue("跳转失败必须有可见回执（旧实现只写日志）", svc.contains("flashStatus(\"跳转失败，请手动切到 DSH\")"))
++    assertTrue("跳转失败必须有双语可见回执（旧实现只写日志）", svc.contains("flashStatus(ko(\"跳转失败，请手动切到 DSH\", \"이동 실패, 앱으로 직접 전환하세요\"))"))
+   }
+ 
+   // ── S2-11 / S2-7：提示语与机器码 ─────────────────────────────────────────
+@@ -328,9 +328,9 @@ class OverlayBatch5Test {
+   @Test
+   fun `状态行主文案不得再用英文模板`() {
+     val panel = codeOnly(source("OverlayPanel.kt"))
+-    assertTrue("思考态默认文案必须是中文", panel.contains("getString(\"template_thinking\", \"正在思考…\")"))
++    assertTrue("思考态默认文案必须中韩双语", panel.contains("val def = ko(\"正在思考…\", \"생각하는 중…\")") && panel.contains("getString(\"template_thinking\", def)"))
+     assertFalse("不得再出现英文扫光文案", panel.contains("Deep diving..."))
+-    assertTrue("工具轮默认文案同样给中文外壳", panel.contains("getString(\"template_tool\", \"正在使用 {tool} · {summary}\")"))
++    assertTrue("工具轮默认文案必须中韩双语", panel.contains("val def = ko(\"正在使用 {tool} · {summary}\", \"{tool} 사용 중 · {summary}\")") && panel.contains("getString(\"template_tool\", def)"))
+   }
+ 
+   @Test
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/OverlayPendingCardTest.kt b/app/src/test/java/com/dsharnessmobile/shell/OverlayPendingCardTest.kt
+index 22e4232..1f36cf1 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/OverlayPendingCardTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/OverlayPendingCardTest.kt
+@@ -108,8 +108,8 @@ class OverlayPendingCardTest {
+       "「批准一次」不得直接 respondApproval（P0-9：真实工具执行需要二次确认）",
+       code.contains("pendingChip(\"批准一次\", filled = true, red = false, dp) { respondApproval(a, \"allowed-once\") }"),
+     )
+-    assertTrue("待确认态必须有可见标签", code.contains("确认批准（执行）"))
+-    assertTrue("待确认态必须能取消", code.contains("pendingChip(\"取消\""))
++    assertTrue("待确认态必须有双语可见标签", code.contains("ko(\"确认批准（执行）\", \"승인 확인(실행)\")"))
++    assertTrue("待确认态必须有双语取消操作", code.contains("pendingChip(ko(\"取消\", \"취소\")"))
+     assertTrue("换卡必须撤臂", code.contains("approvalArmedId = null\n    }"))
+   }
+ 
+@@ -126,7 +126,7 @@ class OverlayPendingCardTest {
+       "requestStop 不得在无轮次时静默 return（用户视角就是「点了没反应」，P0-6）",
+       stopBody.contains("if (!sessionBusy) return\n"),
+     )
+-    assertTrue("无轮次时必须给出可见回执", stopBody.contains("flashStatus(\"当前没有正在运行的任务\")"))
++    assertTrue("无轮次时必须给出双语可见回执", stopBody.contains("flashStatus(ko(\"当前没有正在运行的任务\", \"현재 실행 중인 작업이 없습니다\"))"))
+   }
+ 
+   // ── P0-3：按钮卡在禁用的「下载中 100%」 ──────────────────────────────────
