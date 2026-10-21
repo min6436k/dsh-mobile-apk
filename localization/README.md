@@ -17,7 +17,7 @@
 | 자동 빌드 | `.github/workflows/ko-upstream-apk.yml` (ARM64만) |
 | 배포 파일 | Draft Release의 APK / SHA-256 / 출처 파일 |
 
-패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **15개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
+패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **16개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
 
 ### 현재 패치 목록 (파일명순)
 
@@ -37,7 +37,8 @@
 | `110-pure-keymap.patch` | 가상 키맵 순수 로직 회귀 복구 |
 | `120-android-compile-repair.patch` | Android Kotlin 컴파일 호환성 보완 |
 | `130-kotlin-localized-contract-tests.patch` | 한국어화 이후 Kotlin 계약 테스트 수정 |
-| `140-language-documents-theme.patch` | 화면 언어 팝업, 색상 모드 버튼 정렬, SAF 앱 내부 파일 DocumentsProvider |
+| `140-language-documents-theme.patch` | (구형) 언어 선택 팝업, 색상 모드 버튼 정렬, SAF 앱 내부 파일 DocumentsProvider |
+| `150-korean-only.patch` | 관리 센터·Web UI 언어 선택 제거, 한국어 강제 적용 및 구형 선택값 무시 |
 
 패치를 제거·합칠 때는 적용 순서와 기존 테스트의 기대 동작을 먼저 확인하세요. 원본 파일의 대량 복사는 허용하지 않습니다.
 
@@ -59,6 +60,14 @@ dsh-mobile-apk-Ko-KR-Patch/
 ```
 
 원본 체크아웃은 `.workspace/source/` 아래에 두고, 검증용 worktree는 `.workspace/` 아래 **새 디렉터리**로 만듭니다. `.workspace/source/`는 과거의 미커밋 번역 작업이 남아 있을 수 있습니다. 이미 존재하는 worktree에 대해 `git reset --hard`, `git clean -fd`를 실행하거나 덮어쓰지 마세요. 이전 폴더 `/home/ubuntu/dsh-ko-*`, `/home/ubuntu/project/ko-source`, `/home/ubuntu/project/ko-patches`를 재생성하지 마세요.
+
+### 한국어 전용 정책 (2026-10-21)
+
+- 관리 센터와 내장 Web UI 설정의 언어 선택 UI는 **모두 제거**합니다.
+- 앱의 리소스, WebView의 locale bootstrap, 엔진 프로필 `locale.preference`, 내장 플러그인 표시 언어는 **항상 한국어**입니다. 휴대전화의 언어나 과거 선택값을 따르지 않습니다.
+- 이전 `ui_language` 저장값은 실행 시 한국어로 정규화하며, 기존 작업 공간·세션·모델 자격 증명 및 다른 엔진 설정은 보존합니다.
+- 호환성을 위해 남겨 둔 JS 브리지 언어 setter는 입력값에 관계없이 한국어를 반환하는 비활성 경로이며, 외부에서 영어·중국어로 전환할 수 없습니다.
+- 다른 언어를 위한 중국어 원문/영어 폴백은 프로토콜과 업스트림 호환성 목적이 있는 경우에만 유지합니다. 새 UI 표시 문구는 한국어로 작성합니다.
 
 ## 3. 패치를 적용한 깨끗한 원본에서 검사
 
@@ -101,9 +110,9 @@ CI도 동일하게 깨끗한 원본을 체크아웃한 뒤 `.patch`를 순서대
 **내부 식별자라서 그냥 무시하면 안 됩니다.** 예를 들어 이전 버전의 `临时工作区`는 내부 작업 공간 조회에 쓰이면서 **실제 화면 제목**으로도 노출됐습니다. 해결 시에는 다음을 모두 확인합니다.
 
 1. 기존 ID, 경로, 세션 연결과 저장된 중국어 제목을 손실 없이 재사용합니다.
-2. 새로 등록하는 작업 공간의 표시 이름은 현재 앱 언어에 맞춥니다.
+2. 새로 등록하는 작업 공간과 이전 중국어 제목 모두 한국어로 **표시**합니다.
 3. 기존 중국어 제목도 한국어 화면에는 `임시 작업 공간`으로 보이게 하되 사용자 메시지·코드·파일명은 무단 변환하지 않습니다.
-4. 중국어·영어 언어 모드도 회귀 검증합니다.
+4. 앱은 **한국어 전용**입니다. 과거 중국어·영어·시스템 선택값은 무시하고 데이터 자체는 보존합니다.
 
 `chinese-scan-exceptions.json`은 **검출되지 않는 화이트리스트가 아닙니다.** 중국어 원문은 `totalDetected`와 `auditedExceptions`에 계속 집계하며, 기술적으로 보존이 필요한 후보도 검증해야 합니다. 예외에는 `file`, `text`, 상세한 `why`, 허용된 `category`, 실제 테스트 소스 경로인 `verifiedBy`가 필요합니다. 근거·테스트 없는 예외는 `unverifiedExceptions`로 남고 `--strict`가 실패합니다.
 
@@ -111,7 +120,7 @@ CI도 동일하게 깨끗한 원본을 체크아웃한 뒤 `.patch`를 순서대
 
 ## 5. 새 번역 패치 생성 및 제출
 
-1. 최신 업스트림을 검증용 worktree에 받은 후 **기존 15개 패치를 먼저 적용**합니다.
+1. 최신 업스트림을 검증용 worktree에 받은 후 **기존 16개 패치를 먼저 적용**합니다.
 2. 번역·기능 수정을 해당 worktree에서 수행합니다. 한국어와 영어·중국어를 보존하고, API/JSON 키, 출력 프로토콜, URL, 경로, 플레이스홀더는 함부로 변경하지 않습니다.
 3. 수정한 파일을 검토하고 `git diff --check` 및 관련 npm·Kotlin 테스트를 실행합니다.
 4. 변경분을 `git -C "$TREE" diff --binary > "$ROOT/localization/patches/<다음-번호>-설명.patch"`로 추출합니다. 신규 파일은 먼저 `git -C "$TREE" add -N <새-파일>`로 diff에 포함시키거나, 임시 커밋에서 기준 커밋과 비교해 누락 없이 추출합니다.

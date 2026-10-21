@@ -1,0 +1,862 @@
+diff --git a/app/src/main/assets/console.html b/app/src/main/assets/console.html
+index d49c03d..18ecc7d 100644
+--- a/app/src/main/assets/console.html
++++ b/app/src/main/assets/console.html
+@@ -1,5 +1,5 @@
+ <!DOCTYPE html>
+-<html lang="zh-CN">
++<html lang="ko">
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+@@ -182,8 +182,9 @@
+   var draft = '';
+   var ready = false;
+   var stickBottom = true;
+-  var isZh = (navigator.language || navigator.userLanguage || '').toLowerCase().startsWith('zh');
+-  var isKo = !isZh;
++  // This fork is Korean-only: never use the browser/system language.
++  var isZh = false;
++  var isKo = true;
+ 
+   function ko(zh, koText) {
+     return isZh ? zh : koText;
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt b/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt
+index d4ca0a1..e3a59a0 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt
+@@ -27,12 +27,12 @@ class AndroidBridge(
+   private val onExportSettingsDocument: () -> String = { "" },
+   private val onSetImmersiveRequest: (enable: Boolean) -> Unit = {},
+   /** UI language: system, zh, or en; the shell preference is the truth source. */
+-  private val onGetUiLanguage: () -> String = { AppLanguage.MODE_SYSTEM },
++  private val onGetUiLanguage: () -> String = { AppLanguage.MODE_KO },
+   /**
+    * Persist a UI language and mirror it into the dsh profile patch.
+    * Returns the mode that is now stored (an unknown value falls back to system).
+    */
+-  private val onSetUiLanguage: (mode: String) -> String = { AppLanguage.MODE_SYSTEM },
++  private val onSetUiLanguage: (mode: String) -> String = { AppLanguage.MODE_KO },
+   /** ST-10：沉浸式**读**面（缺它就是三方分裂 #1：壳偏好与页面 localStorage 互不校验）。
+    *  默认实现直接读壳侧单一真源（ShellAppContext 由 EngineAuth.initContext 绑定），
+    *  因此 MainActivity 无需传参即可返回真实值。 */
+@@ -255,14 +255,14 @@ class AndroidBridge(
+ 
+   /** Current UI language mode (system / zh / en); the shell preference is the truth source. */
+   @JavascriptInterface
+-  fun getUiLanguage(): String = onGetUiLanguage()
++  fun getUiLanguage(): String = AppLanguage.MODE_KO
+ 
+   /**
+    * Store a UI language and sync it to dsh; returns the stored mode.
+    * The caller reloads the page, so the new language is visible immediately.
+    */
+   @JavascriptInterface
+-  fun setUiLanguage(mode: String): String = onSetUiLanguage(mode)
++  fun setUiLanguage(mode: String): String = AppLanguage.MODE_KO
+ 
+   /**
+    * Native clipboard write (navigator.clipboard.writeText in WebView is always rejected on Android
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AppLanguage.kt b/app/src/main/java/com/dsharnessmobile/shell/AppLanguage.kt
+index f9c56d5..22342c3 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/AppLanguage.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/AppLanguage.kt
+@@ -7,106 +7,41 @@ import java.io.File
+ import java.util.Locale
+ 
+ /**
+- * UI language source of truth: follow system, Chinese, or English.
+- *
+- * The shell resolves the preference, applies it to its own resources, and
+- * mirrors the resulting dsh locale into `settings.yaml` so the engine UI uses
+- * the same language. Only dsh's own preference field is written; other
+- * settings stay untouched.
++ * This Korean APK has ONE UI language: Korean. Old saved language choices are
++ * intentionally ignored. Keep the old public methods/constants temporarily so
++ * existing shell/engine bridge callers do not break, but never accept zh/en.
+  */
+ internal object AppLanguage {
+   const val PREFS = "dsh_settings"
+   const val KEY_MODE = "ui_language"
+-
+   const val MODE_SYSTEM = "system"
+   const val MODE_ZH = "zh"
+   const val MODE_EN = "en"
+   const val MODE_KO = "ko"
++  val MODES = listOf(MODE_KO)
+ 
+-  val MODES = listOf(MODE_SYSTEM, MODE_ZH, MODE_EN, MODE_KO)
+-
+-  /** Stored mode; an unreadable preference falls back to following the system. */
+-  fun mode(context: Context): String = try {
+-    context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+-      .getString(KEY_MODE, MODE_SYSTEM) ?: MODE_SYSTEM
+-  } catch (_: Exception) {
+-    MODE_SYSTEM
+-  }
++  fun mode(context: Context): String = MODE_KO
+ 
+-  /** Only the three declared modes are accepted; anything else means follow system. */
+-  fun setMode(context: Context, mode: String): String {
+-    val normalized = if (mode in MODES) mode else MODE_SYSTEM
++  /** Legacy bridge setter must not re-enable other modes. */
++  fun setMode(context: Context, requested: String): String {
+     try {
+-      context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+-        .edit().putString(KEY_MODE, normalized).apply()
+-    } catch (_: Exception) {
+-      // Persisting failed: still return what the UI should show this session.
+-    }
+-    return normalized
+-  }
+-
+-  /** dsh locale id for this mode; the system language decides when following it. */
+-  fun dshLocale(context: Context): String = when (val selected = mode(context)) {
+-    MODE_ZH -> MODE_ZH
+-    MODE_EN -> MODE_EN
+-    MODE_KO -> MODE_KO
+-    else -> systemLocale(context)
+-  }
+-
+-  /**
+-   * Primary subtag of the device language, ignoring any forced override.
+-   *
+-   * `MainActivity.attachBaseContext` wraps the activity context in the chosen
+-   * language, so reading `context.resources` there would return the old forced
+-   * language after the user switches back to "follow system". The application
+-   * context is never wrapped, which makes it the honest device answer.
+-   */
+-  fun systemLocale(context: Context): String {
+-    val configuration = try {
+-      context.applicationContext.resources.configuration
+-    } catch (_: Exception) {
+-      null
+-    }
+-    val primary = configuration?.locales?.let { locales: LocaleList ->
+-      if (locales.isEmpty) null else locales[0].language
+-    } ?: Locale.getDefault().language
+-    return when {
+-      primary.equals(MODE_ZH, ignoreCase = true) -> MODE_ZH
+-      primary.equals(MODE_KO, ignoreCase = true) -> MODE_KO
+-      else -> MODE_EN
+-    }
+-  }
+-
+-  /** System language tags in preference order, for dsh's own locale detector. */
+-  fun systemLanguages(context: Context): List<String> {
+-    val locales = try {
+-      context.applicationContext.resources.configuration.locales
+-    } catch (_: Exception) {
+-      null
+-    }
+-    val tags = locales?.let { list -> (0 until list.size()).map { list[it].toLanguageTag() } }.orEmpty()
+-    return tags.filter { it.isNotBlank() }.ifEmpty { listOf(Locale.getDefault().toLanguageTag()) }
++      context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
++        .putString(KEY_MODE, MODE_KO).apply()
++    } catch (_: Exception) { /* continue using Korean in this session */ }
++    return MODE_KO
+   }
+ 
+-  /** True when the current preference forces a language instead of following the system. */
+-  fun isForced(context: Context): Boolean = mode(context) != MODE_SYSTEM
++  fun dshLocale(context: Context): String = MODE_KO
++  fun systemLocale(context: Context): String = MODE_KO
++  fun systemLanguages(context: Context): List<String> = listOf("ko-KR")
++  fun isForced(context: Context): Boolean = true
+ 
+-  /**
+-   * Mirror the preference into the profile patch dsh actually reads.
+-   *
+-   * dsh 0.2.x stores this namespace in `profiles/web/cordis.patch.yml`; the
+-   * old `settings.yaml` section is only imported once and no longer read. A
+-   * forced mode writes `- id: locale` with `config.preference`; following the
+-   * system removes that preference so dsh falls back to the system languages
+-   * supplied by the WebView bridge.
+-   * @return true when the patch now matches the preference.
+-   */
++  /** Sync a Korean-only preference while preserving unrelated profile entries. */
+   fun syncDshLocale(context: Context): Boolean {
+     val file = profilePatchFile(context) ?: return false
+-    val locale = if (mode(context) == MODE_SYSTEM) null else dshLocale(context)
+     return try {
+       val original = if (file.exists()) file.readText() else ""
+-      val updated = withDshLocalePreference(original, locale)
++      val updated = withDshLocalePreference(original, MODE_KO)
+       if (updated != original) {
+         file.parentFile?.mkdirs()
+         val temporary = File(file.parentFile, ".cordis.patch.yml.lang-tmp")
+@@ -117,30 +52,15 @@ internal object AppLanguage {
+         }
+       }
+       true
+-    } catch (_: Exception) {
+-      false
+-    }
++    } catch (_: Exception) { false }
+   }
+ 
+-  /**
+-   * Base context for an activity, carrying the forced or system locale.
+-   * @param base - context handed to attachBaseContext.
+-   * @returns a context whose resources resolve strings in the chosen language.
+-   */
++  /** Force Korean Android resources independently of the phone's language. */
+   fun wrap(base: Context): Context {
+-    if (mode(base) == MODE_SYSTEM) return base
+     val configuration = Configuration(base.resources.configuration)
+-    val language = when (mode(base)) {
+-      MODE_ZH -> Locale.SIMPLIFIED_CHINESE
+-      MODE_KO -> Locale.KOREAN
+-      else -> Locale.ENGLISH
+-    }
+-    configuration.setLocales(LocaleList(language))
+-    return try {
+-      base.createConfigurationContext(configuration)
+-    } catch (_: Exception) {
+-      base
+-    }
++    configuration.setLocales(LocaleList(Locale.KOREAN))
++    return try { base.createConfigurationContext(configuration) }
++    catch (_: Exception) { base }
+   }
+ 
+   /** Live profile patch (`files/home/.dsh/profiles/web/cordis.patch.yml`). */
+@@ -235,9 +155,9 @@ internal object AppLanguage {
+    * @returns a classic script safe to run before the engine bundle.
+    */
+   internal fun bootstrapScript(mode: String, languages: List<String>): String {
+-    val preference = if (mode == MODE_SYSTEM) "null" else jsQuote(mode)
+-    val ordered = languages.filter { it.isNotBlank() }.distinct()
+-    val tags = (ordered.ifEmpty { listOf(MODE_ZH) }).joinToString(",") { jsQuote(it) }
++    // Do not use saved preferences, the browser language, or a caller's mode.
++    val preference = jsQuote(MODE_KO)
++    val tags = jsQuote("ko-KR")
+     return "(function(){try{" +
+       "var tags=[$tags];" +
+       "globalThis.__DSH_LOCALE__={read:function(){return Promise.resolve({languages:tags,preference:$preference})}," +
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
+index 192af8e..dfdbc92 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
+@@ -13,14 +13,10 @@ internal object DsLocale {
+   var forceKo: Boolean? = null
+ 
+   @JvmStatic
+-  fun isKo(): Boolean {
+-    forceKo?.let { return it }
+-    val lang = Locale.getDefault().language.lowercase(Locale.ROOT)
+-    return lang == "ko"
+-  }
++  fun isKo(): Boolean = true
+ 
+   @JvmStatic
+-  fun tr(zh: String, ko: String): String = if (isKo()) ko else zh
++  fun tr(zh: String, ko: String): String = ko
+ 
+   private val translations: Map<String, String> = mapOf(
+     // Common / Management
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
+index ae96bba..abed913 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/EngineManager.kt
+@@ -1552,6 +1552,9 @@ class EngineManager(private val context: Context, private val pickToken: String?
+         LogCollector.log(TAG, "engine start refused at final pre-spawn recheck (PORT_FOREIGN)")
+         return false
+       }
++      // Snapshots and migrated profiles can replace the locale file after
++      // Activity.onCreate; enforce Korean immediately before engine spawn.
++      AppLanguage.syncDshLocale(context)
+       val started = startWithArgs(args, shellEnv())
+       engineProcess = started
+       // If a listener won the final check/start race, Node exits on EADDRINUSE. Reclassify once and
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+index 84f8624..eb40eca 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+@@ -3,16 +3,12 @@ package com.dsharnessmobile.shell
+ import android.animation.ValueAnimator
+ import android.animation.ArgbEvaluator
+ import android.content.Intent
+-import android.app.Dialog
+-import android.graphics.Color
+-import android.graphics.drawable.ColorDrawable
+ import android.graphics.drawable.GradientDrawable
+ import android.os.Build
+ import android.os.StatFs
+ import android.view.Gravity
+ import android.view.View
+ import android.view.ViewGroup
+-import android.view.WindowManager
+ import android.widget.ImageView
+ import android.widget.Button
+ import android.widget.FrameLayout
+@@ -64,7 +60,6 @@ internal class GuideManagementController(
+     // 启动页管理（0.14.9）：开屏视频与「打开应用后自动启动」属于启动面，
+     // 放进管理中心而不是引擎 Web UI 的设置中心——引擎没起来时也必须能改。
+     row(t("启动页管理", "Startup screen", "시작 화면 관리"), t("开屏视频与自动启动", "Launch video and auto start", "시작 동영상 및 자동 시작")) { showSplash() }
+-    languageRow()
+     colorModeRow()
+     bootStartRow()
+     feedback = label("", 14f)
+@@ -120,115 +115,6 @@ internal class GuideManagementController(
+     if (destination == "home") navigate("management") else navigate("home")
+   }
+ 
+-  /** A single tap opens a direct-choice language dialog (no hidden cycling). */
+-  private fun languageRow() {
+-    val words = column().apply { setPadding(dp(20), dp(12), dp(20), dp(12)) }
+-    val heading = t("界面语言", "Language", "화면 언어")
+-    words.addView(label(heading, 16f).apply { setPadding(0, 0, 0, 0) })
+-    words.addView(label(languageSummary(), 13f).apply {
+-      setPadding(0, dp(4), 0, 0)
+-      setTextColor(activity.getColor(R.color.ds_text_secondary))
+-    })
+-    val card = LinearLayout(activity).apply {
+-      orientation = LinearLayout.HORIZONTAL
+-      gravity = Gravity.CENTER_VERTICAL
+-      setPadding(dp(20), dp(12), dp(20), dp(12))
+-      minimumHeight = dp(72)
+-      background = DsUi.ripple(DsUi.roundRect(activity.getColor(R.color.ds_surface), dp(8).toFloat()), activity.getColor(R.color.ds_accent_soft))
+-      layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) }
+-      isClickable = true
+-      isFocusable = true
+-      contentDescription = "$heading, ${languageSummary()}"
+-      addView(words, LinearLayout.LayoutParams(0, -2, 1f))
+-      addView(label(t("选择", "Choose", "선택"), 14f).apply {
+-        setTextColor(activity.getColor(R.color.ds_accent))
+-      })
+-      setOnClickListener { showLanguagePicker() }
+-    }
+-    management.addView(card)
+-  }
+-
+-  /** Keep the current selection visible and apply the chosen language immediately. */
+-  private fun showLanguagePicker() {
+-    val dialog = Dialog(activity)
+-    val title = t("界面语言", "Screen language", "화면 언어")
+-    val current = AppLanguage.mode(activity)
+-    val options = listOf(
+-      AppLanguage.MODE_SYSTEM to t("跟随系统", "Follow system", "시스템 설정 따름"),
+-      AppLanguage.MODE_KO to "한국어",
+-      AppLanguage.MODE_EN to "English",
+-      AppLanguage.MODE_ZH to t("中文", "Chinese", "중국어"),
+-    )
+-    val content = LinearLayout(activity).apply {
+-      orientation = LinearLayout.VERTICAL
+-      setPadding(dp(18), dp(18), dp(18), dp(18))
+-      background = DsUi.roundRect(activity.getColor(R.color.ds_surface), dp(22).toFloat())
+-    }
+-    content.addView(label(title, 20f).apply { setPadding(dp(4), 0, dp(4), dp(2)) })
+-    content.addView(label(t(
+-      "选择用于应用与内置网页的语言",
+-      "Choose the language for the app and its web interface",
+-      "앱과 내장 웹 화면에 적용할 언어를 선택하세요",
+-    ), 13f).apply {
+-      setPadding(dp(4), 0, dp(4), dp(14))
+-      setTextColor(activity.getColor(R.color.ds_text_secondary))
+-    })
+-    options.forEach { (mode, text) ->
+-      val selected = mode == current
+-      val item = LinearLayout(activity).apply {
+-        orientation = LinearLayout.HORIZONTAL
+-        gravity = Gravity.CENTER_VERTICAL
+-        setPadding(dp(16), 0, dp(14), 0)
+-        minimumHeight = dp(54)
+-        background = DsUi.ripple(
+-          DsUi.roundRect(
+-            activity.getColor(if (selected) R.color.ds_accent_soft else R.color.ds_surface),
+-            dp(13).toFloat(),
+-          ), activity.getColor(R.color.ds_accent_soft),
+-        )
+-        isClickable = true
+-        isFocusable = true
+-        isSelected = selected
+-        contentDescription = "$text, " + if (selected) t("已选择", "Selected", "선택됨") else t("选择", "Choose", "선택")
+-        addView(label(text, 15f).apply {
+-          setPadding(0, 0, 0, 0)
+-          setTextColor(activity.getColor(if (selected) R.color.ds_accent else R.color.ds_text_primary))
+-        }, LinearLayout.LayoutParams(0, -2, 1f))
+-        if (selected) addView(ImageView(activity).apply {
+-          setImageResource(R.drawable.ds_language_check)
+-          setColorFilter(activity.getColor(R.color.ds_accent))
+-          contentDescription = t("已选择", "Selected", "선택됨")
+-        }, LinearLayout.LayoutParams(dp(20), dp(20)))
+-        setOnClickListener {
+-          dialog.dismiss()
+-          if (!selected) {
+-            AppLanguage.setMode(activity, mode)
+-            AppLanguage.syncDshLocale(activity)
+-            activity.recreate()
+-          }
+-        }
+-      }
+-      content.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+-    }
+-    dialog.setContentView(content)
+-    dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+-    dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+-    dialog.window?.setDimAmount(0.5f)
+-    dialog.show()
+-    dialog.window?.setLayout(
+-      minOf(activity.resources.displayMetrics.widthPixels - dp(32), dp(440)),
+-      WindowManager.LayoutParams.WRAP_CONTENT,
+-    )
+-  }
+-
+-  /** The modes are named in active languages: the user must recognise the target mode. */
+-  private fun languageSummary(): String = when (AppLanguage.mode(activity)) {
+-    AppLanguage.MODE_ZH -> t("中文", "Chinese", "중국어")
+-    AppLanguage.MODE_EN -> "English"
+-    AppLanguage.MODE_KO -> "한국어"
+-    else -> t("跟随系统", "Follow system", "시스템 설정 따름")
+-  }
+-
+   private data class ThemeChip(val root: LinearLayout, val label: TextView, val shape: GradientDrawable, val vector: android.graphics.drawable.Drawable?)
+ 
+   /** The strip ends are fully semicircular, with small flat inner joins. */
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
+index 42ac034..bd46aa0 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/MainActivity.kt
+@@ -455,6 +455,9 @@ class MainActivity : ComponentActivity() {
+     pageRecovery.restoreRecreationBudget(savedInstanceState?.getBoolean("dsh.renderer-recreation-attempted", false) ?: false)
+     // 0.13.3 W2：引擎鉴权模块绑定应用上下文（EngineProbe 等 object 调用方的 cookie 来源）。
+     EngineAuth.initContext(this)
++    // Every launch migrates an old zh/en/system preference without erasing data.
++    AppLanguage.setMode(this, AppLanguage.MODE_KO)
++    AppLanguage.syncDshLocale(this)
+     // 崩溃标记：进程级未捕获异常写入 filesDir/.crashed（下次启动测试界面
+     // 提示），随后交回默认 handler——只记录，不吞异常、不阻止崩溃。
+     installCrashMarker()
+@@ -1344,9 +1347,10 @@ class MainActivity : ComponentActivity() {
+         // mirrors it into the dsh profile patch so the engine UI follows.
+         onGetUiLanguage = { AppLanguage.mode(this) },
+         onSetUiLanguage = { mode ->
+-          val stored = AppLanguage.setMode(this, mode)
++          // Keep old JS ABI but never permit runtime language changes.
++          AppLanguage.setMode(this, AppLanguage.MODE_KO)
+           AppLanguage.syncDshLocale(this)
+-          stored
++          AppLanguage.MODE_KO
+         },
+         onSettingsPathRequest = { engineManager.settingsDocumentPath() },
+         onExportSettingsDocument = { engineManager.settingsDocumentExport() },
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt b/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
+index 7103a12..363c75d 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
+@@ -2,25 +2,10 @@ package com.dsharnessmobile.shell
+ 
+ import android.content.Context
+ 
+-/**
+- * Multilingual copy for native screens.
+- *
+- * Strings that only exist inline keep translations at the call site or fall back to
+- * DsLocale translations. Long-lived screens read the preference on each render.
+- */
++/** Native copy is always Korean, regardless of Android system locale. */
+ internal object UiText {
+-  /** True when the Korean locale is active; falls back to DsLocale.isKo(). */
+-  fun isKorean(context: Context?): Boolean =
+-    (context != null && AppLanguage.dshLocale(context) == AppLanguage.MODE_KO) || DsLocale.isKo()
+-
+-  /** True when the English locale is active; an absent context keeps Chinese. */
+-  fun isEnglish(context: Context?): Boolean =
+-    context != null && AppLanguage.dshLocale(context) == AppLanguage.MODE_EN
+-
+-  /** Pick the copy for the active locale. */
+-  fun t(context: Context?, zh: String, en: String, ko: String? = null): String = when {
+-    isKorean(context) -> ko ?: DsLocale.lookup(zh, en)
+-    isEnglish(context) -> en
+-    else -> zh
+-  }
++  fun isKorean(context: Context?): Boolean = true
++  fun isEnglish(context: Context?): Boolean = false
++  fun t(context: Context?, zh: String, en: String, ko: String? = null): String =
++    ko ?: DsLocale.lookup(zh, en)
+ }
+diff --git a/app/src/main/res/drawable/ds_language_check.xml b/app/src/main/res/drawable/ds_language_check.xml
+deleted file mode 100644
+index c53bd1e..0000000
+--- a/app/src/main/res/drawable/ds_language_check.xml
++++ /dev/null
+@@ -1,9 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-  android:width="20dp" android:height="20dp"
+-  android:viewportWidth="24" android:viewportHeight="24">
+-  <path android:fillColor="@android:color/transparent"
+-    android:strokeColor="#FF000000" android:strokeWidth="2.5"
+-    android:strokeLineCap="round" android:strokeLineJoin="round"
+-    android:pathData="M20,6L9,17L4,12" />
+-</vector>
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
+index ff5ccc5..c70ddf3 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
+@@ -74,17 +74,37 @@ class AppLanguageTest {
+   }
+ 
+   @Test
+-  fun bootstrapScriptCarriesTheForcedLocale() {
+-    val script = AppLanguage.bootstrapScript("system", listOf("zh-CN", "en-US"))
+-    assertTrue(script.contains("\"zh-CN\""))
+-    assertTrue(script.contains("\"en-US\""))
+-    assertTrue(script.contains("preference:null"))
++  fun bootstrapScriptIgnoresFormerSystemEnglishAndChineseSettings() {
++    for (old in listOf("system", "en", "zh", "ko")) {
++      val script = AppLanguage.bootstrapScript(old, listOf("zh-CN", "en-US"))
++      assertTrue("old mode must be ignored: $old", script.contains("preference:\"ko\""))
++      assertTrue("device languages must not leak: $old", script.contains("var tags=[\"ko-KR\"]"))
++      assertTrue(!script.contains("preference:null"))
++      assertTrue(!script.contains("preference:\"zh\""))
++      assertTrue(!script.contains("preference:\"en\""))
++    }
+   }
+ 
+   @Test
+-  fun bootstrapScriptForcesTheSelectedLocale() {
+-    val script = AppLanguage.bootstrapScript("en", listOf("zh-CN"))
+-    assertTrue(script.contains("preference:\"en\""))
++  fun nativeLanguageIsKoreanOnlyForAllFallbacks() {
++    assertTrue(DsLocale.isKo())
++    assertEquals("테스트", DsLocale.tr("测试", "테스트"))
++    assertEquals("관리 센터", UiText.t(null, "管理中心", "Management", "관리 센터"))
++    assertTrue(UiText.isKorean(null))
++    assertTrue(!UiText.isEnglish(null))
++  }
++
++  @Test
++  fun persistedLegacyLanguageCannotReenableEnglishOrChinese() {
++    val src = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
++    val locale = java.io.File(src, "java/com/dsharnessmobile/shell/AppLanguage.kt").readText()
++    val console = java.io.File(src, "assets/console.html").readText()
++    assertTrue(locale.contains("fun mode(context: Context): String = MODE_KO"))
++    assertTrue(locale.contains("fun dshLocale(context: Context): String = MODE_KO"))
++    assertTrue(locale.contains("fun systemLanguages(context: Context): List<String> = listOf(\"ko-KR\")"))
++    assertTrue(locale.contains("withDshLocalePreference(original, MODE_KO)"))
++    assertTrue(console.contains("<html lang=\"ko\">"))
++    assertTrue(console.contains("var isZh = false"))
+   }
+ 
+   @Test
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+index 26a05fa..25a9aec 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+@@ -21,19 +21,15 @@ class AppThemeTest {
+     assertEquals(false, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, false))
+   }
+ 
+-  @Test fun languagePickerIsDirectAndThemeSegmentsAreFullyRoundedAndCentered() {
++  @Test fun languageControlsAreRemovedAndThemeSegmentsStayRoundedAndCentered() {
+     val src = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
+     val controller = File(src, "java/com/dsharnessmobile/shell/GuideManagementController.kt").readText()
+-    assertTrue(controller.contains("setOnClickListener { showLanguagePicker() }"))
+-    assertTrue(controller.contains("private fun showLanguagePicker()"))
+-    assertTrue(controller.contains("AppLanguage.MODE_SYSTEM to"))
+-    assertTrue(controller.contains("AppLanguage.MODE_KO to"))
+-    assertTrue(controller.contains("AppLanguage.MODE_EN to"))
+-    assertTrue(controller.contains("AppLanguage.MODE_ZH to"))
+-    assertFalse("Language selection must not cycle through modes", controller.contains("val next = when (AppLanguage.mode(activity))"))
+-    assertTrue("Theme caps should be full half-circles", controller.contains("val outer = dp(50).toFloat()"))
+-    assertTrue("Icon + label must be in a centered layout", controller.contains("addView(caption, LinearLayout.LayoutParams(-2, -2)"))
+-    assertTrue(File(src, "res/drawable/ds_language_check.xml").exists())
++    assertFalse("Management Center must not show language picker", controller.contains("languageRow()"))
++    assertFalse(controller.contains("showLanguagePicker()"))
++    assertFalse(controller.contains("AppLanguage.setMode"))
++    assertTrue("Theme caps remain semicircular", controller.contains("val outer = dp(50).toFloat()"))
++    assertTrue("Icon and label must remain centered", controller.contains("addView(caption, LinearLayout.LayoutParams(-2, -2)"))
++    assertFalse(File(src, "res/drawable/ds_language_check.xml").exists())
+   }
+ 
+   @Test fun threeConnectedThemeOptionsUseTintableVectorArtInsteadOfEmoji() {
+diff --git a/docs/AGENTS/EXECUTION-MAP.md b/docs/AGENTS/EXECUTION-MAP.md
+index 391868e..833fab3 100644
+--- a/docs/AGENTS/EXECUTION-MAP.md
++++ b/docs/AGENTS/EXECUTION-MAP.md
+@@ -2324,7 +2324,6 @@ glob:dsh-client-ui-responsive/src/client/*.module.css
+ glob:dsh-client-ui-responsive/src/client/mobile/*
+ glob:dsh-client-ui-responsive/src/client/dev-section/*
+ dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
+-dsh-client-ui-responsive/src/client/general-settings/ui-language.ts
+ dsh-host-web-compat/lib/index.js
+ glob:dsh-host-web-compat/scripts/*
+ dsh-shell-termux/src/index.ts
+@@ -2464,4 +2463,4 @@ app/src/main/java/com/dsharnessmobile/shell/ApkUpdateAction.kt
+ 
+ - `app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt`: System SAF provider exposes only the app's `filesDir` through user-granted document URIs; no public file-serving endpoint. Manifest `MANAGE_DOCUMENTS` binding permission; folder browse, read/write, create, rename and non-recursive delete. This path belongs to the K06 file/SAF integration boundary.
+ - `app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt`: exact `files:` ID-to-path translation, canonical root checks and traversal/symlink containment. Tests: `app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt`. Never resolve external paths directly from document IDs.
+-- `app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt`: language selection uses a single modal list with system/Korean/English/Chinese; the color mode buttons group a centered Android vector and label and use semicircular outer caps. Tests: `AppThemeTest.kt`.
++- `app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt`: Korean UI language is forced (language selector removed); the color mode buttons group a centered Android vector and label and use semicircular outer caps. Tests: `AppThemeTest.kt`.
+diff --git a/docs/AGENTS/modules.md b/docs/AGENTS/modules.md
+index 92fe92e..534e2b2 100644
+--- a/docs/AGENTS/modules.md
++++ b/docs/AGENTS/modules.md
+@@ -282,4 +282,4 @@ Android API 面登记见 `docs/AGENTS/ANDROID-API-USAGE.md` §1/§3/§4/§8；
+ 
+ `AppFilesDocumentsProvider.kt` registers `${applicationId}.documents` as a system SAF `DocumentsProvider`, with the Android `MANAGE_DOCUMENTS` binding permission and URI grants. The exposed root is **`filesDir` only** (`files/`), not the app's private SharedPreferences/databases/cache or `/data/data` generally. Android's file picker mediates all third-party document grants; files are not globally readable.
+ 
+-`AppDocumentsPath.kt` is the single source of truth for stable `files:` document IDs, canonical containment and symlink/traversal rejection; `AppDocumentsPathTest.kt` tests identity, unsafe names, path escapes and the SAF manifest declaration. Direct edits through the file picker can still change/delete engine data: warn users to back up before changing the runtime, and do not recursively delete directories from the provider. The UI language dialog remains `GuideManagementController.kt` and the selected locale source remains `AppLanguage.kt`.
++`AppDocumentsPath.kt` is the single source of truth for stable `files:` document IDs, canonical containment and symlink/traversal rejection; `AppDocumentsPathTest.kt` tests identity, unsafe names, path escapes and the SAF manifest declaration. Direct edits through the file picker can still change/delete engine data: warn users to back up before changing the runtime, and do not recursively delete directories from the provider. The UI language selector was removed from `GuideManagementController.kt` and the responsive Web UI. `AppLanguage.kt` now forces Korean for Android resources, the engine profile, and the WebView bootstrap, ignoring old stored choices. The existing JS bridge language setter returns Korean for compatibility rather than changing languages.
+diff --git a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
+index 724e18e..c356001 100644
+--- a/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
++++ b/dsh-client-ui-responsive/src/client/general-settings/GeneralSettings.tsx
+@@ -27,7 +27,6 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+ // Single source of truth for the bridge types (incl. the Window.androidBridge global).
+ import type {} from '../android-bridge.ts'
+ import { sidebarSwipeEnabled, setSidebarSwipeEnabled } from '../mobile/sidebar-gestures.ts'
+-import { type UiLanguageMode, UI_LANGUAGE_MODES, readUiLanguage } from './ui-language.ts'
+ import { tr } from '../i18n.ts'
+ 
+ /** Full section props: the settings shell supplies only `close`. */
+@@ -35,14 +34,6 @@ export type GeneralSettingsProps = PropsRuntime<'settings.general.item'>
+ 
+ const IMMERSIVE_KEY = 'dsh.android.immersive'
+ 
+-/** "Follow system" and "Chinese" are themselves localized. */
+-function languageLabel(mode: UiLanguageMode): string {
+-  if (mode === 'ko') return '한국어'
+-  if (mode === 'en') return 'English'
+-  if (mode === 'system') return tr('跟随系统', 'Follow system', '시스템 설정 따름')
+-  return tr('中文', 'Chinese', '중국어')
+-}
+-
+ /**
+  * Immersive initial value (ST-10): the shell bridge is the sole truth source
+  * (ShellState.ImmersiveMode); the localStorage mirror is only the fallback for
+@@ -75,35 +66,6 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+   const [notice, setNotice] = useState<string | null>(null)
+   const [leftSwipe, setLeftSwipe] = useState(() => sidebarSwipeEnabled('left'))
+   const [rightSwipe, setRightSwipe] = useState(() => sidebarSwipeEnabled('right'))
+-  const [language, setLanguage] = useState<UiLanguageMode>(readUiLanguage)
+-
+-  const chooseLanguage = useCallback((next: UiLanguageMode) => {
+-    setNotice(null)
+-    const api = window.androidBridge
+-    if (api?.setUiLanguage === undefined) {
+-      setNotice(tr('需在安卓应用内切换。', 'Switch this in the Android app.', 'Android 앱 내에서 전환해야 합니다.'))
+-      setLanguage(readUiLanguage())
+-      return
+-    }
+-    let applied: UiLanguageMode = next
+-    try {
+-      // Keep the bridge as the receiver: detaching the method (const f = api.setUiLanguage)
+-      // drops the Java object and every call throws "non-injected object".
+-      applied = (api.setUiLanguage(next) as UiLanguageMode | undefined) ?? next
+-    } catch {
+-      setNotice(tr('没有保存，请重开应用再试。', 'Not saved. Reopen the app and try again.', '저장되지 않았습니다. 앱을 다시 열고 재시도하세요.'))
+-      setLanguage(readUiLanguage())
+-      return
+-    }
+-    setLanguage(applied)
+-    // Reload so shell and engine rebuild with the new language.
+-    try {
+-      window.androidBridge?.reloadWebUI?.()
+-    } catch {
+-      // The preference is already saved; the next launch picks it up.
+-    }
+-  }, [])
+-
+   const toggleSidebarSwipe = useCallback((side: 'left' | 'right', enabled: boolean) => {
+     if (!setSidebarSwipeEnabled(side, enabled)) {
+       setNotice(tr('没有保存，浏览器存储不可用。',
+@@ -155,25 +117,6 @@ export function GeneralSettings(_props: GeneralSettingsProps) {
+ 
+   return (
+     <div data-plugin="android-general">
+-      <label className="dsh-dev-row" data-dsh-ui-language="">
+-        <span>{tr('语言', 'Language')}</span>
+-        {/* Segmented buttons instead of a select: the native dropdown cannot be
+-            driven from the page (or from accessibility automation), and each mode
+-            is a one-tap choice anyway. */}
+-        <span className="dsh-dev-lang-choices" role="group" aria-label={tr('界面语言', 'Interface language')}>
+-          {UI_LANGUAGE_MODES.map(mode => (<button
+-            key={mode}
+-            type="button"
+-            className={language === mode ? 'dsh-dev-btn dsh-dev-btn-active' : 'dsh-dev-btn'}
+-            data-ui-language-mode={mode}
+-            aria-pressed={language === mode}
+-            onClick={() => chooseLanguage(mode)}
+-          >{languageLabel(mode)}</button>))}
+-        </span>
+-      </label>
+-      <p className="dsh-dev-hint">
+-        {tr('跟随系统时使用手机语言。', 'Follow system uses the phone language.')}
+-      </p>
+       <label className="dsh-dev-row dsh-dev-switch">
+         <input
+           type="checkbox"
+diff --git a/dsh-client-ui-responsive/src/client/general-settings/ui-language.ts b/dsh-client-ui-responsive/src/client/general-settings/ui-language.ts
+deleted file mode 100644
+index 5e55763..0000000
+--- a/dsh-client-ui-responsive/src/client/general-settings/ui-language.ts
++++ /dev/null
+@@ -1,47 +0,0 @@
+-/** Language-mode helpers shared by the settings row and the engine bridge. */
+-
+-/** Four selectable modes; stored values match the shell's preference. */
+-export type UiLanguageMode = 'system' | 'zh' | 'en' | 'ko'
+-
+-/** Ordered modes for the settings menu. */
+-export const UI_LANGUAGE_MODES: readonly UiLanguageMode[] = ['system', 'zh', 'en', 'ko']
+-
+-/** Narrow unknown bridge output to a declared mode. */
+-export function asUiLanguageMode(value: unknown): UiLanguageMode {
+-  return value === 'zh' || value === 'en' || value === 'ko' ? value : 'system'
+-}
+-
+-/** Read the shell preference; hosts without the bridge follow the page language. */
+-export function readUiLanguage(): UiLanguageMode {
+-  try {
+-    const fromBridge = window.androidBridge?.getUiLanguage?.()
+-    if (fromBridge !== undefined) return asUiLanguageMode(fromBridge)
+-  } catch {
+-    // Bridge absent or threw: fall back to the browser preference below.
+-  }
+-  // Hosts without the shell bridge: follow the page language, which is what
+-  // dsh already resolved. An absent language stays neutral instead of
+-  // reporting a choice the user never made.
+-  try {
+-    const lang = document.documentElement.lang.toLowerCase()
+-    if (lang.startsWith('zh')) return 'zh'
+-    if (lang.startsWith('en')) return 'en'
+-    if (lang.startsWith('ko')) return 'ko'
+-    return 'system'
+-  } catch {
+-    return 'system'
+-  }
+-}
+-
+-/** dsh locale implied by a mode, using the page language when following the system. */
+-export function dshLocaleFor(mode: UiLanguageMode): 'zh' | 'en' | 'ko' {
+-  if (mode === 'zh' || mode === 'en' || mode === 'ko') return mode
+-  try {
+-    const lang = navigator.language.toLowerCase()
+-    if (lang.startsWith('zh')) return 'zh'
+-    if (lang.startsWith('ko')) return 'ko'
+-    return 'en'
+-  } catch {
+-    return 'en'
+-  }
+-}
+diff --git a/dsh-client-ui-responsive/src/client/i18n.ts b/dsh-client-ui-responsive/src/client/i18n.ts
+index af2dca2..7de5c08 100644
+--- a/dsh-client-ui-responsive/src/client/i18n.ts
++++ b/dsh-client-ui-responsive/src/client/i18n.ts
+@@ -10,36 +10,10 @@
+ /**
+  * True when the active dsh locale is Korean.
+  */
+-export function isKorean(): boolean {
+-  try {
+-    const mode = (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.()
+-    if (mode === 'ko') return true
+-    if (mode === 'zh' || mode === 'en') return false
+-    const lang = document.documentElement.lang.toLowerCase()
+-    if (lang.startsWith('ko')) return true
+-    if (lang.startsWith('zh') || lang.startsWith('en')) return false
+-    return true
+-  } catch {
+-    return true
+-  }
+-}
++export function isKorean(): boolean { return true }
+ 
+-/**
+- * True when the active dsh locale is English.
+- *
+- * Chinese stays the default when explicit zh is set; an empty `<html lang>`
+- * defaults to Korean in this localization patch.
+- */
+-export function isEnglish(): boolean {
+-  try {
+-    const mode = (window as { androidBridge?: { getUiLanguage?: () => string } }).androidBridge?.getUiLanguage?.()
+-    if (mode === 'en') return true
+-    if (mode === 'zh' || mode === 'ko') return false
+-    return document.documentElement.lang.toLowerCase().startsWith('en')
+-  } catch {
+-    return false
+-  }
+-}
++/** Korean-only fork: English is not a selectable UI locale. */
++export function isEnglish(): boolean { return false }
+ 
+ const KO_MAP: Record<string, string> = {
+   // General / Navigation
+diff --git a/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts b/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
+index 02a4775..4f4d06f 100644
+--- a/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
++++ b/dsh-client-ui-responsive/tests/attachment-picker-menu.spec.ts
+@@ -224,8 +224,8 @@ describe('own paperclip entry', () => {
+     expect(opened).not.toBeNull()
+     expect(opened?.getAttribute('role')).toBe('menu')
+     expect(opened?.querySelectorAll('[role="menuitem"]')).toHaveLength(2)
+-    expect(opened?.textContent).toContain('上传附件')
+-    expect(opened?.textContent).toContain('上传图片')
++    expect(opened?.textContent).toContain('첨부파일 업로드')
++    expect(opened?.textContent).toContain('이미지 업로드')
+     expect(mounted.getAttribute('aria-expanded')).toBe('true')
+   })
+ 
+@@ -238,15 +238,15 @@ describe('own paperclip entry', () => {
+     expect(mounted.getAttribute('aria-expanded')).toBe('false')
+   })
+ 
+-  it('uses English copy when the document language is English', () => {
++  it('uses Korean copy even when the document language is English', () => {
+     enhancer.detach()
+     document.body.innerHTML = ''
+     mountComposer('en-US')
+     enhancer = new AttachmentPickerMenuEnhancer()
+     enhancer.attach()
+     triggerOrThrow().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+-    expect(menu()?.textContent).toContain('Upload attachment')
+-    expect(menu()?.textContent).toContain('Upload image')
++    expect(menu()?.textContent).toContain('첨부파일 업로드')
++    expect(menu()?.textContent).toContain('이미지 업로드')
+   })
+ 
+   it('uses Korean copy when the document language is Korean', () => {
+diff --git a/dsh-client-ui-responsive/tests/general-settings.spec.tsx b/dsh-client-ui-responsive/tests/general-settings.spec.tsx
+index e0db5d9..8bac15c 100644
+--- a/dsh-client-ui-responsive/tests/general-settings.spec.tsx
++++ b/dsh-client-ui-responsive/tests/general-settings.spec.tsx
+@@ -148,26 +148,14 @@ describe('GeneralSettings 左右侧栏滑动开关（#335）', () => {
+   })
+ })
+ 
+-// ── 语言三键（#424）：桥方法必须带着 androidBridge 这个接收者调用 ───────────────
+-describe('GeneralSettings 语言三键（#424）', () => {
+-  it('点击语言键时保留桥对象接收者，选中态跟随写入结果', async () => {
+-    const calls: string[] = []
+-    // 模拟 Java 注入对象：解构后调用会丢掉接收者，这里直接断言接收者仍是桥对象。
+-    const bridge = {
+-      getImmersiveMode: () => true,
+-      getUiLanguage: () => (calls.length === 0 ? 'system' : calls[calls.length - 1]),
+-      setUiLanguage(this: { calls: string[] }, mode: string) {
+-        expect(this.calls).toBe(calls)
+-        calls.push(mode)
+-        return mode
+-      },
+-      calls,
+-    }
+-    await render(bridge)
+-    const english = [...host!.querySelectorAll('[data-ui-language-mode]')]
+-      .find(e => e.getAttribute('data-ui-language-mode') === 'en') as HTMLButtonElement
+-    await act(async () => { english.click() })
+-    expect(calls).toEqual(['en'])
+-    expect(english.getAttribute('aria-pressed')).toBe('true')
++describe('Korean-only UI: language selector removed', () => {
++  it('does not expose language settings or call a legacy language setter', async () => {
++    const setUiLanguage = vi.fn()
++    await render({ getUiLanguage: () => 'en', setUiLanguage })
++    expect(host!.querySelector('[data-dsh-ui-language]')).toBeNull()
++    expect(host!.querySelector('[data-ui-language-mode]')).toBeNull()
++    expect(setUiLanguage).not.toHaveBeenCalled()
++    // Other settings must remain functional.
++    expect(host!.querySelector('[data-dsh-sidebar-swipe="left"]')).not.toBeNull()
+   })
+ })

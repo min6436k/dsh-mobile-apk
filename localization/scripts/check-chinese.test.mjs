@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -218,5 +219,19 @@ test('template literals containing nested backticks inside expressions do not br
     const items = scanTree(root).findings
     const texts = items.map(f => f.text)
     assert.deepEqual(texts, ['遗漏的字符串'])
+  })
+})
+
+
+test('a tracked source deleted by an applied patch is not scanned as a file', () => {
+  withSource({
+    'app/src/main/java/Example.kt': 'val label = "english"',
+    'app/src/main/assets/old.html': '<p>过时中文</p>',
+  }, root => {
+    execFileSync('git', ['init', '-q'], { cwd: root })
+    execFileSync('git', ['add', '-A'], { cwd: root })
+    fs.unlinkSync(path.join(root, 'app/src/main/assets/old.html'))
+    const report = scanTree(root)
+    assert.equal(report.count, 0)
   })
 })
