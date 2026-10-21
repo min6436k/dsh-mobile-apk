@@ -1,0 +1,667 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 4797d91..c12952d 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -161,6 +161,20 @@
+         android:resource="@xml/file_paths" />
+     </provider>
+ 
++    <!-- User-selected SAF access to the app's internal files/ directory.
++         MANAGE_DOCUMENTS restricts provider binding to the Android system;
++         third-party file managers receive only user-granted document URIs. -->
++    <provider
++      android:name=".AppFilesDocumentsProvider"
++      android:authorities="${applicationId}.documents"
++      android:exported="true"
++      android:grantUriPermissions="true"
++      android:permission="android.permission.MANAGE_DOCUMENTS">
++      <intent-filter>
++        <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
++      </intent-filter>
++    </provider>
++
+     <!-- Shizuku API binder bootstrap. Permission protects the exported provider from ordinary apps;
+          Shizuku itself supplies the binder and remains the sole authorization authority. -->
+     <provider
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt b/app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt
+new file mode 100644
+index 0000000..980cd40
+--- /dev/null
++++ b/app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt
+@@ -0,0 +1,47 @@
++package com.dsharnessmobile.shell
++
++import java.io.File
++import java.io.FileNotFoundException
++
++/** File IDs are relative to the app's filesDir, never absolute user-supplied paths. */
++internal object AppDocumentsPath {
++  const val ROOT_ID = "files:"
++
++  @Throws(FileNotFoundException::class)
++  fun resolve(root: File, id: String): File {
++    if (id == ROOT_ID) return root.canonicalFile
++    if (!id.startsWith(ROOT_ID) || id.length == ROOT_ID.length) throw FileNotFoundException("Invalid document ID")
++    val relative = id.substring(ROOT_ID.length)
++    if (relative.startsWith('/') || relative.startsWith('\\') || relative.split('/').any {
++        it == ".." || it == "." || it.isEmpty() || it.contains('\\') || it.contains('\u0000')
++      }) throw FileNotFoundException("Invalid document path")
++    val base = root.canonicalFile
++    val file = File(base, relative).canonicalFile
++    if (!within(base, file)) throw FileNotFoundException("Document escapes app files directory")
++    return file
++  }
++
++  @Throws(FileNotFoundException::class)
++  fun idFor(root: File, file: File): String {
++    val base = root.canonicalFile
++    val canonical = file.canonicalFile
++    if (!within(base, canonical)) throw FileNotFoundException("Document escapes app files directory")
++    return if (base == canonical) ROOT_ID else ROOT_ID + canonical.relativeTo(base).invariantSeparatorsPath
++  }
++
++  fun isChild(root: File, parent: String, child: String): Boolean = try {
++    val base = root.canonicalFile
++    val p = resolve(base, parent)
++    val c = resolve(base, child)
++    c != p && within(p, c)
++  } catch (_: Exception) {
++    false
++  }
++
++  private fun within(base: File, file: File): Boolean =
++    file == base || file.path.startsWith(base.path + File.separator)
++
++  fun validName(name: String): Boolean =
++    name.isNotBlank() && name != "." && name != ".." &&
++      '/' !in name && '\\' !in name && '\u0000' !in name
++}
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt b/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
+new file mode 100644
+index 0000000..5f1a089
+--- /dev/null
++++ b/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
+@@ -0,0 +1,131 @@
++package com.dsharnessmobile.shell
++
++import android.database.Cursor
++import android.database.MatrixCursor
++import android.os.CancellationSignal
++import android.os.ParcelFileDescriptor
++import android.provider.DocumentsContract.Document
++import android.provider.DocumentsContract.Root
++import android.provider.DocumentsProvider
++import android.webkit.MimeTypeMap
++import java.io.File
++import java.io.FileNotFoundException
++import java.util.Locale
++
++/**
++ * Android Storage Access Framework view of this app's filesDir.
++ *
++ * Android's BIND_DOCUMENTS_PROVIDER gate and per-document SAF grants protect
++ * the exported provider. Never grant a broad ContentProvider read permission.
++ * This intentionally excludes app databases, cache and SharedPreferences.
++ */
++class AppFilesDocumentsProvider : DocumentsProvider() {
++  private val filesRoot: File get() = requireNotNull(context).filesDir.canonicalFile
++
++  override fun onCreate(): Boolean = true
++
++  override fun queryRoots(projection: Array<out String>?): Cursor {
++    val cursor = MatrixCursor(projection ?: ROOT_COLUMNS)
++    val root = filesRoot
++    val row = cursor.newRow()
++    row.add(Root.COLUMN_ROOT_ID, "app-files")
++    row.add(Root.COLUMN_DOCUMENT_ID, AppDocumentsPath.ROOT_ID)
++    row.add(Root.COLUMN_TITLE, requireNotNull(context).getString(R.string.documents_root_label))
++    row.add(Root.COLUMN_SUMMARY, requireNotNull(context).getString(R.string.documents_root_summary))
++    row.add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY or Root.FLAG_SUPPORTS_CREATE or Root.FLAG_SUPPORTS_IS_CHILD)
++    row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
++    row.add(Root.COLUMN_AVAILABLE_BYTES, root.usableSpace)
++    row.add(Root.COLUMN_MIME_TYPES, "*/*")
++    return cursor
++  }
++
++  override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor {
++    val file = existing(documentId)
++    return MatrixCursor(projection ?: DOC_COLUMNS).apply { addFile(this, file) }
++  }
++
++  override fun queryChildDocuments(parentDocumentId: String, projection: Array<out String>?, sortOrder: String?): Cursor {
++    val folder = existing(parentDocumentId)
++    if (!folder.isDirectory) throw FileNotFoundException("Not a directory")
++    return MatrixCursor(projection ?: DOC_COLUMNS).apply {
++      folder.listFiles()?.sortedBy { it.name.lowercase(Locale.ROOT) }?.forEach { file ->
++        // Reject symlinks resolving outside filesDir, even if they exist under usr/home.
++        try { addFile(this, file) } catch (_: FileNotFoundException) { /* unsafe entry hidden */ }
++      }
++    }
++  }
++
++  override fun openDocument(documentId: String, mode: String, signal: CancellationSignal?): ParcelFileDescriptor {
++    signal?.throwIfCanceled()
++    val file = existing(documentId)
++    if (file.isDirectory) throw FileNotFoundException("Cannot open a directory as a file")
++    return ParcelFileDescriptor.open(file, ParcelFileDescriptor.parseMode(mode))
++  }
++
++  override fun createDocument(parentDocumentId: String, mimeType: String, displayName: String): String {
++    if (!AppDocumentsPath.validName(displayName)) throw FileNotFoundException("Invalid filename")
++    val parent = existing(parentDocumentId)
++    if (!parent.isDirectory || !parent.canWrite()) throw FileNotFoundException("Folder is not writable")
++    val child = File(parent, displayName)
++    if (child.exists()) throw FileNotFoundException("File already exists")
++    AppDocumentsPath.idFor(filesRoot, child)
++    val created = if (mimeType == Document.MIME_TYPE_DIR) child.mkdir() else child.createNewFile()
++    if (!created) throw FileNotFoundException("Failed to create document")
++    return AppDocumentsPath.idFor(filesRoot, child)
++  }
++
++  override fun deleteDocument(documentId: String) {
++    val file = mutableFile(documentId)
++    // Directory deletion is intentionally non-recursive: never erase a whole runtime tree.
++    if (!file.delete()) throw FileNotFoundException("Failed to delete document or directory is not empty")
++  }
++
++  override fun renameDocument(documentId: String, displayName: String): String {
++    if (!AppDocumentsPath.validName(displayName)) throw FileNotFoundException("Invalid filename")
++    val file = mutableFile(documentId)
++    val dest = File(file.parentFile, displayName)
++    AppDocumentsPath.idFor(filesRoot, dest)
++    if (dest.exists() || !file.renameTo(dest)) throw FileNotFoundException("Rename failed")
++    return AppDocumentsPath.idFor(filesRoot, dest)
++  }
++
++  override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean =
++    AppDocumentsPath.isChild(filesRoot, parentDocumentId, documentId)
++
++  private fun mutableFile(id: String): File {
++    if (id == AppDocumentsPath.ROOT_ID) throw FileNotFoundException("Cannot modify root")
++    return existing(id)
++  }
++
++  private fun existing(id: String): File = AppDocumentsPath.resolve(filesRoot, id).also {
++    if (!it.exists()) throw FileNotFoundException("Document not found")
++  }
++
++  private fun addFile(cursor: MatrixCursor, file: File) {
++    val id = AppDocumentsPath.idFor(filesRoot, file)
++    val directory = file.isDirectory
++    val mime = if (directory) Document.MIME_TYPE_DIR else {
++      val ext = file.extension.lowercase(Locale.ROOT)
++      MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
++    }
++    val flags = if (file.canWrite()) {
++      (if (directory) Document.FLAG_DIR_SUPPORTS_CREATE else Document.FLAG_SUPPORTS_WRITE) or
++        (if (id != AppDocumentsPath.ROOT_ID) Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME else 0)
++    } else 0
++    cursor.newRow().apply {
++      add(Document.COLUMN_DOCUMENT_ID, id)
++      add(Document.COLUMN_DISPLAY_NAME, if (id == AppDocumentsPath.ROOT_ID) filesRoot.name else file.name)
++      add(Document.COLUMN_MIME_TYPE, mime)
++      add(Document.COLUMN_FLAGS, flags)
++      add(Document.COLUMN_SIZE, if (directory) 0L else file.length())
++      add(Document.COLUMN_LAST_MODIFIED, file.lastModified())
++    }
++  }
++
++  private companion object {
++    val ROOT_COLUMNS = arrayOf(Root.COLUMN_ROOT_ID, Root.COLUMN_DOCUMENT_ID, Root.COLUMN_TITLE,
++      Root.COLUMN_SUMMARY, Root.COLUMN_FLAGS, Root.COLUMN_ICON, Root.COLUMN_AVAILABLE_BYTES, Root.COLUMN_MIME_TYPES)
++    val DOC_COLUMNS = arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME,
++      Document.COLUMN_MIME_TYPE, Document.COLUMN_FLAGS, Document.COLUMN_SIZE, Document.COLUMN_LAST_MODIFIED)
++  }
++}
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+index aabcd3a..84f8624 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt
+@@ -3,12 +3,17 @@ package com.dsharnessmobile.shell
+ import android.animation.ValueAnimator
+ import android.animation.ArgbEvaluator
+ import android.content.Intent
++import android.app.Dialog
++import android.graphics.Color
++import android.graphics.drawable.ColorDrawable
+ import android.graphics.drawable.GradientDrawable
+ import android.os.Build
+ import android.os.StatFs
+ import android.view.Gravity
+ import android.view.View
+ import android.view.ViewGroup
++import android.view.WindowManager
++import android.widget.ImageView
+ import android.widget.Button
+ import android.widget.FrameLayout
+ import android.widget.LinearLayout
+@@ -115,16 +120,15 @@ internal class GuideManagementController(
+     if (destination == "home") navigate("management") else navigate("home")
+   }
+ 
+-  /** Language row: a tap cycles system -> zh -> en for both the shell and dsh. */
++  /** A single tap opens a direct-choice language dialog (no hidden cycling). */
+   private fun languageRow() {
+     val words = column().apply { setPadding(dp(20), dp(12), dp(20), dp(12)) }
+-    val title = label(t("界面语言", "Language", "화면 언어"), 16f).apply { setPadding(0, 0, 0, 0) }
+-    val value = label(languageSummary(), 13f).apply {
++    val heading = t("界面语言", "Language", "화면 언어")
++    words.addView(label(heading, 16f).apply { setPadding(0, 0, 0, 0) })
++    words.addView(label(languageSummary(), 13f).apply {
+       setPadding(0, dp(4), 0, 0)
+       setTextColor(activity.getColor(R.color.ds_text_secondary))
+-    }
+-    words.addView(title)
+-    words.addView(value)
++    })
+     val card = LinearLayout(activity).apply {
+       orientation = LinearLayout.HORIZONTAL
+       gravity = Gravity.CENTER_VERTICAL
+@@ -134,24 +138,87 @@ internal class GuideManagementController(
+       layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) }
+       isClickable = true
+       isFocusable = true
+-      contentDescription = t("界面语言", "Language", "화면 언어") + "，" + languageSummary()
++      contentDescription = "$heading, ${languageSummary()}"
+       addView(words, LinearLayout.LayoutParams(0, -2, 1f))
+-      addView(label(t("切换", "Change", "변경"), 14f).apply { setTextColor(activity.getColor(R.color.ds_accent)) })
+-      setOnClickListener {
+-        val next = when (AppLanguage.mode(activity)) {
+-          AppLanguage.MODE_SYSTEM -> AppLanguage.MODE_ZH
+-          AppLanguage.MODE_ZH -> AppLanguage.MODE_EN
+-          AppLanguage.MODE_EN -> AppLanguage.MODE_KO
+-          else -> AppLanguage.MODE_SYSTEM
++      addView(label(t("选择", "Choose", "선택"), 14f).apply {
++        setTextColor(activity.getColor(R.color.ds_accent))
++      })
++      setOnClickListener { showLanguagePicker() }
++    }
++    management.addView(card)
++  }
++
++  /** Keep the current selection visible and apply the chosen language immediately. */
++  private fun showLanguagePicker() {
++    val dialog = Dialog(activity)
++    val title = t("界面语言", "Screen language", "화면 언어")
++    val current = AppLanguage.mode(activity)
++    val options = listOf(
++      AppLanguage.MODE_SYSTEM to t("跟随系统", "Follow system", "시스템 설정 따름"),
++      AppLanguage.MODE_KO to "한국어",
++      AppLanguage.MODE_EN to "English",
++      AppLanguage.MODE_ZH to t("中文", "Chinese", "중국어"),
++    )
++    val content = LinearLayout(activity).apply {
++      orientation = LinearLayout.VERTICAL
++      setPadding(dp(18), dp(18), dp(18), dp(18))
++      background = DsUi.roundRect(activity.getColor(R.color.ds_surface), dp(22).toFloat())
++    }
++    content.addView(label(title, 20f).apply { setPadding(dp(4), 0, dp(4), dp(2)) })
++    content.addView(label(t(
++      "选择用于应用与内置网页的语言",
++      "Choose the language for the app and its web interface",
++      "앱과 내장 웹 화면에 적용할 언어를 선택하세요",
++    ), 13f).apply {
++      setPadding(dp(4), 0, dp(4), dp(14))
++      setTextColor(activity.getColor(R.color.ds_text_secondary))
++    })
++    options.forEach { (mode, text) ->
++      val selected = mode == current
++      val item = LinearLayout(activity).apply {
++        orientation = LinearLayout.HORIZONTAL
++        gravity = Gravity.CENTER_VERTICAL
++        setPadding(dp(16), 0, dp(14), 0)
++        minimumHeight = dp(54)
++        background = DsUi.ripple(
++          DsUi.roundRect(
++            activity.getColor(if (selected) R.color.ds_accent_soft else R.color.ds_surface),
++            dp(13).toFloat(),
++          ), activity.getColor(R.color.ds_accent_soft),
++        )
++        isClickable = true
++        isFocusable = true
++        isSelected = selected
++        contentDescription = "$text, " + if (selected) t("已选择", "Selected", "선택됨") else t("选择", "Choose", "선택")
++        addView(label(text, 15f).apply {
++          setPadding(0, 0, 0, 0)
++          setTextColor(activity.getColor(if (selected) R.color.ds_accent else R.color.ds_text_primary))
++        }, LinearLayout.LayoutParams(0, -2, 1f))
++        if (selected) addView(ImageView(activity).apply {
++          setImageResource(R.drawable.ds_language_check)
++          setColorFilter(activity.getColor(R.color.ds_accent))
++          contentDescription = t("已选择", "Selected", "선택됨")
++        }, LinearLayout.LayoutParams(dp(20), dp(20)))
++        setOnClickListener {
++          dialog.dismiss()
++          if (!selected) {
++            AppLanguage.setMode(activity, mode)
++            AppLanguage.syncDshLocale(activity)
++            activity.recreate()
++          }
+         }
+-        AppLanguage.setMode(activity, next)
+-        AppLanguage.syncDshLocale(activity)
+-        // A language change rebuilds native resources; restart the activity so the
+-        // guide page and the WebView both come back in the new language.
+-        activity.recreate()
+       }
++      content.addView(item, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(5) })
+     }
+-    management.addView(card)
++    dialog.setContentView(content)
++    dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
++    dialog.window?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
++    dialog.window?.setDimAmount(0.5f)
++    dialog.show()
++    dialog.window?.setLayout(
++      minOf(activity.resources.displayMetrics.widthPixels - dp(32), dp(440)),
++      WindowManager.LayoutParams.WRAP_CONTENT,
++    )
+   }
+ 
+   /** The modes are named in active languages: the user must recognise the target mode. */
+@@ -162,7 +229,9 @@ internal class GuideManagementController(
+     else -> t("跟随系统", "Follow system", "시스템 설정 따름")
+   }
+ 
+-  /** Connected selection: only the outermost ends have large rounded corners. */
++  private data class ThemeChip(val root: LinearLayout, val label: TextView, val shape: GradientDrawable, val vector: android.graphics.drawable.Drawable?)
++
++  /** The strip ends are fully semicircular, with small flat inner joins. */
+   private fun colorModeRow() {
+     val card = LinearLayout(activity).apply {
+       orientation = LinearLayout.VERTICAL
+@@ -179,13 +248,13 @@ internal class GuideManagementController(
+       Triple(AppTheme.MODE_SYSTEM, t("跟随系统", "System", "시스템"), R.drawable.ds_theme_monitor),
+     )
+     val strip = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
+-    val chips = mutableListOf<Triple<TextView, GradientDrawable, android.graphics.drawable.Drawable?>>()
++    val chips = mutableListOf<ThemeChip>()
+     val selectedFill = activity.getColor(R.color.ds_accent)
+     val selectedInk = activity.getColor(R.color.ds_text_on_accent)
+     val plainFill = activity.getColor(R.color.ds_chip)
+     val plainInk = activity.getColor(R.color.ds_text_primary)
+     val middle = dp(2).toFloat()
+-    val outer = dp(11).toFloat()
++    val outer = dp(50).toFloat()
+     var selected = AppTheme.mode(activity)
+     var switching = false
+     choices.forEachIndexed { index, (mode, title, iconResource) ->
+@@ -200,14 +269,21 @@ internal class GuideManagementController(
+       val icon = activity.getDrawable(iconResource)?.mutate()?.apply {
+         setTint(if (selected == mode) selectedInk else plainInk)
+       }
+-      val chip = TextView(activity).apply {
++      val caption = TextView(activity).apply {
+         text = title
+-        gravity = Gravity.CENTER
+         textSize = 13f
+         setSingleLine(true)
+-        setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null)
+-        compoundDrawablePadding = dp(6)
++        gravity = Gravity.CENTER_VERTICAL
+         setTextColor(if (selected == mode) selectedInk else plainInk)
++      }
++      val chip = LinearLayout(activity).apply {
++        orientation = LinearLayout.HORIZONTAL
++        gravity = Gravity.CENTER
++        addView(ImageView(activity).apply {
++          setImageDrawable(icon)
++          importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
++        }, LinearLayout.LayoutParams(dp(19), dp(19)))
++        addView(caption, LinearLayout.LayoutParams(-2, -2).apply { marginStart = dp(7) })
+         background = android.graphics.drawable.RippleDrawable(
+           android.content.res.ColorStateList.valueOf(activity.getColor(R.color.ds_accent_soft)),
+           shape,
+@@ -221,7 +297,7 @@ internal class GuideManagementController(
+         isSelected = selected == mode
+         contentDescription = t("色彩模式", "Color mode", "색상 모드") + ": " + title
+       }
+-      chips.add(Triple(chip, shape, icon))
++      chips.add(ThemeChip(chip, caption, shape, icon))
+       strip.addView(chip, LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+         if (index != 0) marginStart = dp(2)
+       })
+@@ -230,21 +306,21 @@ internal class GuideManagementController(
+         switching = true
+         val fromMode = selected
+         selected = mode
+-        chips.forEachIndexed { position, (view, _, _) -> view.isSelected = choices[position].first == mode }
++        chips.forEachIndexed { position, chip -> chip.root.isSelected = choices[position].first == mode }
+         val transition = ValueAnimator.ofFloat(0f, 1f).apply {
+           duration = 200
+           interpolator = DsUi.ease
+           addUpdateListener { frame ->
+             val fraction = frame.animatedValue as Float
+-            chips.forEachIndexed { position, (view, drawable, vector) ->
++            chips.forEachIndexed { position, chip ->
+               val choice = choices[position].first
+               val startFill = if (choice == fromMode) selectedFill else plainFill
+               val endFill = if (choice == mode) selectedFill else plainFill
+               val startInk = if (choice == fromMode) selectedInk else plainInk
+               val endInk = if (choice == mode) selectedInk else plainInk
+-              drawable.setColor(ArgbEvaluator().evaluate(fraction, startFill, endFill) as Int)
+-              view.setTextColor(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
+-              vector?.setTint(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
++              chip.shape.setColor(ArgbEvaluator().evaluate(fraction, startFill, endFill) as Int)
++              chip.label.setTextColor(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
++              chip.vector?.setTint(ArgbEvaluator().evaluate(fraction, startInk, endInk) as Int)
+             }
+           }
+         }
+diff --git a/app/src/main/res/drawable/ds_language_check.xml b/app/src/main/res/drawable/ds_language_check.xml
+new file mode 100644
+index 0000000..c53bd1e
+--- /dev/null
++++ b/app/src/main/res/drawable/ds_language_check.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++  android:width="20dp" android:height="20dp"
++  android:viewportWidth="24" android:viewportHeight="24">
++  <path android:fillColor="@android:color/transparent"
++    android:strokeColor="#FF000000" android:strokeWidth="2.5"
++    android:strokeLineCap="round" android:strokeLineJoin="round"
++    android:pathData="M20,6L9,17L4,12" />
++</vector>
+diff --git a/app/src/main/res/values-en/strings.xml b/app/src/main/res/values-en/strings.xml
+index cc9bedb..c563f6b 100644
+--- a/app/src/main/res/values-en/strings.xml
++++ b/app/src/main/res/values-en/strings.xml
+@@ -70,4 +70,6 @@
+   <string name="ds_share_log_working">Packaging diagnostic logs…</string>
+   <string name="ds_share_log_done">Diagnostics %1$s ready; choose an app to send it to</string>
+   <string name="ds_share_log_failed">Sharing failed: %1$s</string>
++  <string name="documents_root_label">DeepCode internal files</string>
++  <string name="documents_root_summary">App private files via Android Files</string>
+ </resources>
+diff --git a/app/src/main/res/values-ko/strings.xml b/app/src/main/res/values-ko/strings.xml
+index cc57b71..0246723 100644
+--- a/app/src/main/res/values-ko/strings.xml
++++ b/app/src/main/res/values-ko/strings.xml
+@@ -70,4 +70,6 @@
+   <string name="ds_share_log_working">진단 로그 압축 중…</string>
+   <string name="ds_share_log_done">진단 로그 %1$s 생성이 완료되었습니다. 전송할 앱을 선택해 주세요</string>
+   <string name="ds_share_log_failed">공유 실패: %1$s</string>
++  <string name="documents_root_label">DeepCode 내부 파일</string>
++  <string name="documents_root_summary">Android 파일 앱에서 앱의 files 폴더에 접근</string>
+ </resources>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 69555ed..00234ce 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -94,4 +94,6 @@
+   <string name="ds_share_log_working">正在打包诊断日志…</string>
+   <string name="ds_share_log_done">已生成诊断包 %1$s，请选择要发送到的应用</string>
+   <string name="ds_share_log_failed">分享未成功：%1$s</string>
++  <string name="documents_root_label">DeepCode 内部文件</string>
++  <string name="documents_root_summary">通过 Android 文件管理器访问应用内部文件</string>
+ </resources>
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt
+new file mode 100644
+index 0000000..da733a7
+--- /dev/null
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt
+@@ -0,0 +1,69 @@
++package com.dsharnessmobile.shell
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Assert.fail
++import org.junit.Test
++import java.io.File
++import java.io.FileNotFoundException
++import java.nio.file.Files
++
++class AppDocumentsPathTest {
++  private inline fun rejects(block: () -> Unit) {
++    try { block(); fail("Expected path to be rejected") }
++    catch (_: FileNotFoundException) { /* denied */ }
++  }
++
++  @Test fun internalFilesAreAddressedByStableRelativeIds() {
++    val root = Files.createTempDirectory("dsh-docs").toFile()
++    try {
++      val child = File(root, "home/workspace/notes.txt")
++      child.parentFile.mkdirs()
++      child.writeText("hello")
++      assertEquals("files:", AppDocumentsPath.idFor(root, root))
++      assertEquals("files:home/workspace/notes.txt", AppDocumentsPath.idFor(root, child))
++      assertEquals(child.canonicalFile, AppDocumentsPath.resolve(root, "files:home/workspace/notes.txt"))
++      assertTrue(AppDocumentsPath.isChild(root, "files:home", "files:home/workspace/notes.txt"))
++      assertFalse(AppDocumentsPath.isChild(root, "files:home/workspace", "files:home"))
++      assertFalse(AppDocumentsPath.isChild(root, "files:home", "files:home"))
++    } finally { root.deleteRecursively() }
++  }
++
++  @Test fun traversalAbsolutePathsAndMalformedNamesAreDenied() {
++    val root = Files.createTempDirectory("dsh-docs").toFile()
++    try {
++      listOf("", "home", "files:../outside", "files:/etc/passwd", "files:home/../other", "files:home//other",
++        "files:./file", "files:home\\name", "files:home/./doc").forEach { id -> rejects { AppDocumentsPath.resolve(root, id) } }
++      assertFalse(AppDocumentsPath.validName("../secret"))
++      assertFalse(AppDocumentsPath.validName(".."))
++      assertFalse(AppDocumentsPath.validName("a/b"))
++      assertFalse(AppDocumentsPath.validName(""))
++      assertTrue(AppDocumentsPath.validName("메모.txt"))
++    } finally { root.deleteRecursively() }
++  }
++
++  @Test fun symlinksCannotReachOutsideTheAppDirectory() {
++    val root = Files.createTempDirectory("dsh-docs-root").toFile()
++    val outside = Files.createTempDirectory("dsh-docs-outside").toFile()
++    try {
++      val link = File(root, "outside")
++      Files.createSymbolicLink(link.toPath(), outside.toPath())
++      rejects { AppDocumentsPath.resolve(root, "files:outside/private.txt") }
++      rejects { AppDocumentsPath.idFor(root, File(outside, "private.txt")) }
++      assertFalse(AppDocumentsPath.isChild(root, "files:", "files:outside/private.txt"))
++    } finally { root.deleteRecursively(); outside.deleteRecursively() }
++  }
++
++  @Test fun providerRequiresSystemSafGrantsAndNeverExportsFullDataDirectory() {
++    val src = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
++    val xml = File(src, "AndroidManifest.xml").readText()
++    val klass = File(src, "java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt").readText()
++    assertTrue(xml.contains("android:name=".AppFilesDocumentsProvider""))
++    assertTrue(xml.contains("android:permission="android.permission.MANAGE_DOCUMENTS""))
++    assertTrue(xml.contains("android:grantUriPermissions="true""))
++    assertTrue(klass.contains("context).filesDir.canonicalFile"))
++    assertTrue(klass.contains("AppDocumentsPath.idFor(filesRoot, file)"))
++    assertTrue(klass.contains("if (id == AppDocumentsPath.ROOT_ID) throw"))
++  }
++}
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+index b3b240a..26a05fa 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppThemeTest.kt
+@@ -21,6 +21,21 @@ class AppThemeTest {
+     assertEquals(false, AppTheme.resolveDark(AppTheme.MODE_SYSTEM, false))
+   }
+ 
++  @Test fun languagePickerIsDirectAndThemeSegmentsAreFullyRoundedAndCentered() {
++    val src = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
++    val controller = File(src, "java/com/dsharnessmobile/shell/GuideManagementController.kt").readText()
++    assertTrue(controller.contains("setOnClickListener { showLanguagePicker() }"))
++    assertTrue(controller.contains("private fun showLanguagePicker()"))
++    assertTrue(controller.contains("AppLanguage.MODE_SYSTEM to"))
++    assertTrue(controller.contains("AppLanguage.MODE_KO to"))
++    assertTrue(controller.contains("AppLanguage.MODE_EN to"))
++    assertTrue(controller.contains("AppLanguage.MODE_ZH to"))
++    assertFalse("Language selection must not cycle through modes", controller.contains("val next = when (AppLanguage.mode(activity))"))
++    assertTrue("Theme caps should be full half-circles", controller.contains("val outer = dp(50).toFloat()"))
++    assertTrue("Icon + label must be in a centered layout", controller.contains("addView(caption, LinearLayout.LayoutParams(-2, -2)"))
++    assertTrue(File(src, "res/drawable/ds_language_check.xml").exists())
++  }
++
+   @Test fun threeConnectedThemeOptionsUseTintableVectorArtInsteadOfEmoji() {
+     val root = listOf(File("src/main"), File("app/src/main")).first { it.exists() }
+     val controller = File(root, "java/com/dsharnessmobile/shell/GuideManagementController.kt").readText()
+diff --git a/docs/AGENTS/ANDROID-API-USAGE.md b/docs/AGENTS/ANDROID-API-USAGE.md
+index 8eb1289..1ca0d87 100644
+--- a/docs/AGENTS/ANDROID-API-USAGE.md
++++ b/docs/AGENTS/ANDROID-API-USAGE.md
+@@ -124,3 +124,5 @@ MainActivity 33 / OverlayService 20 / **BrowserHost 18** / OverlayPanel 15 / Con
+   letterbox rect（不做 CSS/Android 缩放），视口预设由页面桥 `browserHostViewport` 下发。
+ - **返回网关**：`BackGate`（决策器）+ `BackGateBridge`（`window.dshBackBridge`，独立 @JavascriptInterface
+   对象，2 方法）——页内层栈可用性同步过桥，Activity 用 `OnBackPressedCallback` 消费；层穷尽才退出。
++
++> **Korean fork addition:** `AppFilesDocumentsProvider.kt` implements the Android Storage Access Framework DocumentsProvider for the app's own `filesDir` (not the device's entire shared storage), and delegates document ID/path safety checks to `AppDocumentsPath.kt`. System-mediated `MANAGE_DOCUMENTS` and per-URI grants are required; no broad public file permissions are granted.
+diff --git a/docs/AGENTS/EXECUTION-MAP.md b/docs/AGENTS/EXECUTION-MAP.md
+index c2dc94c..391868e 100644
+--- a/docs/AGENTS/EXECUTION-MAP.md
++++ b/docs/AGENTS/EXECUTION-MAP.md
+@@ -129,7 +129,7 @@ sequenceDiagram
+ | K03 | 快照事务与更新链 | 内嵌快照暂存交换事务与回滚（插件故障走**清单式外科拔除**，不整份回滚），兼在线更新与清单合并 | 启动流判指纹不新鲜 / 引导页检查更新 / WebView 下载 | 快照与更新 | 引导启动流、引擎探活、构建快照资产 | EngineStartFlow.runFlow、EngineService 看门狗、引导页按钮、MainActivity 的 WebView 回调 | SnapshotTransaction.kt,SnapshotFs.kt,SnapshotRefreshPolicy.kt,PublicRepoProvision.kt,UpdateManager.kt,PluginMounts.kt,SnapshotUserData.kt,SnapshotFingerprintPolicy.kt,ProfilePackageManifest.kt | 高 |
+ | K04 | 桥与控制协议面 | 页面 JS 桥面、引擎鉴权与控制队列承载 | 页面调 androidBridge；EngineService 起控制承载 | 稳态控制 | 引导与启动（EngineService/MainActivity）、无障碍与虚拟屏宿主、快照与更新（UndoGate） | MainActivity 装桥；EngineService.onCreate 起 ControlCarrier；看门狗 tick 调 UndoGate | app/src/main/java/com/dsharnessmobile/shell/AndroidBridge.kt,app/src/main/java/com/dsharnessmobile/shell/ControlPoller.kt,app/src/main/java/com/dsharnessmobile/shell/EngineAuth.kt,app/src/main/java/com/dsharnessmobile/shell/ControlProtocolV2.kt | 高 |
+ | K05 | 无障碍控制面 | 按需取语义树并对设备执行点击输入滚动截屏 | 控制队列取活 + 无障碍服务回调 | 稳态控制 | K04 控制协议、K06 特权执行 | ControlCarrier 控制队列取活、onServiceConnected、ADB 键盘广播 | DeviceControlService.kt,GlobalActionCatalog.kt,AdbKeyboardService.kt,AdbKeyboardReceiver.kt | 高 |
+-| K06 | 特权执行、屏幕范围与本地文件面 | Shizuku 特权 shell 通道、屏幕范围门与本地文件出入口 | 引擎 sh* op / 设置页范围写面 / 外部分享与打开 intent | 稳态控制 | 控制队列承载、引擎 bridge 插件、虚拟屏注册表、无障碍控制面 | 引擎 androidPrivilege 服务面与页面桥 | ShellOps.kt,ScreenScope.kt,ShizukuTransport.kt,ShizukuBindState.kt,ShizukuUserService.kt,ShizukuProbe.kt,ShizukuSupport.kt,ProcIo.kt,FileIncoming.kt,PathOpen.kt,ExternalLinks.kt,ConfigTransfer.kt,RootGrant.kt,RootAccess.kt,OwnershipRepairCore.kt,OwnershipRepair.kt,RootRepairMain.kt,RootExecutionFence.kt,RootMaintenanceLease.kt,RootOwnershipJobs.kt,LeaseClearProbe.kt | 高 |
++| K06 | 特权执行、屏幕范围与本地文件面 | Shizuku 特权 shell 通道、屏幕范围门与本地文件出入口 | 引擎 sh* op / 设置页范围写面 / 外部分享与打开 intent | 稳态控制 | 控制队列承载、引擎 bridge 插件、虚拟屏注册表、无障碍控制面 | 引擎 androidPrivilege 服务面与页面桥 | ShellOps.kt,ScreenScope.kt,ShizukuTransport.kt,ShizukuBindState.kt,ShizukuUserService.kt,ShizukuProbe.kt,ShizukuSupport.kt,ProcIo.kt,FileIncoming.kt,PathOpen.kt,ExternalLinks.kt,ConfigTransfer.kt,RootGrant.kt,RootAccess.kt,OwnershipRepairCore.kt,OwnershipRepair.kt,RootRepairMain.kt,RootExecutionFence.kt,RootMaintenanceLease.kt,RootOwnershipJobs.kt,LeaseClearProbe.kt,AppDocumentsPath.kt,AppFilesDocumentsProvider.kt | 高 |
+ | K07 | 虚拟屏宿主 | Shizuku 建屏与 viewer Surface 交接的生命周期编排 | 模型 vd 工具 / 侧栏桥面 / Activity 生命周期 | 交互面 | Shizuku 特权通道、K05 无障碍控制面、K08 浏览器宿主 | MainActivity、DeviceControlService 与 ControlCarrier、侧栏面板 | VdisplayController.kt,VdisplayHost.kt,VdisplayOps.kt | 高 |
+ | K08 | 浏览器宿主 | 隔离浏览器：无桥 WebView、准入过滤、几何与保活 | 模型 browser* op（控制队列）/ 面板 browserHost* 桥 | 交互面 | S01,P03,控制队列 | MainActivity 构造，op 与面板下推拉起 | BrowserHost.kt,BrowserHostNavigationPolicy.kt,BrowserOverlayPolicy.kt,BrowserHostProfile.kt | 高 |
+ | K09 | 悬浮球与面板 | 悬浮球三窗口与展开面板：状态、待答、应答、完成态 | 设置页开关或 onResume 补启；点球展开；WS 帧与 live 文件事件 | 交互面 | K01,K10,引擎网关 | K01 宿主 Activity 与桥开关；EngineService 划掉后台时停它 | OverlayService.kt,OverlayPanel.kt | 高 |
+@@ -2231,6 +2231,8 @@ app/src/main/java/com/dsharnessmobile/shell/RootRepairMain.kt
+ app/src/main/java/com/dsharnessmobile/shell/RootExecutionFence.kt
+ app/src/main/java/com/dsharnessmobile/shell/RootOwnershipJobs.kt
+ app/src/main/java/com/dsharnessmobile/shell/LeaseClearProbe.kt
++app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt
++app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
+ app/src/main/java/com/dsharnessmobile/shell/LocalDocs.kt
+ app/src/main/java/com/dsharnessmobile/shell/ProcIo.kt
+ app/src/main/java/com/dsharnessmobile/shell/FileIncoming.kt
+@@ -2457,3 +2459,9 @@ app/src/main/java/com/dsharnessmobile/shell/ApkUpdateAction.kt
+ - [B02] 漂移：`历史 BRIDGE-API 副本（当前契约见§6 K04）` 说聚合入口「`--list` 现数，当前 17 项」，源码 `scripts/check-release-gates.mjs:28`（`GATES` 数组）是 27 项（同仓 `docs/AGENTS/build-and-env.md:48` 写的是 27 项，两份文档自相矛盾）。
+ - [B02] 漂移：5 个门禁脚本的两仓副本行尾不同（协调仓 CRLF、apk 仓 LF），`cmp` 字节不等、归一化后内容一致：`scripts/check-boot-budget.mjs`、`scripts/check-browser-syntax-floor.mjs`、`scripts/check-build-parallel-cap.mjs`、`scripts/check-snapshot-builder-output.mjs`、`scripts/check-tool-output-schema.mjs`；镜像门禁只按「仅行尾差异」告警放行（`scripts/check-patch-mirror.mjs:339`）——「逐字节镜像」在行尾层不成立。
+ - [B02] 漂移：`scripts/check-code-map.mjs` 只在 apk 仓存在（协调仓 `scripts/` 无此文件），且未被列进 `scripts/check-patch-mirror.mjs:160` 起的 `MIRROR_TOP` → 这条新门禁自身没有镜像守护。
++
++### Korean APK local DocumentsProvider and language/appearance selector (additional audited paths)
++
++- `app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt`: System SAF provider exposes only the app's `filesDir` through user-granted document URIs; no public file-serving endpoint. Manifest `MANAGE_DOCUMENTS` binding permission; folder browse, read/write, create, rename and non-recursive delete. This path belongs to the K06 file/SAF integration boundary.
++- `app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt`: exact `files:` ID-to-path translation, canonical root checks and traversal/symlink containment. Tests: `app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt`. Never resolve external paths directly from document IDs.
++- `app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt`: language selection uses a single modal list with system/Korean/English/Chinese; the color mode buttons group a centered Android vector and label and use semicircular outer caps. Tests: `AppThemeTest.kt`.
+diff --git a/docs/AGENTS/modules.md b/docs/AGENTS/modules.md
+index de825db..92fe92e 100644
+--- a/docs/AGENTS/modules.md
++++ b/docs/AGENTS/modules.md
+@@ -277,3 +277,9 @@ Android API 面登记见 `docs/AGENTS/ANDROID-API-USAGE.md` §1/§3/§4/§8；
+ - `PluginOfflinePanel.kt`：离线管理页（列表 + 启停按钮 + 错误条），经 `PluginManagementPage` 在引擎不可用时路由进入。`PluginOfflineRepository` 负责读、写、原子替换与写后回读校验：回读状态与请求不一致即报失败并保留原清单。
+ - `EngineStartFlow.start()`：入口（主线程）同步把相位切到 `GuidePhase.Starting` 并 `showGuide()`，主按钮立刻显示「启动中」；这一步不探测、不解压、不重建状态，已解压且指纹匹配的运行时仍走既有早退路径。worker 线程内原先那次重复切相位已删。
+ - `ConsoleActivity.kt` / `assets/console.html`：控制台黑白灰日夜主题；会话与桥行为保持原有实现。
++
++### Korean SAF Documents Provider (app-private files, user-granted access)
++
++`AppFilesDocumentsProvider.kt` registers `${applicationId}.documents` as a system SAF `DocumentsProvider`, with the Android `MANAGE_DOCUMENTS` binding permission and URI grants. The exposed root is **`filesDir` only** (`files/`), not the app's private SharedPreferences/databases/cache or `/data/data` generally. Android's file picker mediates all third-party document grants; files are not globally readable.
++
++`AppDocumentsPath.kt` is the single source of truth for stable `files:` document IDs, canonical containment and symlink/traversal rejection; `AppDocumentsPathTest.kt` tests identity, unsafe names, path escapes and the SAF manifest declaration. Direct edits through the file picker can still change/delete engine data: warn users to back up before changing the runtime, and do not recursively delete directories from the provider. The UI language dialog remains `GuideManagementController.kt` and the selected locale source remains `AppLanguage.kt`.
+diff --git a/scripts/check-manifest-hardening.mjs b/scripts/check-manifest-hardening.mjs
+index a264cf1..c727517 100644
+--- a/scripts/check-manifest-hardening.mjs
++++ b/scripts/check-manifest-hardening.mjs
+@@ -118,6 +118,7 @@ const EXPORTED_ALLOW = new Map([
+   ['.DeviceControlService', { reason: '无障碍服务，android:permission=BIND_ACCESSIBILITY_SERVICE', guard: 'permission' }],
+   ['.AdbKeyboardReceiver', { reason: 'ADB 输入广播，源码 isTrustedSender 校验', guard: 'source-check' }],
+   ['.BootReceiver', { reason: 'BOOT_COMPLETED（受保护系统广播）', guard: 'permission' }],
++  ['.AppFilesDocumentsProvider', { reason: 'SAF system picker only; MANAGE_DOCUMENTS binder permission and explicit per-URI user grant', guard: 'permission' }],
+   ['rikka.shizuku.ShizukuProvider', { reason: 'Shizuku 官方 Binder bootstrap；INTERACT_ACROSS_USERS_FULL 保护 provider', guard: 'permission' }],
+ ])
+ const PROTECTED_SYSTEM_ACTIONS = new Set([
