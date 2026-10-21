@@ -17,7 +17,7 @@
 | 자동 빌드 | `.github/workflows/ko-upstream-apk.yml` (ARM64만) |
 | 배포 파일 | Draft Release의 APK / SHA-256 / 출처 파일 |
 
-패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **14개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
+패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **15개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
 
 ### 현재 패치 목록 (파일명순)
 
@@ -37,6 +37,7 @@
 | `110-pure-keymap.patch` | 가상 키맵 순수 로직 회귀 복구 |
 | `120-android-compile-repair.patch` | Android Kotlin 컴파일 호환성 보완 |
 | `130-kotlin-localized-contract-tests.patch` | 한국어화 이후 Kotlin 계약 테스트 수정 |
+| `140-language-documents-theme.patch` | 화면 언어 팝업, 색상 모드 버튼 정렬, SAF 앱 내부 파일 DocumentsProvider |
 
 패치를 제거·합칠 때는 적용 순서와 기존 테스트의 기대 동작을 먼저 확인하세요. 원본 파일의 대량 복사는 허용하지 않습니다.
 
@@ -110,7 +111,7 @@ CI도 동일하게 깨끗한 원본을 체크아웃한 뒤 `.patch`를 순서대
 
 ## 5. 새 번역 패치 생성 및 제출
 
-1. 최신 업스트림을 검증용 worktree에 받은 후 **기존 14개 패치를 먼저 적용**합니다.
+1. 최신 업스트림을 검증용 worktree에 받은 후 **기존 15개 패치를 먼저 적용**합니다.
 2. 번역·기능 수정을 해당 worktree에서 수행합니다. 한국어와 영어·중국어를 보존하고, API/JSON 키, 출력 프로토콜, URL, 경로, 플레이스홀더는 함부로 변경하지 않습니다.
 3. 수정한 파일을 검토하고 `git diff --check` 및 관련 npm·Kotlin 테스트를 실행합니다.
 4. 변경분을 `git -C "$TREE" diff --binary > "$ROOT/localization/patches/<다음-번호>-설명.patch"`로 추출합니다. 신규 파일은 먼저 `git -C "$TREE" add -N <새-파일>`로 diff에 포함시키거나, 임시 커밋에서 기준 커밋과 비교해 누락 없이 추출합니다.
