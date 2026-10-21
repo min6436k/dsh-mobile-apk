@@ -1,0 +1,169 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index c12952d..097cf0c 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -23,6 +23,7 @@
+   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+ 
+   <application
++    android:name=".KoreanOnlyApplication"
+     android:label="@string/app_name"
+     android:icon="@mipmap/ic_launcher"
+     android:theme="@style/Theme.Dsh"
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
+index dfdbc92..7653413 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
+@@ -13,10 +13,15 @@ internal object DsLocale {
+   var forceKo: Boolean? = null
+ 
+   @JvmStatic
+-  fun isKo(): Boolean = true
++  fun isKo(): Boolean {
++    // Existing Chinese contract tests still run without an Android Application.
++    // Android always initializes Locale.KOREAN in KoreanOnlyApplication.
++    forceKo?.let { return it }
++    return Locale.getDefault().language.lowercase(Locale.ROOT) == "ko"
++  }
+ 
+   @JvmStatic
+-  fun tr(zh: String, ko: String): String = ko
++  fun tr(zh: String, ko: String): String = if (isKo()) ko else zh
+ 
+   private val translations: Map<String, String> = mapOf(
+     // Common / Management
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt b/app/src/main/java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt
+new file mode 100644
+index 0000000..47d20ba
+--- /dev/null
++++ b/app/src/main/java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt
+@@ -0,0 +1,28 @@
++package com.dsharnessmobile.shell
++
++import android.app.Application
++import android.content.Context
++import android.content.res.Configuration
++import java.util.Locale
++
++/**
++ * Single-language Android product. Called for every app process, including
++ * background EngineService / OverlayService launches without MainActivity.
++ * JVM unit tests have no Application and retain upstream source-copy contracts.
++ */
++class KoreanOnlyApplication : Application() {
++  override fun attachBaseContext(base: Context) {
++    Locale.setDefault(Locale.KOREAN)
++    super.attachBaseContext(AppLanguage.wrap(base))
++  }
++
++  override fun onCreate() {
++    super.onCreate()
++    Locale.setDefault(Locale.KOREAN)
++  }
++
++  override fun onConfigurationChanged(newConfig: Configuration) {
++    super.onConfigurationChanged(newConfig)
++    Locale.setDefault(Locale.KOREAN)
++  }
++}
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt b/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
+index 363c75d..3330457 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/UiText.kt
+@@ -2,10 +2,17 @@ package com.dsharnessmobile.shell
+ 
+ import android.content.Context
+ 
+-/** Native copy is always Korean, regardless of Android system locale. */
++/**
++ * Korean UI in the Android application. Legacy pure-JVM copy tests may still
++ * exercise the Chinese source contract when there is no running Application.
++ */
+ internal object UiText {
+-  fun isKorean(context: Context?): Boolean = true
++  fun isKorean(context: Context?): Boolean =
++    (context != null && AppLanguage.dshLocale(context) == AppLanguage.MODE_KO) ||
++      DsLocale.isKo()
++
+   fun isEnglish(context: Context?): Boolean = false
++
+   fun t(context: Context?, zh: String, en: String, ko: String? = null): String =
+-    ko ?: DsLocale.lookup(zh, en)
++    if (isKorean(context)) ko ?: DsLocale.lookup(zh, en) else zh
+ }
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
+index c70ddf3..7bbd83d 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppLanguageTest.kt
+@@ -86,12 +86,18 @@ class AppLanguageTest {
+   }
+ 
+   @Test
+-  fun nativeLanguageIsKoreanOnlyForAllFallbacks() {
+-    assertTrue(DsLocale.isKo())
+-    assertEquals("테스트", DsLocale.tr("测试", "테스트"))
+-    assertEquals("관리 센터", UiText.t(null, "管理中心", "Management", "관리 센터"))
+-    assertTrue(UiText.isKorean(null))
+-    assertTrue(!UiText.isEnglish(null))
++  fun nativeCopyFollowsTheForcedKoreanRuntimeLocale() {
++    val previous = DsLocale.forceKo
++    try {
++      DsLocale.forceKo = true
++      assertTrue(DsLocale.isKo())
++      assertEquals("테스트", DsLocale.tr("测试", "테스트"))
++      assertEquals("관리 센터", UiText.t(null, "管理中心", "Management", "관리 센터"))
++      assertTrue(UiText.isKorean(null))
++      assertTrue(!UiText.isEnglish(null))
++    } finally {
++      DsLocale.forceKo = previous
++    }
+   }
+ 
+   @Test
+@@ -99,6 +105,11 @@ class AppLanguageTest {
+     val src = listOf(java.io.File("src/main"), java.io.File("app/src/main")).first { it.isDirectory }
+     val locale = java.io.File(src, "java/com/dsharnessmobile/shell/AppLanguage.kt").readText()
+     val console = java.io.File(src, "assets/console.html").readText()
++    val manifest = java.io.File(src, "AndroidManifest.xml").readText()
++    val app = java.io.File(src, "java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt").readText()
++    assertTrue(manifest.contains("android:name=\".KoreanOnlyApplication\""))
++    assertTrue(app.contains("Locale.setDefault(Locale.KOREAN)"))
++
+     assertTrue(locale.contains("fun mode(context: Context): String = MODE_KO"))
+     assertTrue(locale.contains("fun dshLocale(context: Context): String = MODE_KO"))
+     assertTrue(locale.contains("fun systemLanguages(context: Context): List<String> = listOf(\"ko-KR\")"))
+diff --git a/docs/AGENTS/EXECUTION-MAP.md b/docs/AGENTS/EXECUTION-MAP.md
+index 833fab3..9b7ab80 100644
+--- a/docs/AGENTS/EXECUTION-MAP.md
++++ b/docs/AGENTS/EXECUTION-MAP.md
+@@ -2207,6 +2207,7 @@ app/src/main/java/com/dsharnessmobile/shell/ControlAudit.kt
+ app/src/main/java/com/dsharnessmobile/shell/MuxClient.kt
+ app/src/main/java/com/dsharnessmobile/shell/ShellState.kt
+ app/src/main/java/com/dsharnessmobile/shell/AppLanguage.kt
++app/src/main/java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt
+ app/src/main/java/com/dsharnessmobile/shell/AppTheme.kt
+ app/src/main/java/com/dsharnessmobile/shell/UiText.kt
+ app/src/main/java/com/dsharnessmobile/shell/DsLocale.kt
+@@ -2464,3 +2465,9 @@ app/src/main/java/com/dsharnessmobile/shell/ApkUpdateAction.kt
+ - `app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt`: System SAF provider exposes only the app's `filesDir` through user-granted document URIs; no public file-serving endpoint. Manifest `MANAGE_DOCUMENTS` binding permission; folder browse, read/write, create, rename and non-recursive delete. This path belongs to the K06 file/SAF integration boundary.
+ - `app/src/main/java/com/dsharnessmobile/shell/AppDocumentsPath.kt`: exact `files:` ID-to-path translation, canonical root checks and traversal/symlink containment. Tests: `app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt`. Never resolve external paths directly from document IDs.
+ - `app/src/main/java/com/dsharnessmobile/shell/GuideManagementController.kt`: Korean UI language is forced (language selector removed); the color mode buttons group a centered Android vector and label and use semicircular outer caps. Tests: `AppThemeTest.kt`.
++
++
++### Korean-only Android process-wide locale
++
++- `app/src/main/java/com/dsharnessmobile/shell/KoreanOnlyApplication.kt`: declared in `AndroidManifest.xml`, forces Android `Locale.KOREAN` for every app process, including boot-triggered/background services.
++- `AppLanguage.kt` ignores obsolete UI language preference values and forces Korean for WebView/bootstrap/engine profile. `UiText.kt` and `DsLocale.kt` use process locale, preserving Chinese baseline-copy tests in a plain JVM without an Android Application; there is **no user-facing language selector**. Tests: `AppLanguageTest.kt`, `AppThemeTest.kt`.
+diff --git a/docs/AGENTS/modules.md b/docs/AGENTS/modules.md
+index 534e2b2..b9b19cf 100644
+--- a/docs/AGENTS/modules.md
++++ b/docs/AGENTS/modules.md
+@@ -283,3 +283,8 @@ Android API 面登记见 `docs/AGENTS/ANDROID-API-USAGE.md` §1/§3/§4/§8；
+ `AppFilesDocumentsProvider.kt` registers `${applicationId}.documents` as a system SAF `DocumentsProvider`, with the Android `MANAGE_DOCUMENTS` binding permission and URI grants. The exposed root is **`filesDir` only** (`files/`), not the app's private SharedPreferences/databases/cache or `/data/data` generally. Android's file picker mediates all third-party document grants; files are not globally readable.
+ 
+ `AppDocumentsPath.kt` is the single source of truth for stable `files:` document IDs, canonical containment and symlink/traversal rejection; `AppDocumentsPathTest.kt` tests identity, unsafe names, path escapes and the SAF manifest declaration. Direct edits through the file picker can still change/delete engine data: warn users to back up before changing the runtime, and do not recursively delete directories from the provider. The UI language selector was removed from `GuideManagementController.kt` and the responsive Web UI. `AppLanguage.kt` now forces Korean for Android resources, the engine profile, and the WebView bootstrap, ignoring old stored choices. The existing JS bridge language setter returns Korean for compatibility rather than changing languages.
++
++
++### Korean-only application lifecycle
++
++`KoreanOnlyApplication.kt` is registered on the manifest `<application>` and sets the process default locale to Korean in `attachBaseContext`, `onCreate`, and on configuration changes. Every Android process (including headless engine/overlay services) therefore selects Korean native copy. Legacy Chinese-text JVM contract tests still run without Android Application; their test-only baseline does **not** become a user setting. `AppLanguage` ignores legacy stored choices and forces `ko` into the engine profile and WebView bootstrap.
