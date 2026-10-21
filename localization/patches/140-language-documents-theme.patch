@@ -563,9 +563,9 @@ index 0000000..da733a7
 +    val src = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
 +    val xml = File(src, "AndroidManifest.xml").readText()
 +    val klass = File(src, "java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt").readText()
-+    assertTrue(xml.contains("android:name=".AppFilesDocumentsProvider""))
-+    assertTrue(xml.contains("android:permission="android.permission.MANAGE_DOCUMENTS""))
-+    assertTrue(xml.contains("android:grantUriPermissions="true""))
++    assertTrue(xml.contains("android:name=\".AppFilesDocumentsProvider\""))
++    assertTrue(xml.contains("android:permission=\"android.permission.MANAGE_DOCUMENTS\""))
++    assertTrue(xml.contains("android:grantUriPermissions=\"true\""))
 +    assertTrue(klass.contains("context).filesDir.canonicalFile"))
 +    assertTrue(klass.contains("AppDocumentsPath.idFor(filesRoot, file)"))
 +    assertTrue(klass.contains("if (id == AppDocumentsPath.ROOT_ID) throw"))
