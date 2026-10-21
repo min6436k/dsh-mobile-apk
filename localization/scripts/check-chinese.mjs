@@ -53,7 +53,9 @@ function filesAt(root) {
       cwd: root, encoding: 'utf8', maxBuffer: 25 * 1024 * 1024,
       stdio: ['ignore', 'pipe', 'ignore'],
     }).split('\0').filter(Boolean)
-    return files.filter(isSource).sort()
+    // git ls-files --cached still includes removed paths before staging (as in
+    // CI patch application). Deleted source files are not untranslated UI.
+    return files.filter(isSource).filter(file => fs.existsSync(path.join(root, file))).sort()
   } catch {
     const found = []
     function walk(dir) {
