@@ -1,0 +1,113 @@
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index 097cf0c..6b3b534 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -18,7 +18,30 @@
+   <!-- 0.13.8 批 H：启动页 APK 自更新（UpdateChecker）——唤起系统安装器需要此声明；
+        用户在系统「安装未知应用」页显式授权后才会真正安装，应用不静默安装任何东西。 -->
+   <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+-  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
++  <!-- Scoped package visibility: only root/Shizuku managers and file/open handlers.
++       Do not restore QUERY_ALL_PACKAGES without a concrete missing capability
++       and a regression test proving that targeted <queries> cannot cover it. -->
++  <queries>
++    <package android:name="me.weishu.kernelsu" />
++    <package android:name="com.topjohnwu.magisk" />
++    <package android:name="me.bmax.apatch" />
++    <package android:name="moe.shizuku.privileged.api" />
++    <package android:name="roro.stellar.manager" />
++    <package android:name="bin.mt.plus" />
++    <package android:name="com.android.documentsui" />
++    <package android:name="com.google.android.documentsui" />
++    <intent>
++      <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
++    </intent>
++    <intent>
++      <action android:name="android.intent.action.VIEW" />
++      <data android:mimeType="*/*" />
++    </intent>
++    <intent>
++      <action android:name="android.intent.action.VIEW" />
++      <data android:scheme="https" />
++    </intent>
++  </queries>
+   <!-- 0.13.2 W7：悬浮球（系统级悬浮窗，用户经设置页授予；OverlayController 引导）。 -->
+   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+ 
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/PackageVisibilityTest.kt b/app/src/test/java/com/dsharnessmobile/shell/PackageVisibilityTest.kt
+new file mode 100644
+index 0000000..60c522c
+--- /dev/null
++++ b/app/src/test/java/com/dsharnessmobile/shell/PackageVisibilityTest.kt
+@@ -0,0 +1,37 @@
++package com.dsharnessmobile.shell
++
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import java.io.File
++
++/** Keep Android 11+ package queries sufficient without enumerating every app. */
++class PackageVisibilityTest {
++  private val main: File get() = listOf(File("src/main"), File("app/src/main")).first { it.isDirectory }
++
++  @Test fun broadPackageEnumerationPermissionIsNotRequested() {
++    val xml = File(main, "AndroidManifest.xml").readText()
++    assertFalse(xml.contains("<uses-permission android:name=\"android.permission.QUERY_ALL_PACKAGES\""))
++    assertTrue(xml.contains("<queries>"))
++    assertTrue(xml.contains("<action android:name=\"android.intent.action.OPEN_DOCUMENT_TREE\""))
++    assertTrue(xml.contains("<data android:mimeType=\"*/*\""))
++    assertTrue(xml.contains("<data android:scheme=\"https\""))
++  }
++
++  @Test fun everyKnownRootManagerAndFileManagerRemainsQueryable() {
++    val xml = File(main, "AndroidManifest.xml").readText()
++    val sourceDir = File(main, "java/com/dsharnessmobile/shell")
++    val consumers = listOf("RootAccess.kt", "ExternalLinks.kt", "PathOpen.kt")
++      .joinToString("\n") { File(sourceDir, it).readText() }
++    val packages = listOf(
++      "me.weishu.kernelsu", "com.topjohnwu.magisk", "me.bmax.apatch",
++      "moe.shizuku.privileged.api", "roro.stellar.manager",
++      "bin.mt.plus", "com.android.documentsui", "com.google.android.documentsui",
++    )
++    for (name in packages) {
++      assertTrue("Missing package consumer for $name", consumers.contains(name))
++      assertTrue("Missing scoped manifest query for $name",
++        xml.contains("<package android:name=\"$name\""))
++    }
++  }
++}
+diff --git a/docs/AGENTS/ARCHITECTURE.md b/docs/AGENTS/ARCHITECTURE.md
+index 7e8172b..63520af 100644
+--- a/docs/AGENTS/ARCHITECTURE.md
++++ b/docs/AGENTS/ARCHITECTURE.md
+@@ -142,7 +142,7 @@
+ | androidx FileProvider | provider（${applicationId}.fileprovider） | （框架类） | 路径白名单 @xml/file_paths，不映射 .credentials.yaml 等机密区 |
+ | rikka.shizuku.ShizukuProvider | provider（${applicationId}.shizuku，`android:permission=INTERACT_ACROSS_USERS_FULL`） | （Shizuku 框架类） | Shizuku binder bootstrap；Shizuku 仍是唯一授权方；check-manifest-hardening 显式白名单放行 |
+ 
+-权限 13 项（INTERNET / MANAGE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE maxSdk32 / WRITE_EXTERNAL_STORAGE maxSdk29 / POST_NOTIFICATIONS / FOREGROUND_SERVICE(+DATA_SYNC) / RECEIVE_BOOT_COMPLETED / WAKE_LOCK / REQUEST_IGNORE_BATTERY_OPTIMIZATIONS / REQUEST_INSTALL_PACKAGES / QUERY_ALL_PACKAGES / SYSTEM_ALERT_WINDOW），逐条理由见 AndroidManifest.xml 注释。
++权限 12 项（INTERNET / MANAGE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE maxSdk32 / WRITE_EXTERNAL_STORAGE maxSdk29 / POST_NOTIFICATIONS / FOREGROUND_SERVICE(+DATA_SYNC) / RECEIVE_BOOT_COMPLETED / WAKE_LOCK / REQUEST_IGNORE_BATTERY_OPTIMIZATIONS / REQUEST_INSTALL_PACKAGES / SYSTEM_ALERT_WINDOW），逐条理由见 AndroidManifest.xml 注释。已移除全局 QUERY_ALL_PACKAGES 可见性：仅用 manifest <queries> 登记已知 Root/Shizuku 管理器和必要的文件处理/HTTPS Intent。回归验证见 PackageVisibilityTest.kt。此变动并不承诺第三方杀毒软件必定取消告警。
+ 
+ ## 8. 0.14 当前屏幕控制构造（施工中）
+ 
+diff --git a/scripts/check-manifest-hardening.mjs b/scripts/check-manifest-hardening.mjs
+index c727517..b76e52a 100644
+--- a/scripts/check-manifest-hardening.mjs
++++ b/scripts/check-manifest-hardening.mjs
+@@ -152,6 +152,16 @@ const REQUIRED_EXCLUDES = [
+ ]
+ 
+ if (manifest) {
++  // Package visibility is a real privacy boundary: query only the known
++  // managers and user-requested intent handlers, never enumerate every app.
++  const allPackages = descendants(manifest, 'uses-permission')
++    .some((n) => n.attrs['android:name'] === 'android.permission.QUERY_ALL_PACKAGES')
++  check('No broad QUERY_ALL_PACKAGES permission', !allPackages)
++  const queriedPackages = new Set(descendants(manifest, 'package').map((n) => n.attrs['android:name']))
++  const managers = ['me.weishu.kernelsu', 'com.topjohnwu.magisk', 'me.bmax.apatch',
++    'moe.shizuku.privileged.api', 'roro.stellar.manager']
++  check('Known root/Shizuku manager visibility retained',
++    managers.every((pkg) => queriedPackages.has(pkg)))
+   const apps = descendants(manifest, 'application')
+   check('恰好一个 <application>（重复声明即拒）', apps.length === 1, 'count=' + apps.length)
+   const app = apps[0]

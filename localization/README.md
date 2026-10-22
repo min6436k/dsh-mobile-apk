@@ -17,7 +17,7 @@
 | 자동 빌드 | `.github/workflows/ko-upstream-apk.yml` (ARM64만) |
 | 배포 파일 | Draft Release의 APK / SHA-256 / 출처 파일 |
 
-패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`130`의 **17개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
+패치 번호 순서는 파일 이름 사전순입니다. 현재 `001`~`180`의 **19개 `.patch`**를 사용하며 숫자 중간의 빈 자리는 새 번호를 위해 예약하지 않았습니다. 적용 순서와 파일의 실제 존재 여부는 `find localization/patches -name '*.patch' | sort`로 확인하세요. 최신 업스트림이 변하면 패치 충돌을 먼저 수정하고 전체를 재검증합니다.
 
 ### 현재 패치 목록 (파일명순)
 
@@ -40,6 +40,8 @@
 | `140-language-documents-theme.patch` | (구형) 언어 선택 팝업, 색상 모드 버튼 정렬, SAF 앱 내부 파일 DocumentsProvider |
 | `150-korean-only.patch` | 관리 센터·Web UI 언어 선택 제거, 한국어 강제 적용 및 구형 선택값 무시 |
 | `160-korean-process-locale.patch` | 모든 Android 앱 프로세스의 한국어 기본 언어 적용, 구형 JVM 문구 계약 테스트 보존 |
+| `170-document-provider-app-name.patch` | 파일 앱의 제공자 표시를 앱 이름으로 통일하고 부제 제거 |
+| `180-scoped-package-visibility.patch` | 전체 앱 조회 권한 제거, 필요한 관리자·파일 처리 앱만 조회 |
 
 패치를 제거·합칠 때는 적용 순서와 기존 테스트의 기대 동작을 먼저 확인하세요. 원본 파일의 대량 복사는 허용하지 않습니다.
 

@@ -1,0 +1,60 @@
+diff --git a/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt b/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
+index 5f1a089..d63a2a8 100644
+--- a/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
++++ b/app/src/main/java/com/dsharnessmobile/shell/AppFilesDocumentsProvider.kt
+@@ -30,8 +30,7 @@ class AppFilesDocumentsProvider : DocumentsProvider() {
+     val row = cursor.newRow()
+     row.add(Root.COLUMN_ROOT_ID, "app-files")
+     row.add(Root.COLUMN_DOCUMENT_ID, AppDocumentsPath.ROOT_ID)
+-    row.add(Root.COLUMN_TITLE, requireNotNull(context).getString(R.string.documents_root_label))
+-    row.add(Root.COLUMN_SUMMARY, requireNotNull(context).getString(R.string.documents_root_summary))
++    row.add(Root.COLUMN_TITLE, requireNotNull(context).getString(R.string.app_name))
+     row.add(Root.COLUMN_FLAGS, Root.FLAG_LOCAL_ONLY or Root.FLAG_SUPPORTS_CREATE or Root.FLAG_SUPPORTS_IS_CHILD)
+     row.add(Root.COLUMN_ICON, R.mipmap.ic_launcher)
+     row.add(Root.COLUMN_AVAILABLE_BYTES, root.usableSpace)
+diff --git a/app/src/main/res/values-en/strings.xml b/app/src/main/res/values-en/strings.xml
+index c563f6b..cc9bedb 100644
+--- a/app/src/main/res/values-en/strings.xml
++++ b/app/src/main/res/values-en/strings.xml
+@@ -70,6 +70,4 @@
+   <string name="ds_share_log_working">Packaging diagnostic logs…</string>
+   <string name="ds_share_log_done">Diagnostics %1$s ready; choose an app to send it to</string>
+   <string name="ds_share_log_failed">Sharing failed: %1$s</string>
+-  <string name="documents_root_label">DeepCode internal files</string>
+-  <string name="documents_root_summary">App private files via Android Files</string>
+ </resources>
+diff --git a/app/src/main/res/values-ko/strings.xml b/app/src/main/res/values-ko/strings.xml
+index 0246723..cc57b71 100644
+--- a/app/src/main/res/values-ko/strings.xml
++++ b/app/src/main/res/values-ko/strings.xml
+@@ -70,6 +70,4 @@
+   <string name="ds_share_log_working">진단 로그 압축 중…</string>
+   <string name="ds_share_log_done">진단 로그 %1$s 생성이 완료되었습니다. 전송할 앱을 선택해 주세요</string>
+   <string name="ds_share_log_failed">공유 실패: %1$s</string>
+-  <string name="documents_root_label">DeepCode 내부 파일</string>
+-  <string name="documents_root_summary">Android 파일 앱에서 앱의 files 폴더에 접근</string>
+ </resources>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index 00234ce..69555ed 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -94,6 +94,4 @@
+   <string name="ds_share_log_working">正在打包诊断日志…</string>
+   <string name="ds_share_log_done">已生成诊断包 %1$s，请选择要发送到的应用</string>
+   <string name="ds_share_log_failed">分享未成功：%1$s</string>
+-  <string name="documents_root_label">DeepCode 内部文件</string>
+-  <string name="documents_root_summary">通过 Android 文件管理器访问应用内部文件</string>
+ </resources>
+diff --git a/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt b/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt
+index 6442cb8..f23c2a6 100644
+--- a/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt
++++ b/app/src/test/java/com/dsharnessmobile/shell/AppDocumentsPathTest.kt
+@@ -64,6 +64,8 @@ class AppDocumentsPathTest {
+     assertTrue(xml.contains("android:grantUriPermissions=\"true\""))
+     assertTrue(klass.contains("context).filesDir.canonicalFile"))
+     assertTrue(klass.contains("AppDocumentsPath.idFor(filesRoot, file)"))
++    assertTrue("Provider title must be only the application name", klass.contains("Root.COLUMN_TITLE, requireNotNull(context).getString(R.string.app_name)"))
++    assertFalse("Provider must not show a secondary explanation", klass.contains("row.add(Root.COLUMN_SUMMARY,"))
+     assertTrue(klass.contains("if (id == AppDocumentsPath.ROOT_ID) throw"))
+   }
+ }
